@@ -3,6 +3,7 @@
 
 from unittest import mock
 
+import numpy as np
 import pytest
 import torch
 
@@ -127,16 +128,14 @@ def test_prepare_next_token_ids():
 
     num_requests = 4
     num_speculative_tokens = 4
-    batch_spec = BatchSpec(
-        seq_lens=[num_speculative_tokens + 1] * num_requests,
-        query_lens=[num_speculative_tokens + 1] * num_requests,
-    )
-
     req_ids = [f"req_{i + 1}" for i in range(num_requests)]
     mock_input_batch = mock.MagicMock(spec=InputBatch)
     mock_input_batch.req_ids = req_ids
     mock_input_batch.num_reqs = num_requests
     mock_input_batch.vocab_size = 100
+    mock_input_batch.num_tokens_no_spec = np.array(
+        [num_speculative_tokens + 1] * num_requests
+    )
 
     mock_num_scheduled_tokens = {req_id: 0 for req_id in req_ids}
     mock_requests = {}
@@ -181,19 +180,12 @@ def test_prepare_next_token_ids():
 
     assert torch.equal(next_token_ids_from_cpu, expected_next_token_ids_tensor)
 
-    common_attn_metadata = create_common_attn_metadata(
-        batch_spec,
-        block_size=BLOCK_SIZE,
-        device=device,
-    )
-
     expected_valid_sampled_tokens_count = torch.tensor(
         [2, 5, 0, 0], dtype=torch.int32, device=device
     )
 
     next_token_ids_from_padded, valid_sampled_tokens_count = (
         proposer.prepare_next_token_ids_padded(
-            common_attn_metadata.seq_lens_cpu,
             sampled_token_ids_tensor,
             mock_requests,
             mock_input_batch,
@@ -1177,9 +1169,9 @@ def test_set_inputs_first_pass_dflash():
     DFlash uses cross-attention: context tokens become K/V and only
     query tokens (bonus + mask) are Q. This tests the DFlash-specific
     input preparation where:
-    - Context hidden states are copied as-is
+    - Context hidden states are stored by reference (no copy)
     - Query input_ids are [next_token, mask, mask, ...] per request
-    - Positions cover context (copied) + query (last_pos + 1 + offset)
+    - Context and query positions are written to separate buffers
     - token_indices_to_sample points to mask token positions only
     - A new CommonAttentionMetadata is returned with causal=False
 
@@ -1194,9 +1186,9 @@ def test_set_inputs_first_pass_dflash():
     Request 1 (indices 4-7): [200, mask, mask, mask]
     Request 2 (indices 8-11): [300, mask, mask, mask]
 
-    Expected positions layout:
-    Context (first 9): copied from target_positions
-    Query (next 12):
+    Expected positions layout (separate buffers):
+    Context (_context_positions_buffer, 9 tokens): copied from target_positions
+    Query (positions, 12 tokens):
       Request 0: last_pos=9, query=[10, 11, 12, 13]
       Request 1: last_pos=7, query=[8, 9, 10, 11]
       Request 2: last_pos=11, query=[12, 13, 14, 15]
@@ -1261,10 +1253,12 @@ def test_set_inputs_first_pass_dflash():
     )
     assert torch.equal(proposer.input_ids[:num_tokens], expected_input_ids)
 
-    # Verify context positions (first 9 slots): copied from target_positions
-    assert torch.equal(proposer.positions[:num_context], target_positions)
+    # Verify context positions (separate buffer): copied from target_positions
+    assert torch.equal(
+        proposer._context_positions_buffer[:num_context], target_positions
+    )
 
-    # Verify query positions (next 12 slots):
+    # Verify query positions (separate buffer, starts at index 0):
     # req0: last_pos=9,  query=[10, 11, 12, 13]
     # req1: last_pos=7,  query=[8, 9, 10, 11]
     # req2: last_pos=11, query=[12, 13, 14, 15]
@@ -1274,7 +1268,7 @@ def test_set_inputs_first_pass_dflash():
         device=device,
     )
     assert torch.equal(
-        proposer.positions[num_context : num_context + num_tokens],
+        proposer.positions[:num_tokens],
         expected_query_positions,
     )
 
@@ -1297,5 +1291,5 @@ def test_set_inputs_first_pass_dflash():
     )
     assert torch.equal(output_cad.query_start_loc, expected_query_start_loc)
 
-    # Verify hidden states (context copied as-is)
-    assert torch.equal(proposer.hidden_states[:num_context], target_hidden_states)
+    # Verify hidden states (stored by reference, not copied)
+    assert proposer._dflash_hidden_states is target_hidden_states

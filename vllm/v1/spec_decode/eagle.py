@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import ast
-from dataclasses import replace
 from importlib.util import find_spec
 from typing import Any, cast
 
@@ -13,6 +12,7 @@ from vllm.config import (
     CUDAGraphMode,
     VllmConfig,
     get_layers_from_vllm_config,
+    replace,
 )
 from vllm.distributed.parallel_state import get_pp_group
 from vllm.forward_context import set_forward_context
@@ -225,6 +225,9 @@ class SpecDecodeBaseProposer:
         # Determine allowed attention backends once during initialization.
         self.allowed_attn_types: tuple | None = None
         if current_platform.is_rocm():
+            from vllm.v1.attention.backends.mla.indexer import (
+                DeepseekV32IndexerMetadata,
+            )
             from vllm.v1.attention.backends.mla.rocm_aiter_mla_sparse import (
                 ROCMAiterMLASparseMetadata,
             )
@@ -234,6 +237,7 @@ class SpecDecodeBaseProposer:
                 TritonAttentionMetadata,
                 RocmAttentionMetadata,
                 ROCMAiterMLASparseMetadata,
+                DeepseekV32IndexerMetadata,
             ]
             # ROCM_AITER_FA is an optional backend
             # We check is_enabled() here to avoid importing the backend module during
@@ -444,8 +448,8 @@ class SpecDecodeBaseProposer:
             )
         )
 
-        per_layer_attn_metadata = self.build_per_layer_attn_metadata(
-            common_attn_metadata
+        per_group_attn_metadata, per_layer_attn_metadata = (
+            self.build_per_group_and_layer_attn_metadata(common_attn_metadata)
         )
 
         cudagraph_runtime_mode, num_input_tokens, num_tokens_across_dp = (
@@ -486,10 +490,7 @@ class SpecDecodeBaseProposer:
             positions = self.positions[token_indices_to_sample]
         hidden_states = hidden_states[token_indices_to_sample]
 
-        if any(
-            isinstance(attn_metadata, TreeAttentionMetadata)
-            for attn_metadata in per_layer_attn_metadata.values()
-        ):
+        if any(isinstance(md, TreeAttentionMetadata) for md in per_group_attn_metadata):
             # Draft using tree attention - requires full logits for top-k
             logits = self.model.compute_logits(sample_hidden_states)
             draft_token_ids_list = self.propose_tree(
@@ -505,16 +506,15 @@ class SpecDecodeBaseProposer:
 
         draft_token_ids = self._greedy_sample(sample_hidden_states)
 
-        for attn_metadata in per_layer_attn_metadata.values():
-            if self.allowed_attn_types is not None and not isinstance(
-                attn_metadata, self.allowed_attn_types
-            ):
-                raise ValueError(
-                    f"Unsupported attention metadata type for speculative "
-                    "decoding with num_speculative_tokens > 1: "
-                    f"{type(attn_metadata)}. Supported types are: "
-                    f"{self.allowed_attn_types}"
-                )
+        if self.allowed_attn_types is not None:
+            for group_md in per_group_attn_metadata:
+                if not isinstance(group_md, self.allowed_attn_types):
+                    raise ValueError(
+                        f"Unsupported attention metadata type for speculative "
+                        "decoding with num_speculative_tokens > 1: "
+                        f"{type(group_md)}. Supported types are: "
+                        f"{self.allowed_attn_types}"
+                    )
 
         # Generate the remaining draft tokens.
         draft_token_ids_list = [draft_token_ids]
@@ -595,7 +595,7 @@ class SpecDecodeBaseProposer:
                 common_attn_metadata._num_computed_tokens_cpu += 1
 
             # Rebuild attention metadata
-            per_layer_attn_metadata = self.build_per_layer_attn_metadata(
+            _, per_layer_attn_metadata = self.build_per_group_and_layer_attn_metadata(
                 common_attn_metadata, draft_index=token_index + 1
             )
 
@@ -809,17 +809,19 @@ class SpecDecodeBaseProposer:
 
         return model_kwargs, num_input_tokens
 
-    def build_per_layer_attn_metadata(
+    def build_per_group_and_layer_attn_metadata(
         self, common_attn_metadata: CommonAttentionMetadata, draft_index: int = 0
-    ) -> dict[str, object]:
+    ) -> tuple[list[object], dict[str, object]]:
+        per_group_attn_metadata: list[object] = []
         per_layer_attn_metadata: dict[str, object] = {}
         for attn_group in self.draft_attn_groups:
             attn_metadata = attn_group.get_metadata_builder().build_for_drafting(
                 common_attn_metadata=common_attn_metadata, draft_index=draft_index
             )
+            per_group_attn_metadata.append(attn_metadata)
             for layer_name in attn_group.layer_names:
                 per_layer_attn_metadata[layer_name] = attn_metadata
-        return per_layer_attn_metadata
+        return per_group_attn_metadata, per_layer_attn_metadata
 
     def model_returns_tuple(self) -> bool:
         return self.method not in ("mtp", "draft_model", "dflash")
@@ -859,7 +861,6 @@ class SpecDecodeBaseProposer:
 
     def prepare_next_token_ids_padded(
         self,
-        seq_lens_cpu: torch.Tensor,
         sampled_token_ids: torch.Tensor,
         requests: dict[str, CachedRequestState],
         gpu_input_batch: InputBatch,
@@ -874,7 +875,7 @@ class SpecDecodeBaseProposer:
         """
         # Precompute get_token_id for when there is no valid next token
         num_reqs = gpu_input_batch.num_reqs
-        seq_lens_list = seq_lens_cpu[:num_reqs].tolist()
+        seq_lens_list = (gpu_input_batch.num_tokens_no_spec[:num_reqs] - 1).tolist()
         self.backup_next_token_ids.np[:num_reqs] = np.array(
             [
                 requests[gpu_input_batch.req_ids[i]].get_token_id(seq_lens_list[i])
@@ -1254,6 +1255,21 @@ class SpecDecodeBaseProposer:
             model = model.module
         return model.__class__.__name__
 
+    def _create_draft_vllm_config(self) -> VllmConfig:
+        """Return a VllmConfig with kernel-level overrides for the proposer.
+        Subclasses may override to apply additional config changes.
+        """
+        spec_cfg = self.speculative_config
+        if spec_cfg.moe_backend is not None:
+            return replace(
+                self.vllm_config,
+                kernel_config=replace(
+                    self.vllm_config.kernel_config,
+                    moe_backend=spec_cfg.moe_backend,
+                ),
+            )
+        return self.vllm_config
+
     def _get_model(self) -> nn.Module:
         """
         Default method to call get_model(). Can be overridden by subclasses which
@@ -1261,9 +1277,10 @@ class SpecDecodeBaseProposer:
         """
         from vllm.compilation.backends import set_model_tag
 
+        draft_vllm_config = self._create_draft_vllm_config()
         with set_model_tag("eagle_head"):
             model = get_model(
-                vllm_config=self.vllm_config,
+                vllm_config=draft_vllm_config,
                 model_config=self.speculative_config.draft_model_config,
                 load_config=self.speculative_config.draft_load_config,
             )
@@ -1436,6 +1453,8 @@ class SpecDecodeBaseProposer:
                 )
             elif (
                 hasattr(target_language_model, "lm_head")
+                and hasattr(target_language_model.lm_head, "weight")
+                and hasattr(self.model.lm_head, "weight")
                 and isinstance(target_language_model.lm_head.weight, torch.Tensor)
                 and isinstance(self.model.lm_head.weight, torch.Tensor)
                 # TODO: Offload to CPU for comparison to avoid extra GPU memory

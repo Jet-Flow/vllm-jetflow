@@ -325,6 +325,10 @@ class AttentionBackend(ABC):
     def get_required_kv_cache_layout(cls) -> "KVCacheLayoutType | None":
         return None
 
+    @classmethod
+    def is_ssm(cls) -> bool:
+        return False
+
 
 class AttentionMetadata:
     pass
@@ -948,10 +952,6 @@ class SparseMLAAttentionImpl(AttentionImplBase[T], Generic[T]):
             kv_cache_dtype=kv_cache_dtype,
             scale=k_scale,
         )
-
-
-def is_quantized_kv_cache(kv_cache_dtype: str) -> bool:
-    return kv_cache_dtype.startswith("fp8")
 
 
 def subclass_attention_backend(

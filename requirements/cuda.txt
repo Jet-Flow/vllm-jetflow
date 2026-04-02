@@ -5,8 +5,8 @@ numba == 0.61.2 # Required for N-gram speculative decoding
 
 # Dependencies for NVIDIA GPUs
 # FlashInfer should be updated together with the Dockerfile
-flashinfer-python==0.6.6
-flashinfer-cubin==0.6.6
+flashinfer-python==0.6.7
+flashinfer-cubin==0.6.7
 # Cap nvidia-cudnn-frontend (transitive dep of flashinfer) due to
 # breaking changes in 1.19.0
 nvidia-cudnn-frontend>=1.13.0,<1.19.0
