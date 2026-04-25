@@ -215,6 +215,7 @@ class SpecDecodeBaseProposer:
             device=device,
             with_numpy=True,
         )
+        self._draft_first_pass_metadata_snapshots: list[dict[str, Any]] = []
 
         self._slot_mapping_buffer = torch.zeros(
             self.max_positions,
@@ -379,14 +380,15 @@ class SpecDecodeBaseProposer:
         return {name: view for name in self._draft_attn_layer_names}
 
     def initialize_cudagraph_keys(self, cudagraph_mode: CUDAGraphMode) -> None:
-        """Initialize cudagraph dispatcher keys for eagle.
+        """Initialize cudagraph dispatcher keys for eagle/dflash proposers.
 
-        Eagle only supports PIECEWISE cudagraphs (via mixed_mode).
-        This should be called after adjust_cudagraph_sizes_for_spec_decode.
+        The proposer always runs during the decode phase, so we check
+        ``decode_mode()`` to allow CUDAGraphs when the target model uses
+        ``FULL_DECODE_ONLY``.  The proposer itself uses PIECEWISE capture.
         """
         if (
             not self.speculative_config.enforce_eager
-            and cudagraph_mode.mixed_mode()
+            and cudagraph_mode.decode_mode()
             in [CUDAGraphMode.PIECEWISE, CUDAGraphMode.FULL]
         ):
             eagle_cudagraph_mode = CUDAGraphMode.PIECEWISE
@@ -812,16 +814,62 @@ class SpecDecodeBaseProposer:
     def build_per_group_and_layer_attn_metadata(
         self, common_attn_metadata: CommonAttentionMetadata, draft_index: int = 0
     ) -> tuple[list[object], dict[str, object]]:
+        if int(draft_index) == 0:
+            tree_step = int(getattr(self, "_tree_propose_step", -1))
+            should_capture = True
+            try:
+                capture_steps = getattr(self, "_runtime_capture_steps", None)
+                if capture_steps:
+                    should_capture = tree_step in {
+                        int(s) for s in cast(set[int], capture_steps)
+                    }
+            except Exception:
+                should_capture = True
+            if should_capture and not any(
+                int(s.get("tree_propose_step", -1)) == tree_step
+                for s in self._draft_first_pass_metadata_snapshots
+                if isinstance(s, dict)
+            ):
+                self._draft_first_pass_metadata_snapshots.append(
+                    {
+                        "tree_propose_step": tree_step,
+                        "draft_index": int(draft_index),
+                        "num_actual_tokens": int(common_attn_metadata.num_actual_tokens),
+                        "num_reqs": int(common_attn_metadata.num_reqs),
+                        "max_query_len": int(common_attn_metadata.max_query_len),
+                        "max_seq_len": int(common_attn_metadata.max_seq_len),
+                        "query_start_loc": common_attn_metadata.query_start_loc.detach()
+                        .cpu(),
+                        "seq_lens": common_attn_metadata.seq_lens.detach().cpu(),
+                        "slot_mapping": common_attn_metadata.slot_mapping.detach().cpu(),
+                    }
+                )
         per_group_attn_metadata: list[object] = []
         per_layer_attn_metadata: dict[str, object] = {}
         for attn_group in self.draft_attn_groups:
-            attn_metadata = attn_group.get_metadata_builder().build_for_drafting(
+            builder = attn_group.get_metadata_builder()
+            if isinstance(builder, TreeAttentionMetadataBuilder):
+                try:
+                    builder._dflash_tree_debug_context = {
+                        "caller_role": "drafter_build_per_group_and_layer_attn_metadata",
+                        "builder_owner": "drafter",
+                        "draft_index": int(draft_index),
+                    }
+                except Exception:
+                    pass
+            attn_metadata = builder.build_for_drafting(
                 common_attn_metadata=common_attn_metadata, draft_index=draft_index
             )
             per_group_attn_metadata.append(attn_metadata)
             for layer_name in attn_group.layer_names:
                 per_layer_attn_metadata[layer_name] = attn_metadata
         return per_group_attn_metadata, per_layer_attn_metadata
+
+    def get_draft_first_pass_metadata_snapshots(self) -> list[dict[str, Any]]:
+        return list(self._draft_first_pass_metadata_snapshots)
+
+    def clear_draft_first_pass_metadata_snapshots(self) -> None:
+        self._draft_first_pass_metadata_snapshots.clear()
 
     def model_returns_tuple(self) -> bool:
         return self.method not in ("mtp", "draft_model", "dflash")
@@ -1062,6 +1110,14 @@ class SpecDecodeBaseProposer:
                 num_actual_tokens=batch_size * query_len,
                 max_query_len=query_len,
             )
+            try:
+                tree_attn_metadata_builder._dflash_tree_debug_context = {
+                    "caller_role": "drafter_propose_tree_level",
+                    "builder_owner": "drafter",
+                    "draft_index": int(level + 1),
+                }
+            except Exception:
+                pass
             attn_metadata = tree_attn_metadata_builder.build_for_drafting(
                 common_attn_metadata=common_attn_metadata, draft_index=level + 1
             )

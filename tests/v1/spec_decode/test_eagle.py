@@ -1173,7 +1173,8 @@ def test_set_inputs_first_pass_dflash():
     - Query input_ids are [next_token, mask, mask, ...] per request
     - Context and query positions are written to separate buffers
     - token_indices_to_sample points to mask token positions only
-    - A new CommonAttentionMetadata is returned with causal=False
+    - A new CommonAttentionMetadata is returned with the resolved DFlash
+      causal mode
 
     Setup:
     - 3 requests with query_lens [3, 2, 4]
@@ -1282,7 +1283,7 @@ def test_set_inputs_first_pass_dflash():
     assert torch.equal(token_indices_to_sample, expected_token_indices_to_sample)
 
     # Verify the new CAD has DFlash-specific properties
-    assert output_cad.causal is False  # DFlash requires non-causal attention
+    assert output_cad.causal is proposer.dflash_is_causal
     assert output_cad.num_actual_tokens == num_tokens  # query-only count
     assert output_cad.max_query_len == num_query_per_req
 
@@ -1293,3 +1294,118 @@ def test_set_inputs_first_pass_dflash():
 
     # Verify hidden states (stored by reference, not copied)
     assert proposer._dflash_hidden_states is target_hidden_states
+
+
+@pytest.mark.parametrize(
+    ("head_type", "expected_causal"),
+    [("causal", True), ("bidirectional", False)],
+)
+def test_set_inputs_first_pass_dflash_uses_resolved_causal_mode(
+    head_type: str,
+    expected_causal: bool,
+):
+    device = torch.device(current_platform.device_type)
+
+    proposer = _create_proposer("dflash", 2)
+    proposer.speculative_config.head_type = head_type
+    proposer.dflash_is_causal = proposer._resolve_causal_head()
+
+    batch_spec = BatchSpec(
+        seq_lens=[4, 3],
+        query_lens=[4, 3],
+    )
+    common_attn_metadata = create_common_attn_metadata(
+        batch_spec,
+        block_size=BLOCK_SIZE,
+        device=device,
+        arange_block_indices=True,
+    )
+
+    target_token_ids = torch.tensor(
+        [10, 11, 12, 13, 20, 21, 22],
+        dtype=torch.int32,
+        device=device,
+    )
+    target_positions = torch.tensor(
+        [7, 8, 9, 10, 5, 6, 7],
+        dtype=torch.int64,
+        device=device,
+    )
+    target_hidden_states = torch.randn(
+        7, proposer.hidden_size, dtype=proposer.dtype, device=device
+    )
+    next_token_ids = torch.tensor([100, 200], dtype=torch.int32, device=device)
+
+    _, _, output_cad = proposer.set_inputs_first_pass(
+        target_token_ids=target_token_ids,
+        next_token_ids=next_token_ids,
+        target_positions=target_positions,
+        target_hidden_states=target_hidden_states,
+        token_indices_to_sample=None,
+        cad=common_attn_metadata,
+        num_rejected_tokens_gpu=None,
+    )
+
+    assert proposer.dflash_is_causal is expected_causal
+    assert output_cad.causal is expected_causal
+
+
+def test_set_inputs_first_pass_dflash_uses_last_valid_position_with_rejections():
+    device = torch.device(current_platform.device_type)
+
+    num_speculative_tokens = 2
+    proposer = _create_proposer("dflash", num_speculative_tokens)
+    proposer.speculative_config.head_type = "causal"
+    proposer.dflash_is_causal = proposer._resolve_causal_head()
+
+    batch_spec = BatchSpec(
+        seq_lens=[4, 3],
+        query_lens=[4, 3],
+    )
+    common_attn_metadata = create_common_attn_metadata(
+        batch_spec,
+        block_size=BLOCK_SIZE,
+        device=device,
+        arange_block_indices=True,
+    )
+
+    target_token_ids = torch.tensor(
+        [10, 11, 12, 13, 20, 21, 22],
+        dtype=torch.int32,
+        device=device,
+    )
+    target_positions = torch.tensor(
+        [7, 8, 9, 10, 5, 6, 7],
+        dtype=torch.int64,
+        device=device,
+    )
+    target_hidden_states = torch.randn(
+        7, proposer.hidden_size, dtype=proposer.dtype, device=device
+    )
+    next_token_ids = torch.tensor([100, 200], dtype=torch.int32, device=device)
+    num_rejected_tokens_gpu = torch.tensor([1, 2], dtype=torch.int32, device=device)
+
+    num_tokens, token_indices_to_sample, output_cad = proposer.set_inputs_first_pass(
+        target_token_ids=target_token_ids,
+        next_token_ids=next_token_ids,
+        target_positions=target_positions,
+        target_hidden_states=target_hidden_states,
+        token_indices_to_sample=None,
+        cad=common_attn_metadata,
+        num_rejected_tokens_gpu=num_rejected_tokens_gpu,
+    )
+
+    assert proposer.dflash_is_causal is True
+    assert num_tokens == 6
+    assert torch.equal(
+        proposer.positions[:num_tokens],
+        torch.tensor([10, 11, 12, 6, 7, 8], dtype=torch.int64, device=device),
+    )
+    assert torch.equal(
+        token_indices_to_sample,
+        torch.tensor([1, 2, 4, 5], dtype=torch.int32, device=device),
+    )
+    assert torch.equal(
+        output_cad.seq_lens,
+        torch.tensor([6, 4], dtype=torch.int32, device=device),
+    )

@@ -138,6 +138,52 @@ class SpeculativeConfig:
     speculative_token_tree: str | None = None
     """Specifies the tree structure for speculative token generation.
     """
+    head_type: Literal["auto", "bidirectional", "causal"] = "auto"
+    """Draft attention mode for DFlash. 'auto' uses the draft checkpoint's
+    dflash_config.causal_head when available."""
+    tree_width: int = Field(default=1, ge=1)
+    """Requested draft tree width for DFlash tree inference experiments.
+    Width 1 means linear drafting."""
+    max_tree_budget: int | None = Field(default=None, ge=1)
+    """Optional cap on the total number of tree nodes used for DFlash tree
+    inference experiments."""
+    tree_draft: Literal[
+        "accum_logp", "entropy", "hybrid", "opt_prefix",
+    ] = "accum_logp"
+    """Scoring strategy for DFlash tree node expansion.
+    'accum_logp' prioritises high-probability prefixes (original behaviour).
+    'entropy' prioritises uncertain positions (high per-depth entropy).
+    'hybrid' combines cumulative log-prob with entropy (weighted by
+    tree_hybrid_alpha).
+    'opt_prefix' builds the provably optimal tree under factorized draft
+    marginals by selecting the top-B prefix-probability nodes via a best-first
+    heap (DDTree algorithm).  Ignores tree_construction."""
+    tree_hybrid_alpha: float = Field(default=1.0, gt=0.0)
+    """Weight applied to per-depth entropy in 'hybrid' scoring mode.
+    Larger values shift budget towards uncertain positions."""
+    max_draft_passes: int = Field(default=0, ge=0)
+    """Number of prune/regrow refinement passes after the initial tree is
+    built.  Applies to any tree_draft mode; set to 0 to disable."""
+    tree_prune_ratio: float = Field(default=0.25, gt=0.0, lt=1.0)
+    """Fraction of leaves to prune in each refinement pass.
+    Only used when max_draft_passes > 0."""
+    tree_construction: Literal["depth_first", "breadth_first"] = "depth_first"
+    """Tree node allocation strategy. 'depth_first' pre-allocates the greedy
+    (top-1) spine to full depth before spending budget on side branches,
+    guaranteeing tree acceptance >= linear-chain acceptance. 'breadth_first'
+    uses best-cumulative-log-prob heap expansion (legacy behaviour)."""
+    tree_attn_kernel: Literal["triton", "optimus"] = "triton"
+    """Attention kernel for DFlash tree verification. 'triton' uses the
+    default Triton bias-based path; 'optimus' uses the fused SM90 paged
+    tree-mask kernel from optimus_cutedsl (requires SM90 GPU and
+    page_size == 128)."""
+    num_cudagraph_tree_captures: int = Field(default=0, ge=0)
+    """Number of distinct tree sizes to capture as CUDAGraphs for DFlash
+    tree verification.  When > 0, evenly-spaced sizes from a minimum up
+    to dflash_tree_budget are computed; after each prune/regrow the tree
+    is adjusted to the nearest captured size so every forward is a
+    CUDAGraph hit.  0 disables multi-size capture (fallback to the
+    default heuristic around the budget centre)."""
     parallel_drafting: bool = False
     """Enable parallel drafting, where all speculative tokens are generated
     in parallel rather than sequentially. This can improve performance but
@@ -226,6 +272,19 @@ class SpeculativeConfig:
             if layer_ids is not None:
                 # Convert to tuple to make it hashable
                 factors.append(tuple(layer_ids))
+        if self.method == "dflash":
+            factors.extend(
+                (
+                    self.head_type,
+                    self.tree_width,
+                    self.max_tree_budget,
+                    self.tree_draft,
+                    self.tree_hybrid_alpha,
+                    self.max_draft_passes,
+                    self.tree_attn_kernel,
+                    self.num_cudagraph_tree_captures,
+                )
+            )
 
         hash_str = safe_hash(str(factors).encode(), usedforsecurity=False).hexdigest()
         return hash_str
@@ -563,6 +622,10 @@ class SpeculativeConfig:
 
                 if self.method == "dflash":
                     self.parallel_drafting = True
+                    if self.tree_width > 1 and self.head_type == "bidirectional":
+                        raise ValueError(
+                            "Native DFlash tree drafting only supports causal heads."
+                        )
 
                 if self.num_speculative_tokens is not None and hasattr(
                     self.draft_model_config.hf_config, "num_lookahead_tokens"
@@ -857,7 +920,12 @@ class SpeculativeConfig:
         when drafting.
         """
         slots_per_req = 0  # for serial non-draft-model methods, no change needed
-        if self.parallel_drafting:
+        if self.method == "dflash" and self.tree_width > 1:
+            tree_budget = self.dflash_tree_budget
+            # Tree verification adds one slot per speculative tree node beyond the
+            # already-sampled root token.
+            slots_per_req = max(tree_budget - 1, 0)
+        elif self.parallel_drafting:
             # For parallel drafting, we need one new slot per 'masked' token
             slots_per_req = self.num_speculative_tokens - 1
         if self.uses_draft_model():
@@ -865,6 +933,41 @@ class SpeculativeConfig:
             # Since we do not slice the draft tokens
             slots_per_req += 1
         return slots_per_req
+
+    @property
+    def dflash_tree_budget(self) -> int:
+        tree_block_size = self.num_speculative_tokens + 1
+        full_tree_size = (self.tree_width**tree_block_size - 1) // (
+            self.tree_width - 1
+        )
+        if self.max_tree_budget is not None and self.max_tree_budget > 0:
+            return min(full_tree_size, self.max_tree_budget)
+        return full_tree_size
+
+    @property
+    def cudagraph_tree_capture_sizes(self) -> list[int] | None:
+        """Evenly-spaced tree sizes for multi-size CUDAGraph capture.
+
+        Returns ``None`` when the feature is disabled
+        (``num_cudagraph_tree_captures == 0`` or non-tree mode).
+        """
+        if self.num_cudagraph_tree_captures <= 0:
+            return None
+        if self.method != "dflash" or self.tree_width <= 1:
+            return None
+        budget = self.dflash_tree_budget
+        n = self.num_cudagraph_tree_captures
+        step = max(1, budget // n)
+        sizes = list(range(step, budget, step))
+        if not sizes or sizes[-1] != budget:
+            sizes.append(budget)
+        return sizes
+
+    @property
+    def cudagraph_uniform_decode_query_len(self) -> int:
+        if self.method == "dflash" and self.tree_width > 1:
+            return self.dflash_tree_budget
+        return 1 + self.num_speculative_tokens
 
     def use_eagle(self) -> bool:
         return self.method in ("eagle", "eagle3", "mtp", "dflash")

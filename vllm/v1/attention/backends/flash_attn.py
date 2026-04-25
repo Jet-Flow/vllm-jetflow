@@ -252,7 +252,11 @@ def _get_sliding_window_configs(
     sliding_window_configs: set[tuple[int, int] | None] = set()
     layers = get_layers_from_vllm_config(vllm_config, Attention)
     for layer in layers.values():
-        assert isinstance(layer.impl, FlashAttentionImpl)
+        # The shared forward-context registry can also contain draft-side
+        # attention layers that do not use FlashAttentionImpl. Skip those
+        # when collecting flash-attn-specific sliding window settings.
+        if not isinstance(layer.impl, FlashAttentionImpl):
+            continue
         sliding_window_configs.add(layer.impl.sliding_window)
     return sliding_window_configs
 

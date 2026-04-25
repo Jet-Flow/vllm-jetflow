@@ -345,6 +345,14 @@ class Scheduler(SchedulerInterface):
                 pass
         return num_new_tokens
 
+    @staticmethod
+    def _is_full_dflash_tree_request(request: Request) -> bool:
+        return (
+            request.spec_tree_metadata is not None
+            and bool(request.spec_token_ids)
+            and request.spec_tree_metadata.num_draft_nodes == len(request.spec_token_ids)
+        )
+
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
         # There's no "decoding phase" nor "prefill phase" in the scheduler.
@@ -374,6 +382,7 @@ class Scheduler(SchedulerInterface):
         encoder_compute_budget = self.max_num_encoder_input_tokens
         # Spec decode-related.
         scheduled_spec_decode_tokens: dict[str, list[int]] = {}
+        scheduled_spec_decode_tree_metadata = {}
 
         # For logging.
         scheduled_timestamp = time.monotonic()
@@ -401,11 +410,12 @@ class Scheduler(SchedulerInterface):
                 req_index += 1
                 continue
 
-            num_new_tokens = (
+            requested_num_new_tokens = (
                 request.num_tokens_with_spec
                 + request.num_output_placeholders
                 - request.num_computed_tokens
             )
+            num_new_tokens = requested_num_new_tokens
             if 0 < self.scheduler_config.long_prefill_token_threshold < num_new_tokens:
                 num_new_tokens = self.scheduler_config.long_prefill_token_threshold
             num_new_tokens = min(num_new_tokens, token_budget)
@@ -415,6 +425,16 @@ class Scheduler(SchedulerInterface):
             num_new_tokens = min(
                 num_new_tokens, self.max_model_len - 1 - request.num_computed_tokens
             )
+
+            if (
+                self._is_full_dflash_tree_request(request)
+                and num_new_tokens < requested_num_new_tokens
+            ):
+                # Native DFlash tree verification should either schedule the
+                # entire flattened tree or defer the request. Silently
+                # scheduling a prefix of the tree changes the algorithm.
+                req_index += 1
+                continue
 
             # Schedule encoder inputs.
             encoder_inputs_to_schedule = None
@@ -527,13 +547,26 @@ class Scheduler(SchedulerInterface):
                 )
                 if num_scheduled_spec_tokens > 0:
                     spec_token_ids = request.spec_token_ids
-                    if len(spec_token_ids) > num_scheduled_spec_tokens:
+                    if self._is_full_dflash_tree_request(request):
+                        if len(spec_token_ids) != num_scheduled_spec_tokens:
+                            raise RuntimeError(
+                                "Native DFlash tree scheduling attempted to "
+                                "truncate a full speculative tree. Increase "
+                                "the scheduling/token budget or lower the tree "
+                                "budget."
+                            )
+                    elif len(spec_token_ids) > num_scheduled_spec_tokens:
                         spec_token_ids = spec_token_ids[:num_scheduled_spec_tokens]
                     scheduled_spec_decode_tokens[request.request_id] = spec_token_ids
+                    if request.spec_tree_metadata is not None:
+                        scheduled_spec_decode_tree_metadata[request.request_id] = (
+                            request.spec_tree_metadata
+                        )
 
                 # New spec tokens will be set in `update_draft_token_ids` before the
                 # next step when applicable.
                 request.spec_token_ids = []
+                request.spec_tree_metadata = None
 
             # Encoder-related.
             if encoder_inputs_to_schedule:
@@ -917,6 +950,7 @@ class Scheduler(SchedulerInterface):
             num_scheduled_tokens=num_scheduled_tokens,
             total_num_scheduled_tokens=total_num_scheduled_tokens,
             scheduled_spec_decode_tokens=scheduled_spec_decode_tokens,
+            scheduled_spec_decode_tree_metadata=scheduled_spec_decode_tree_metadata,
             scheduled_encoder_inputs=scheduled_encoder_inputs,
             num_common_prefix_blocks=num_common_prefix_blocks,
             preempted_req_ids={req.request_id for req in preempted_reqs},
@@ -968,6 +1002,7 @@ class Scheduler(SchedulerInterface):
         request.num_computed_tokens = 0
         if request.spec_token_ids:
             request.spec_token_ids = []
+        request.spec_tree_metadata = None
         request.num_preemptions += 1
         if self.log_stats:
             request.record_event(EngineCoreEventType.PREEMPTED, timestamp)
@@ -1370,6 +1405,15 @@ class Scheduler(SchedulerInterface):
                 num_draft_tokens = len(scheduled_spec_token_ids)
                 num_accepted = len(generated_token_ids) - 1
                 num_rejected = num_draft_tokens - num_accepted
+                tree_spec = scheduler_output.scheduled_spec_decode_tree_metadata.get(req_id)
+                tree_size = (
+                    tree_spec.num_draft_nodes + 1 if tree_spec is not None else 0
+                )
+                tree_nodes_per_depth = (
+                    tree_spec.nodes_per_depth(self.num_spec_tokens)
+                    if tree_spec is not None
+                    else None
+                )
                 # num_computed_tokens represents the number of tokens
                 # processed in the current step, considering scheduled
                 # tokens and rejections. If some tokens are rejected,
@@ -1385,8 +1429,10 @@ class Scheduler(SchedulerInterface):
                     spec_decoding_stats,
                     num_draft_tokens=num_draft_tokens,
                     num_accepted_tokens=num_accepted,
+                    tree_size=tree_size,
                     num_invalid_spec_tokens=scheduler_output.num_invalid_spec_tokens,
                     request_id=req_id,
+                    tree_nodes_per_depth=tree_nodes_per_depth,
                 )
 
             stopped = False
@@ -1667,9 +1713,12 @@ class Scheduler(SchedulerInterface):
                 self.encoder_cache_manager.free_encoder_input(request, input_id)
 
     def update_draft_token_ids(self, draft_token_ids: DraftTokenIds) -> None:
-        for req_id, spec_token_ids in zip(
-            draft_token_ids.req_ids,
-            draft_token_ids.draft_token_ids,
+        dflash_tree_specs = draft_token_ids.dflash_tree_specs
+        for i, (req_id, spec_token_ids) in enumerate(
+            zip(
+                draft_token_ids.req_ids,
+                draft_token_ids.draft_token_ids,
+            )
         ):
             request = self.requests.get(req_id)
             if request is None or request.is_finished():
@@ -1680,6 +1729,7 @@ class Scheduler(SchedulerInterface):
                 # Ignore draft tokens for prefill chunks.
                 if request.spec_token_ids:
                     request.spec_token_ids = []
+                request.spec_tree_metadata = None
                 continue
 
             # Add newly generated spec token ids to the request.
@@ -1687,6 +1737,9 @@ class Scheduler(SchedulerInterface):
                 metadata = request.structured_output_request
                 spec_token_ids = metadata.grammar.validate_tokens(spec_token_ids)  # type: ignore[union-attr]
             request.spec_token_ids = spec_token_ids
+            request.spec_tree_metadata = (
+                None if dflash_tree_specs is None else dflash_tree_specs[i]
+            )
 
     def update_draft_token_ids_in_output(
         self, draft_token_ids: DraftTokenIds, scheduler_output: SchedulerOutput
@@ -1694,9 +1747,13 @@ class Scheduler(SchedulerInterface):
         num_invalid_spec_tokens: dict[str, int] = {}
 
         sched_spec_tokens = scheduler_output.scheduled_spec_decode_tokens
-        for req_id, spec_token_ids in zip(
-            draft_token_ids.req_ids,
-            draft_token_ids.draft_token_ids,
+        sched_tree_metadata = scheduler_output.scheduled_spec_decode_tree_metadata
+        dflash_tree_specs = draft_token_ids.dflash_tree_specs
+        for i, (req_id, spec_token_ids) in enumerate(
+            zip(
+                draft_token_ids.req_ids,
+                draft_token_ids.draft_token_ids,
+            )
         ):
             request = self.requests.get(req_id)
             if request is None or request.is_finished():
@@ -1723,6 +1780,10 @@ class Scheduler(SchedulerInterface):
                 num_invalid_spec_tokens[req_id] = num_invalid_tokens
 
             sched_spec_tokens[req_id] = spec_token_ids
+            if dflash_tree_specs is not None and dflash_tree_specs[i] is not None:
+                sched_tree_metadata[req_id] = dflash_tree_specs[i]
+            else:
+                sched_tree_metadata.pop(req_id, None)
 
         scheduler_output.num_invalid_spec_tokens = num_invalid_spec_tokens
 
@@ -1979,8 +2040,10 @@ class Scheduler(SchedulerInterface):
         spec_decoding_stats: SpecDecodingStats | None,
         num_draft_tokens: int,
         num_accepted_tokens: int,
+        tree_size: int,
         num_invalid_spec_tokens: dict[str, int] | None,
         request_id: str,
+        tree_nodes_per_depth: list[int] | None = None,
     ) -> SpecDecodingStats | None:
         if not self.log_stats or not num_draft_tokens:
             return None
@@ -1989,7 +2052,10 @@ class Scheduler(SchedulerInterface):
         if num_invalid_spec_tokens:
             num_draft_tokens -= num_invalid_spec_tokens.get(request_id, 0)
         spec_decoding_stats.observe_draft(
-            num_draft_tokens=num_draft_tokens, num_accepted_tokens=num_accepted_tokens
+            num_draft_tokens=num_draft_tokens,
+            num_accepted_tokens=num_accepted_tokens,
+            tree_size=tree_size,
+            tree_nodes_per_depth=tree_nodes_per_depth,
         )
         return spec_decoding_stats
 

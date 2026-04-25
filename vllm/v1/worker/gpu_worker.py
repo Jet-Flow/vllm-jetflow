@@ -838,6 +838,17 @@ class Worker(WorkerBase):
     def take_draft_token_ids(self) -> DraftTokenIds | None:
         return self.model_runner.take_draft_token_ids()
 
+    def get_drafter_topk_log(self) -> list[dict[str, Any]]:
+        drafter = getattr(self.model_runner, "drafter", None)
+        if drafter is None or not hasattr(drafter, "get_topk_log"):
+            return []
+        return drafter.get_topk_log()
+
+    def clear_drafter_topk_log(self) -> None:
+        drafter = getattr(self.model_runner, "drafter", None)
+        if drafter is not None and hasattr(drafter, "clear_topk_log"):
+            drafter.clear_topk_log()
+
     def profile(self, is_start: bool = True, profile_prefix: str | None = None):
         # Check if profiling is enabled
         if self.profiler_config is None or self.profiler_config.profiler is None:

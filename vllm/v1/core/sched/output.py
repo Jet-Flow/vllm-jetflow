@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from vllm.pooling_params import PoolingParams
     from vllm.sampling_params import SamplingParams
     from vllm.v1.request import Request
+    from vllm.v1.spec_decode.metadata import DFlashRequestTreeSpec
 else:
     ECConnectorMetadata = object
     KVConnectorMetadata = object
@@ -196,6 +197,9 @@ class SchedulerOutput:
     # If a request does not have any spec decode tokens, it will not be
     # included in the dictionary.
     scheduled_spec_decode_tokens: dict[str, list[int]]
+    # Optional per-request DFlash tree topology aligned with scheduled
+    # speculative decode tokens. Only populated for DFlash tree mode.
+    scheduled_spec_decode_tree_metadata: dict[str, "DFlashRequestTreeSpec"]
     # req_id -> encoder input indices that need processing.
     # E.g., if a request has [0, 1], it could mean the vision encoder needs
     # to process that the request's 0-th and 1-th images in the current step.
@@ -246,6 +250,7 @@ class SchedulerOutput:
             num_scheduled_tokens={},
             total_num_scheduled_tokens=0,
             scheduled_spec_decode_tokens={},
+            scheduled_spec_decode_tree_metadata={},
             scheduled_encoder_inputs={},
             num_common_prefix_blocks=[],
             finished_req_ids=set(),

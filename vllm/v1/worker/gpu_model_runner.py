@@ -122,6 +122,9 @@ from vllm.v1.attention.backend import (
 )
 from vllm.v1.attention.backends.gdn_attn import GDNAttentionMetadataBuilder
 from vllm.v1.attention.backends.mamba2_attn import Mamba2AttentionMetadataBuilder
+from vllm.v1.attention.backends.tree_attn import (
+    TreeAttentionMetadataBuilder,
+)
 from vllm.v1.attention.backends.utils import (
     NULL_BLOCK_ID,
     create_fast_prefill_custom_backend,
@@ -163,11 +166,25 @@ from vllm.v1.sample.metadata import SamplingMetadata
 from vllm.v1.sample.rejection_sampler import RejectionSampler
 from vllm.v1.sample.sampler import Sampler
 from vllm.v1.spec_decode.dflash import DFlashProposer
+from vllm.v1.spec_decode.dflash_tree import (
+    _build_attention_bias_np,
+    _build_causal_bias_np,
+    build_ancestor_matrix_np,
+    build_attention_bias_from_parents,
+    build_block_diagonal_attention_bias,
+    build_causal_ancestor_matrix_np,
+    build_causal_attention_bias,
+    gpu_tree_accept,
+    tree_accept,
+)
 from vllm.v1.spec_decode.draft_model import DraftModelProposer
 from vllm.v1.spec_decode.eagle import EagleProposer
 from vllm.v1.spec_decode.extract_hidden_states import ExtractHiddenStatesProposer
 from vllm.v1.spec_decode.medusa import MedusaProposer
-from vllm.v1.spec_decode.metadata import SpecDecodeMetadata
+from vllm.v1.spec_decode.metadata import (
+    DFlashTreeSpecDecodeMetadata,
+    SpecDecodeMetadata,
+)
 from vllm.v1.spec_decode.ngram_proposer_gpu import (
     NgramProposerGPU,
     copy_num_valid_draft_tokens,
@@ -767,7 +784,11 @@ class GPUModelRunner(
                 self.max_num_tokens, dtype=torch.int32, device=self.device
             )
 
-        self.uniform_decode_query_len = 1 + self.num_spec_tokens
+        self.uniform_decode_query_len = (
+            self.speculative_config.cudagraph_uniform_decode_query_len
+            if self.speculative_config is not None
+            else 1
+        )
 
         # Cudagraph dispatcher for runtime cudagraph dispatching.
         self.cudagraph_dispatcher = CudagraphDispatcher(self.vllm_config)
@@ -803,6 +824,9 @@ class GPUModelRunner(
             self._num_valid_draft_tokens_copy_stream = torch.cuda.Stream()
 
         self._draft_token_req_ids: list[str] | None = None
+        self._draft_tree_specs = None
+        self._dflash_tree_accept_paths: list[list[int]] | None = None
+        self._dflash_tree_accept_paths_gpu: list[torch.Tensor | None] | None = None
         self.transfer_event = torch.Event()
         self.sampled_token_ids_pinned_cpu = torch.empty(
             (self.max_num_reqs, 1),
@@ -1639,6 +1663,12 @@ class GPUModelRunner(
         common_indices_match = True
         max_flattened_index = -1
         total_num_spec_tokens = 0
+        prev_draft_row_starts: list[int] | None = None
+
+        if isinstance(self._draft_token_ids, list):
+            prev_draft_row_starts = [0]
+            for token_ids in self._draft_token_ids:
+                prev_draft_row_starts.append(prev_draft_row_starts[-1] + len(token_ids))
 
         for cur_index in range(num_reqs):
             prev_index = prev_positions[cur_index]
@@ -1665,6 +1695,10 @@ class GPUModelRunner(
             # flatten draft_tokens_id [1,2,3,4,5,6]
             # draft_len of each request [1, 2, 1]
             # then prev_draft_token_indices is [0,   2, 3,   4]
+            if prev_draft_row_starts is None:
+                start = prev_index * self.num_spec_tokens
+            else:
+                start = prev_draft_row_starts[prev_index]
             prev_draft_token_indices.extend(range(start, start + draft_len))
             common_indices_match &= prev_index == flattened_index
             max_flattened_index = max(max_flattened_index, flattened_index)
@@ -1713,7 +1747,6 @@ class GPUModelRunner(
         if self._draft_token_ids is None or not spec_flattened_indices:
             return
 
-        assert isinstance(self._draft_token_ids, torch.Tensor)
         draft_tokens_index_tensor = torch.tensor(
             spec_flattened_indices, dtype=torch.int64, pin_memory=self.pin_memory
         ).to(self.device, non_blocking=True)
@@ -1721,14 +1754,25 @@ class GPUModelRunner(
             prev_draft_token_indices, dtype=torch.int64, pin_memory=self.pin_memory
         ).to(self.device, non_blocking=True)
 
-        # because input_ids dtype is torch.int32,
-        # so convert draft_token_ids to torch.int32 here.
-        draft_token_ids = self._draft_token_ids.to(dtype=torch.int32)
+        if isinstance(self._draft_token_ids, torch.Tensor):
+            # input_ids uses torch.int32, so normalize the source dtype here.
+            draft_token_ids = self._draft_token_ids.to(dtype=torch.int32).flatten()
+        else:
+            flat_draft_token_ids = [
+                token_id
+                for req_token_ids in self._draft_token_ids
+                for token_id in req_token_ids
+            ]
+            draft_token_ids = torch.tensor(
+                flat_draft_token_ids,
+                dtype=torch.int32,
+                pin_memory=self.pin_memory,
+            ).to(self.device, non_blocking=True)
 
         self.input_ids.gpu.scatter_(
             dim=0,
             index=draft_tokens_index_tensor,
-            src=draft_token_ids.flatten()[prev_draft_token_indices_tensor],
+            src=draft_token_ids[prev_draft_token_indices_tensor],
         )
 
     def _get_encoder_seq_lens(
@@ -2062,9 +2106,29 @@ class GPUModelRunner(
                     >= self.input_batch.num_prompt_tokens[req_idx]
                 ):
                     num_decode_draft_tokens[req_idx] = draft_len
-            spec_decode_metadata = self._calc_spec_decode_metadata(
-                num_draft_tokens, cu_num_tokens
-            )
+            if scheduler_output.scheduled_spec_decode_tree_metadata:
+                spec_decode_metadata = self._calc_dflash_tree_spec_decode_metadata(
+                    num_draft_tokens,
+                    cu_num_tokens,
+                    scheduler_output,
+                )
+                # Override RoPE positions for tree verification tokens
+                # with depth-based positions.  Sequential positions (used
+                # above for slot_mapping) give each tree node a unique KV
+                # slot, but RoPE must reflect each node's depth in the
+                # tree so the target model computes correct logits.
+                if spec_decode_metadata.depths is not None:
+                    lidx = spec_decode_metadata.logits_indices
+                    self.positions[lidx] = (
+                        self.num_computed_tokens[
+                            req_indices_gpu[lidx]
+                        ].to(torch.int64)
+                        + spec_decode_metadata.depths
+                    )
+            else:
+                spec_decode_metadata = self._calc_spec_decode_metadata(
+                    num_draft_tokens, cu_num_tokens
+                )
             logits_indices = spec_decode_metadata.logits_indices
             num_sampled_tokens = num_draft_tokens + 1
             # For DECODE only cuda graph of some attention backends (e.g., GDN).
@@ -2097,6 +2161,7 @@ class GPUModelRunner(
         ubatch_slices: UBatchSlices | None = None,
         logits_indices: torch.Tensor | None = None,
         use_spec_decode: bool = False,
+        spec_decode_metadata: SpecDecodeMetadata | None = None,
         for_cudagraph_capture: bool = False,
         num_scheduled_tokens: dict[str, int] | None = None,
         cascade_attn_prefix_lens: list[list[int]] | None = None,
@@ -2216,6 +2281,9 @@ class GPUModelRunner(
         cached_attn_metadata: dict[
             tuple[KVCacheSpec, type[AttentionMetadataBuilder]], AttentionMetadata
         ] = {}
+        use_dflash_tree_metadata = isinstance(
+            spec_decode_metadata, DFlashTreeSpecDecodeMetadata
+        )
 
         def _build_attn_group_metadata(
             kv_cache_gid: int,
@@ -2248,7 +2316,52 @@ class GPUModelRunner(
                     ],
                 )
 
-            if for_cudagraph_capture:
+            if (
+                use_dflash_tree_metadata
+                and not isinstance(builder, TreeAttentionMetadataBuilder)
+            ):
+                use_dflash_tree_metadata_for_this_group = False
+            else:
+                use_dflash_tree_metadata_for_this_group = (
+                    use_dflash_tree_metadata
+                )
+
+            if use_dflash_tree_metadata_for_this_group:
+                assert spec_decode_metadata is not None
+                try:
+                    builder._dflash_tree_debug_context = {
+                        "caller_role": "target_execute_model_tree_metadata",
+                        "builder_owner": "target_model_runner",
+                        "tree_propose_step": int(
+                            getattr(
+                                getattr(self.drafter, "dflash_proposer", None),
+                                "_tree_propose_step",
+                                -1,
+                            )
+                        ),
+                        "for_cudagraph_capture": bool(
+                            for_cudagraph_capture
+                            or self._can_use_dflash_tree_cudagraph(
+                                use_spec_decode=True,
+                                num_reqs=common_attn_metadata.num_reqs,
+                            )
+                        ),
+                    }
+                except Exception:
+                    pass
+                attn_metadata_i = builder.build_for_dflash_tree(
+                    common_attn_metadata,
+                    spec_decode_metadata.tree_attn_bias,
+                    for_cudagraph_capture=(
+                        for_cudagraph_capture
+                        or self._can_use_dflash_tree_cudagraph(
+                            use_spec_decode=True,
+                            num_reqs=common_attn_metadata.num_reqs,
+                        )
+                    ),
+                    ancestor_masks=spec_decode_metadata.ancestor_masks,
+                )
+            elif for_cudagraph_capture:
                 attn_metadata_i = builder.build_for_cudagraph_capture(
                     common_attn_metadata
                 )
@@ -2652,6 +2765,305 @@ class GPUModelRunner(
             target_logits_indices=target_logits_indices,
             bonus_logits_indices=bonus_logits_indices,
             logits_indices=logits_indices,
+        )
+
+    def _calc_dflash_tree_spec_decode_metadata(
+        self,
+        num_draft_tokens: np.ndarray,
+        cu_num_scheduled_tokens: np.ndarray,
+        scheduler_output: "SchedulerOutput",
+    ) -> DFlashTreeSpecDecodeMetadata:
+        num_reqs = len(num_draft_tokens)
+        num_sampled_tokens = num_draft_tokens + 1
+
+        cu_num_sampled_tokens = self._get_cumsum_and_arange(
+            num_sampled_tokens, self._arange_scratch, cumsum_dtype=np.int32
+        )
+        logits_indices_np = np.repeat(
+            cu_num_scheduled_tokens - num_sampled_tokens, num_sampled_tokens
+        )
+        logits_indices_np += self._arange_scratch[: cu_num_sampled_tokens[-1]]
+        logits_indices_np = logits_indices_np.astype(np.int32, copy=False)
+
+        cu_num_draft_tokens = self._get_cumsum_and_arange(
+            num_draft_tokens, self._arange_scratch, cumsum_dtype=np.int32
+        )
+        target_logits_indices = np.repeat(
+            cu_num_sampled_tokens - num_sampled_tokens, num_draft_tokens
+        )
+        if cu_num_draft_tokens[-1] > 0:
+            target_logits_indices += self._arange_scratch[: cu_num_draft_tokens[-1]]
+        target_logits_indices = target_logits_indices.astype(np.int32, copy=False)
+
+        use_optimus = (
+            self.speculative_config is not None
+            and getattr(self.speculative_config, "tree_attn_kernel", "triton")
+            == "optimus"
+        )
+
+        neg_inf = float(torch.finfo(torch.float32).min)
+        query_lens: list[int] = []
+        is_tree_req: list[bool] = []
+        full_parent_indices: list[int] = []
+        full_depths: list[int] = []
+        per_req_biases_np: list[np.ndarray] = []
+        per_req_ancestor_np: list[np.ndarray] = []
+        for req_id in self.input_batch.req_ids[:num_reqs]:
+            req_idx = self.input_batch.req_id_to_index[req_id]
+            draft_len = int(num_draft_tokens[req_idx])
+            query_len = draft_len + 1
+            query_lens.append(query_len)
+
+            tree_spec = scheduler_output.scheduled_spec_decode_tree_metadata.get(req_id)
+            if tree_spec is None:
+                is_tree_req.append(False)
+                full_parents = [-1, *list(range(draft_len))]
+                full_depth = list(range(query_len))
+                if not use_optimus:
+                    per_req_biases_np.append(
+                        _build_causal_bias_np(query_len, neg_inf)
+                    )
+                else:
+                    per_req_ancestor_np.append(
+                        build_causal_ancestor_matrix_np(query_len)
+                    )
+            else:
+                is_tree_req.append(True)
+                full_parents = tree_spec.full_parent_indices()
+                full_depth = tree_spec.full_depths()
+                if not use_optimus:
+                    per_req_biases_np.append(
+                        _build_attention_bias_np(full_parents, neg_inf)
+                    )
+                else:
+                    per_req_ancestor_np.append(
+                        build_ancestor_matrix_np(full_parents)
+                    )
+            full_parent_indices.extend(full_parents)
+            full_depths.extend(full_depth)
+
+        tree_attn_bias_t: torch.Tensor | None = None
+        ancestor_masks_t: torch.Tensor | None = None
+
+        if not use_optimus:
+            total_query_len = sum(query_lens)
+            block_diag_np = np.full(
+                (total_query_len, total_query_len), neg_inf, dtype=np.float32
+            )
+            cursor = 0
+            for bias_np in per_req_biases_np:
+                qlen = bias_np.shape[0]
+                block_diag_np[cursor:cursor + qlen, cursor:cursor + qlen] = bias_np
+                cursor += qlen
+            tree_attn_bias_t = torch.from_numpy(block_diag_np).to(
+                dtype=torch.float32, device=self.device, non_blocking=True
+            )
+        else:
+            max_qlen = max(query_lens) if query_lens else 1
+            padded_np = np.zeros(
+                (num_reqs, max_qlen, max_qlen), dtype=np.int32
+            )
+            for i, anc in enumerate(per_req_ancestor_np):
+                n = anc.shape[0]
+                padded_np[i, :n, :n] = anc
+            ancestor_masks_t = torch.from_numpy(padded_np).to(
+                self.device, non_blocking=True
+            )
+
+        # Batch all small numpy arrays into a single CPU→GPU transfer.
+        bonus_logits_indices_np = cu_num_sampled_tokens - 1
+        cu_query_lens_np = np.cumsum(query_lens, dtype=np.int32)
+        packed_np = np.concatenate([
+            logits_indices_np,
+            cu_num_draft_tokens,
+            cu_num_sampled_tokens,
+            target_logits_indices,
+            bonus_logits_indices_np,
+            cu_query_lens_np,
+        ])
+        packed_gpu = torch.from_numpy(packed_np).to(
+            self.device, non_blocking=True
+        )
+        split_sizes = [
+            logits_indices_np.shape[0],
+            cu_num_draft_tokens.shape[0],
+            cu_num_sampled_tokens.shape[0],
+            target_logits_indices.shape[0],
+            bonus_logits_indices_np.shape[0],
+            cu_query_lens_np.shape[0],
+        ]
+        (
+            logits_indices,
+            cu_num_draft_tokens_t,
+            cu_num_sampled_tokens_t,
+            target_logits_indices_t,
+            bonus_logits_indices_t,
+            cu_query_lens_t,
+        ) = packed_gpu.split(split_sizes)
+
+        draft_token_ids = self.input_ids.gpu[logits_indices]
+        if target_logits_indices_t.numel() > 0:
+            draft_token_ids = draft_token_ids[target_logits_indices_t + 1]
+        else:
+            draft_token_ids = torch.empty(0, dtype=torch.int32, device=self.device)
+
+        full_parent_indices_np = np.array(full_parent_indices, dtype=np.int64)
+        full_depths_np = np.array(full_depths, dtype=np.int64)
+
+        return DFlashTreeSpecDecodeMetadata(
+            draft_token_ids=draft_token_ids,
+            num_draft_tokens=num_draft_tokens.tolist(),
+            cu_num_draft_tokens=cu_num_draft_tokens_t,
+            cu_num_sampled_tokens=cu_num_sampled_tokens_t,
+            target_logits_indices=target_logits_indices_t,
+            bonus_logits_indices=bonus_logits_indices_t,
+            logits_indices=logits_indices,
+            query_lens=query_lens,
+            parent_indices=torch.from_numpy(full_parent_indices_np).to(
+                self.device, non_blocking=True
+            ),
+            depths=torch.from_numpy(full_depths_np).to(
+                self.device, non_blocking=True
+            ),
+            tree_attn_bias=tree_attn_bias_t,
+            cu_query_lens=cu_query_lens_t,
+            is_tree_req=is_tree_req,
+            ancestor_masks=ancestor_masks_t,
+        )
+
+    def _make_dummy_dflash_tree_spec_decode_metadata(
+        self,
+        num_scheduled_tokens: np.ndarray,
+        cu_num_scheduled_tokens: np.ndarray,
+    ) -> DFlashTreeSpecDecodeMetadata:
+        num_reqs = len(num_scheduled_tokens)
+        num_draft_tokens = np.maximum(num_scheduled_tokens - 1, 0).astype(np.int32)
+        num_sampled_tokens = num_draft_tokens + 1
+
+        cu_num_sampled_tokens = self._get_cumsum_and_arange(
+            num_sampled_tokens, self._arange_scratch, cumsum_dtype=np.int32
+        )
+        logits_indices_np = np.repeat(
+            cu_num_scheduled_tokens - num_sampled_tokens, num_sampled_tokens
+        )
+        logits_indices_np += self._arange_scratch[: cu_num_sampled_tokens[-1]]
+        logits_indices_np = logits_indices_np.astype(np.int32, copy=False)
+
+        cu_num_draft_tokens = self._get_cumsum_and_arange(
+            num_draft_tokens, self._arange_scratch, cumsum_dtype=np.int32
+        )
+        target_logits_indices = np.repeat(
+            cu_num_sampled_tokens - num_sampled_tokens, num_draft_tokens
+        )
+        if cu_num_draft_tokens[-1] > 0:
+            target_logits_indices += self._arange_scratch[: cu_num_draft_tokens[-1]]
+        target_logits_indices = target_logits_indices.astype(np.int32, copy=False)
+
+        use_optimus = (
+            self.speculative_config is not None
+            and getattr(self.speculative_config, "tree_attn_kernel", "triton")
+            == "optimus"
+        )
+
+        query_lens = num_sampled_tokens.tolist()
+        neg_inf = float(torch.finfo(torch.float32).min)
+        full_parent_indices: list[int] = []
+        full_depths: list[int] = []
+
+        tree_attn_bias_t: torch.Tensor | None = None
+        ancestor_masks_t: torch.Tensor | None = None
+
+        for query_len in query_lens:
+            full_parent_indices.extend([-1, *list(range(query_len - 1))])
+            full_depths.extend(list(range(query_len)))
+
+        if not use_optimus:
+            total_query_len = sum(query_lens)
+            block_diag_np = np.full(
+                (total_query_len, total_query_len), neg_inf, dtype=np.float32
+            )
+            cursor = 0
+            for query_len in query_lens:
+                bias_np = _build_causal_bias_np(query_len, neg_inf)
+                block_diag_np[cursor:cursor + query_len,
+                              cursor:cursor + query_len] = bias_np
+                cursor += query_len
+            tree_attn_bias_t = torch.from_numpy(block_diag_np).to(
+                dtype=torch.float32, device=self.device, non_blocking=True
+            )
+        else:
+            max_qlen = max(query_lens) if query_lens else 1
+            padded_np = np.zeros(
+                (num_reqs, max_qlen, max_qlen), dtype=np.int32
+            )
+            for i, query_len in enumerate(query_lens):
+                anc = build_causal_ancestor_matrix_np(query_len)
+                padded_np[i, :query_len, :query_len] = anc
+            ancestor_masks_t = torch.from_numpy(padded_np).to(
+                self.device, non_blocking=True
+            )
+
+        # Batch small numpy arrays into a single CPU→GPU transfer.
+        bonus_logits_indices_np = cu_num_sampled_tokens - 1
+        cu_query_lens_np = np.cumsum(query_lens, dtype=np.int32)
+        full_parent_indices_np = np.array(full_parent_indices, dtype=np.int64)
+        full_depths_np = np.array(full_depths, dtype=np.int64)
+
+        packed_i32 = np.concatenate([
+            logits_indices_np,
+            cu_num_draft_tokens,
+            cu_num_sampled_tokens,
+            target_logits_indices,
+            bonus_logits_indices_np,
+            cu_query_lens_np,
+        ])
+        packed_i32_gpu = torch.from_numpy(packed_i32).to(
+            self.device, non_blocking=True
+        )
+        split_i32 = [
+            logits_indices_np.shape[0],
+            cu_num_draft_tokens.shape[0],
+            cu_num_sampled_tokens.shape[0],
+            target_logits_indices.shape[0],
+            bonus_logits_indices_np.shape[0],
+            cu_query_lens_np.shape[0],
+        ]
+        (
+            logits_indices_t,
+            cu_num_draft_tokens_t,
+            cu_num_sampled_tokens_t,
+            target_logits_indices_t,
+            bonus_logits_indices_t,
+            cu_query_lens_t,
+        ) = packed_i32_gpu.split(split_i32)
+
+        packed_i64 = np.concatenate([
+            full_parent_indices_np,
+            full_depths_np,
+        ])
+        packed_i64_gpu = torch.from_numpy(packed_i64).to(
+            self.device, non_blocking=True
+        )
+        parent_indices_t, depths_t = packed_i64_gpu.split([
+            full_parent_indices_np.shape[0],
+            full_depths_np.shape[0],
+        ])
+
+        return DFlashTreeSpecDecodeMetadata(
+            draft_token_ids=torch.empty(0, dtype=torch.int32, device=self.device),
+            num_draft_tokens=num_draft_tokens.tolist(),
+            cu_num_draft_tokens=cu_num_draft_tokens_t,
+            cu_num_sampled_tokens=cu_num_sampled_tokens_t,
+            target_logits_indices=target_logits_indices_t,
+            bonus_logits_indices=bonus_logits_indices_t,
+            logits_indices=logits_indices_t,
+            query_lens=query_lens,
+            parent_indices=parent_indices_t,
+            depths=depths_t,
+            tree_attn_bias=tree_attn_bias_t,
+            cu_query_lens=cu_query_lens_t,
+            is_tree_req=[False] * num_reqs,
+            ancestor_masks=ancestor_masks_t,
         )
 
     def _prepare_kv_sharing_fast_prefill(
@@ -3327,6 +3739,9 @@ class GPUModelRunner(
             draft_token_ids_cpu, _ = self._get_draft_token_ids_cpu()
             self.input_batch.update_async_spec_token_ids(draft_token_ids_cpu)
 
+        if isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata):
+            return self._sample_dflash_tree(logits, spec_decode_metadata)
+
         sampler_output = self.rejection_sampler(
             spec_decode_metadata,
             None,  # draft_probs
@@ -3334,6 +3749,411 @@ class GPUModelRunner(
             sampling_metadata,
         )
         return sampler_output
+
+    def _sample_dflash_tree(
+        self,
+        logits: torch.Tensor | None,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+    ) -> SamplerOutput:
+        sampling_metadata = self.input_batch.sampling_metadata
+        if (
+            logits is None
+            or not sampling_metadata.all_greedy
+            or sampling_metadata.max_num_logprobs is not None
+            or not sampling_metadata.no_penalties
+            or sampling_metadata.allowed_token_ids_mask is not None
+            or sampling_metadata.bad_words_token_ids
+        ):
+            raise NotImplementedError(
+                "Native DFlash tree verification currently supports greedy "
+                "sampling without penalties, bad words, or logprobs."
+            )
+
+        assert spec_decode_metadata.parent_indices is not None
+        assert spec_decode_metadata.cu_query_lens is not None
+        assert spec_decode_metadata.depths is not None
+
+        # GPU-resident tensors — no .tolist() here.
+        query_token_ids = self.input_ids.gpu[spec_decode_metadata.logits_indices]
+        greedy_all = torch.argmax(logits, dim=-1)
+        parent_indices_gpu = spec_decode_metadata.parent_indices
+        depths_gpu = spec_decode_metadata.depths
+
+        max_tree_depth = (
+            self.speculative_config.num_speculative_tokens
+            if self.speculative_config is not None
+            else 15
+        )
+
+        # Compute per-request query start/end from the already-CPU
+        # ``query_lens`` list — avoids cu_query_lens.tolist() sync.
+        query_lens = spec_decode_metadata.query_lens
+        num_reqs = len(query_lens)
+
+        # Accepted path tensors for KV compaction (GPU tensors or None).
+        self._dflash_tree_accept_paths_gpu: list[torch.Tensor | None] = []
+        # Legacy list kept for any downstream code that still reads it.
+        self._dflash_tree_accept_paths: list[list[int]] = []
+        if not hasattr(self, "_dflash_runtime_verify_bundles"):
+            self._dflash_runtime_verify_bundles: list[dict[str, torch.Tensor | int]] = []
+
+        output_tensors: list[torch.Tensor] = []
+        _cpu_data: tuple | None = None
+
+        def _ensure_cpu():
+            nonlocal _cpu_data
+            if _cpu_data is None:
+                _cpu_data = (
+                    query_token_ids.tolist(),
+                    greedy_all.tolist(),
+                    parent_indices_gpu.tolist(),
+                )
+
+        start = 0
+        for req_idx in range(num_reqs):
+            qlen = query_lens[req_idx]
+            end = start + qlen
+            draft_len = spec_decode_metadata.num_draft_tokens[req_idx]
+
+            if spec_decode_metadata.is_tree_req[req_idx]:
+                # ---- GPU fast-path for tree requests ----
+                req_tokens = query_token_ids[start:end]
+                req_greedy = greedy_all[start:end]
+                req_parents = parent_indices_gpu[start:end]
+                req_depths = depths_gpu[start:end]
+
+                accepted_path, accepted_len, correction = gpu_tree_accept(
+                    req_tokens,
+                    req_greedy,
+                    req_parents,
+                    req_depths,
+                    max_depth=max_tree_depth,
+                )
+
+                accepted_tokens = req_tokens[accepted_path[1:]]
+                out = torch.cat([
+                    accepted_tokens,
+                    correction.unsqueeze(0),
+                ]).to(torch.int32)
+                output_tensors.append(out)
+
+                if not self._dflash_runtime_verify_bundles:
+                    self._dflash_runtime_verify_bundles.append(
+                        {
+                            "tree_num_nodes": int(qlen),
+                            "tree_node_token_ids": req_tokens.detach().cpu(),
+                            "tree_parent_indices": req_parents.detach().cpu(),
+                            "tree_depths": req_depths.detach().cpu(),
+                            "verify_greedy_tokens": req_greedy.detach().cpu(),
+                            "accepted_path": accepted_path.detach().cpu(),
+                            "accepted_len": accepted_len,
+                            "correction_token": correction.unsqueeze(0).detach().cpu(),
+                            "accepted_tokens": accepted_tokens.detach().cpu(),
+                            "emitted_tokens": out.detach().cpu(),
+                        }
+                    )
+                if hasattr(self.drafter, "record_topk_verify_outcome"):
+                    self.drafter.record_topk_verify_outcome(
+                        verify_greedy_tokens=req_greedy,
+                        accepted_len=accepted_len,
+                        correction_token=correction,
+                        tree_num_nodes=int(qlen),
+                    )
+
+                self._dflash_tree_accept_paths_gpu.append(accepted_path)
+                self._dflash_tree_accept_paths.append(
+                    accepted_path.tolist()
+                )
+
+            elif draft_len == 0:
+                # No draft tokens — just emit the greedy bonus token.
+                _ensure_cpu()
+                tokens_cpu, greedy_cpu, _ = _cpu_data
+                self._dflash_tree_accept_paths_gpu.append(None)
+                self._dflash_tree_accept_paths.append([0])
+                out = torch.tensor(
+                    [greedy_cpu[start]], dtype=torch.int32, device=self.device
+                )
+                output_tensors.append(out)
+            else:
+                # ---- CPU fallback for chain (non-tree) requests ----
+                _ensure_cpu()
+                tokens_cpu, greedy_cpu, _ = _cpu_data
+                req_tokens_cpu = tokens_cpu[start:end]
+                req_greedy_cpu = greedy_cpu[start:end]
+                accepted = 0
+                for tok_idx in range(draft_len):
+                    if req_tokens_cpu[tok_idx + 1] == req_greedy_cpu[tok_idx]:
+                        accepted += 1
+                    else:
+                        break
+                correction_token = req_greedy_cpu[accepted]
+                if hasattr(self.drafter, "record_topk_verify_outcome"):
+                    self.drafter.record_topk_verify_outcome(
+                        verify_greedy_tokens=req_greedy_cpu[: draft_len + 1],
+                        accepted_len=accepted,
+                        correction_token=correction_token,
+                        tree_num_nodes=draft_len + 1,
+                    )
+                path_list = list(range(accepted + 1))
+                self._dflash_tree_accept_paths_gpu.append(None)
+                self._dflash_tree_accept_paths.append(path_list)
+                out = torch.tensor(
+                    req_tokens_cpu[1:accepted + 1] + [correction_token],
+                    dtype=torch.int32,
+                    device=self.device,
+                )
+                output_tensors.append(out)
+
+            start = end
+
+        max_len = max(t.shape[0] for t in output_tensors)
+        sampled_token_ids = torch.full(
+            (num_reqs, max_len), -1, dtype=torch.int32, device=self.device
+        )
+        for req_idx, out in enumerate(output_tensors):
+            sampled_token_ids[req_idx, : out.shape[0]] = out
+        return SamplerOutput(
+            sampled_token_ids=sampled_token_ids, logprobs_tensors=None
+        )
+
+    def _compact_dflash_tree_kv_cache(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        common_attn_metadata: CommonAttentionMetadata,
+    ) -> None:
+        accept_paths_gpu = getattr(
+            self, "_dflash_tree_accept_paths_gpu", None
+        )
+        if not accept_paths_gpu:
+            # Fall back to legacy list-based paths if GPU paths unavailable.
+            if not self._dflash_tree_accept_paths:
+                return
+            self._compact_dflash_tree_kv_cache_legacy(
+                spec_decode_metadata, common_attn_metadata
+            )
+            return
+
+        slot_mapping = common_attn_metadata.slot_mapping
+
+        # Derive per-request query starts from the CPU-side query_lens list
+        # instead of calling query_start_loc.tolist() (which is a GPU sync).
+        query_lens = spec_decode_metadata.query_lens
+
+        all_src_slots: list[torch.Tensor] = []
+        all_dst_slots: list[torch.Tensor] = []
+
+        req_start = 0
+        for req_idx, path_gpu in enumerate(accept_paths_gpu):
+            qlen = query_lens[req_idx]
+            if (
+                path_gpu is None
+                or req_idx >= len(spec_decode_metadata.is_tree_req)
+                or not spec_decode_metadata.is_tree_req[req_idx]
+                or path_gpu.shape[0] <= 1
+            ):
+                req_start += qlen
+                continue
+
+            req_slots = slot_mapping[req_start : req_start + qlen].to(
+                torch.int64
+            )
+            path_len = path_gpu.shape[0]
+            src_slots = req_slots[path_gpu]
+            dst_slots = req_slots[:path_len]
+            all_src_slots.append(src_slots)
+            all_dst_slots.append(dst_slots)
+
+            verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+            if verify_bundles and "compact_src_slots" not in verify_bundles[0]:
+                verify_bundles[0]["compact_src_slots"] = src_slots.detach().cpu()
+                verify_bundles[0]["compact_dst_slots"] = dst_slots.detach().cpu()
+
+            req_start += qlen
+
+        if all_src_slots:
+            batch_src = torch.cat(all_src_slots)
+            batch_dst = torch.cat(all_dst_slots)
+
+            seen_cache_ptrs: set[int] = set()
+            for kv_cache in self.kv_caches:
+                cache_ptr = kv_cache.data_ptr()
+                if cache_ptr in seen_cache_ptrs:
+                    continue
+                seen_cache_ptrs.add(cache_ptr)
+                if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
+                    continue
+                key_cache, value_cache = kv_cache.unbind(0)
+                block_size = key_cache.shape[1]
+                src_blocks = torch.div(
+                    batch_src, block_size, rounding_mode="floor"
+                )
+                src_offsets = batch_src % block_size
+                dst_blocks = torch.div(
+                    batch_dst, block_size, rounding_mode="floor"
+                )
+                dst_offsets = batch_dst % block_size
+
+                keys = key_cache[src_blocks, src_offsets].clone()
+                values = value_cache[src_blocks, src_offsets].clone()
+                key_cache[dst_blocks, dst_offsets] = keys
+                value_cache[dst_blocks, dst_offsets] = values
+
+        self._dflash_tree_accept_paths_gpu = None
+        self._dflash_tree_accept_paths = None
+
+    def _compact_dflash_tree_hidden_states(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        hidden_states: torch.Tensor,
+        aux_hidden_states: list[torch.Tensor] | None,
+    ) -> None:
+        """Reorder hidden states so the accepted path occupies prefix positions.
+
+        After tree verification the KV cache is compacted so that the
+        accepted-path entries sit in the first ``path_len`` slots of each
+        request.  The hidden states (used by the next draft step) must be
+        reordered identically, otherwise the drafter conditions on stale /
+        wrong context.
+        """
+        accept_paths_gpu = getattr(
+            self, "_dflash_tree_accept_paths_gpu", None
+        )
+        if not accept_paths_gpu:
+            return
+
+        query_lens = spec_decode_metadata.query_lens
+
+        req_start = 0
+        for req_idx, path_gpu in enumerate(accept_paths_gpu):
+            qlen = query_lens[req_idx]
+            if (
+                path_gpu is None
+                or req_idx >= len(spec_decode_metadata.is_tree_req)
+                or not spec_decode_metadata.is_tree_req[req_idx]
+                or path_gpu.shape[0] <= 1
+            ):
+                req_start += qlen
+                continue
+
+            path_len = path_gpu.shape[0]
+            src_indices = path_gpu
+
+            # Keep all per-node metadata aligned with the accepted-path reorder.
+            # The next draft step consumes token ids, positions, and hidden states
+            # as parallel arrays; compacting only hidden states leaves later
+            # accepted nodes paired with the wrong token/position metadata.
+            src_input_ids = self.input_ids.gpu[req_start + src_indices].clone()
+            self.input_ids.gpu[req_start : req_start + path_len] = src_input_ids
+
+            if self.uses_mrope:
+                src_mrope = self.mrope_positions.gpu[
+                    :, req_start + src_indices
+                ].clone()
+                self.mrope_positions.gpu[
+                    :, req_start : req_start + path_len
+                ] = src_mrope
+            elif self.uses_xdrope_dim > 0:
+                src_xdrope = self.xdrope_positions.gpu[
+                    :, req_start + src_indices
+                ].clone()
+                self.xdrope_positions.gpu[
+                    :, req_start : req_start + path_len
+                ] = src_xdrope
+            else:
+                src_positions = self.positions[req_start + src_indices].clone()
+                self.positions[req_start : req_start + path_len] = src_positions
+
+            src_hs = hidden_states[req_start + src_indices].clone()
+            hidden_states[req_start : req_start + path_len] = src_hs
+
+            verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+            if verify_bundles and "post_compact_hidden_states" not in verify_bundles[0]:
+                verify_bundles[0]["post_compact_hidden_states"] = (
+                    hidden_states[req_start : req_start + path_len].detach().cpu()
+                )
+
+            if aux_hidden_states is not None:
+                for aux_hs in aux_hidden_states:
+                    src_aux = aux_hs[req_start + src_indices].clone()
+                    aux_hs[req_start : req_start + path_len] = src_aux
+                if verify_bundles and "post_compact_target_hidden_states" not in verify_bundles[0]:
+                    verify_bundles[0]["post_compact_target_hidden_states"] = (
+                        torch.cat(
+                            [
+                                aux_hs[req_start : req_start + path_len]
+                                for aux_hs in aux_hidden_states
+                            ],
+                            dim=-1,
+                        ).detach().cpu()
+                    )
+
+            req_start += qlen
+
+    def _compact_dflash_tree_kv_cache_legacy(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        common_attn_metadata: CommonAttentionMetadata,
+    ) -> None:
+        """Legacy KV compaction using CPU list paths (fallback)."""
+        slot_mapping = common_attn_metadata.slot_mapping
+        query_start_loc_cpu = common_attn_metadata.query_start_loc.tolist()
+
+        all_src_slots: list[torch.Tensor] = []
+        all_dst_slots: list[torch.Tensor] = []
+
+        for req_idx, accepted_path in enumerate(
+            self._dflash_tree_accept_paths
+        ):
+            if (
+                req_idx >= len(spec_decode_metadata.is_tree_req)
+                or not spec_decode_metadata.is_tree_req[req_idx]
+                or len(accepted_path) <= 1
+            ):
+                continue
+
+            req_start = query_start_loc_cpu[req_idx]
+            req_end = query_start_loc_cpu[req_idx + 1]
+            req_slots = slot_mapping[req_start:req_end].to(torch.int64)
+            path_t = torch.tensor(
+                accepted_path, device=req_slots.device, dtype=torch.int64
+            )
+            src_slots = req_slots[path_t]
+            dst_slots = req_slots[: len(accepted_path)]
+            if torch.equal(src_slots, dst_slots):
+                continue
+            all_src_slots.append(src_slots)
+            all_dst_slots.append(dst_slots)
+
+        if all_src_slots:
+            batch_src = torch.cat(all_src_slots)
+            batch_dst = torch.cat(all_dst_slots)
+
+            seen_cache_ptrs: set[int] = set()
+            for kv_cache in self.kv_caches:
+                cache_ptr = kv_cache.data_ptr()
+                if cache_ptr in seen_cache_ptrs:
+                    continue
+                seen_cache_ptrs.add(cache_ptr)
+                if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
+                    continue
+                key_cache, value_cache = kv_cache.unbind(0)
+                block_size = key_cache.shape[1]
+                src_blocks = torch.div(
+                    batch_src, block_size, rounding_mode="floor"
+                )
+                src_offsets = batch_src % block_size
+                dst_blocks = torch.div(
+                    batch_dst, block_size, rounding_mode="floor"
+                )
+                dst_offsets = batch_dst % block_size
+
+                keys = key_cache[src_blocks, src_offsets].clone()
+                values = value_cache[src_blocks, src_offsets].clone()
+                key_cache[dst_blocks, dst_offsets] = keys
+                value_cache[dst_blocks, dst_offsets] = values
+
+        self._dflash_tree_accept_paths = None
 
     def _bookkeeping_sync(
         self,
@@ -3509,6 +4329,26 @@ class GPUModelRunner(
             **model_kwargs,
         )
 
+    def _is_dflash_tree_mode(self) -> bool:
+        return (
+            self.speculative_config is not None
+            and self.speculative_config.method == "dflash"
+            and self.speculative_config.tree_width > 1
+        )
+
+    def _can_use_dflash_tree_cudagraph(
+        self, *, use_spec_decode: bool, num_reqs: int
+    ) -> bool:
+        return (
+            use_spec_decode
+            and self._is_dflash_tree_mode()
+            and not self.model_config.enforce_eager
+            and self.speculative_config is not None
+            and self.speculative_config.cudagraph_tree_capture_sizes is not None
+            and self.scheduler_config.max_num_seqs == 1
+            and num_reqs == 1
+        )
+
     @staticmethod
     def _is_uniform_decode(
         max_num_scheduled_tokens: int,
@@ -3545,6 +4385,7 @@ class GPUModelRunner(
         force_has_lora: bool | None = None,
         force_num_active_loras: int | None = None,
         num_encoder_reqs: int = 0,
+        use_spec_decode: bool = False,
     ) -> tuple[
         CUDAGraphMode,
         BatchDescriptor,
@@ -3552,12 +4393,20 @@ class GPUModelRunner(
         torch.Tensor | None,
         CUDAGraphStat | None,
     ]:
+        force_tree_uniform_decode = (
+            True
+            if force_uniform_decode is None
+            and self._can_use_dflash_tree_cudagraph(
+                use_spec_decode=use_spec_decode, num_reqs=num_reqs
+            )
+            else force_uniform_decode
+        )
         uniform_decode = self._is_uniform_decode(
             max_num_scheduled_tokens=max_num_scheduled_tokens,
             uniform_decode_query_len=self.uniform_decode_query_len,
             num_tokens=num_tokens,
             num_reqs=num_reqs,
-            force_uniform_decode=force_uniform_decode,
+            force_uniform_decode=force_tree_uniform_decode,
         )
         # Encoder-decoder models only support CG for decoder_step > 0 (no enc_output
         # is present). Also, chunked-prefill is disabled, so batch are uniform.
@@ -3843,6 +4692,7 @@ class GPUModelRunner(
             num_scheduled_tokens_np = np.array(tokens, dtype=np.int32)
             max_num_scheduled_tokens = int(num_scheduled_tokens_np.max())
             num_tokens_unpadded = scheduler_output.total_num_scheduled_tokens
+            use_spec_decode = len(scheduler_output.scheduled_spec_decode_tokens) > 0
 
             logits_indices, spec_decode_metadata = self._prepare_inputs(
                 scheduler_output,
@@ -3872,8 +4722,27 @@ class GPUModelRunner(
                 max_num_scheduled_tokens=max_num_scheduled_tokens,
                 use_cascade_attn=cascade_attn_prefix_lens is not None,
                 num_encoder_reqs=len(scheduler_output.scheduled_encoder_inputs),
+                use_spec_decode=use_spec_decode,
             )
 
+            if cudagraph_mode != CUDAGraphMode.NONE:
+                logger.info_once(
+                    "CUDA graph HIT: mode=%s, num_tokens=%d (unpadded=%d), "
+                    "num_reqs=%s, uniform=%s",
+                    cudagraph_mode.name,
+                    batch_desc.num_tokens,
+                    num_tokens_unpadded,
+                    batch_desc.num_reqs,
+                    batch_desc.uniform,
+                )
+            else:
+                logger.info_once(
+                    "CUDA graph MISS: num_tokens=%d, keys_initialized=%s, "
+                    "configured_mode=%s",
+                    num_tokens_unpadded,
+                    self.cudagraph_dispatcher.keys_initialized,
+                    self.compilation_config.cudagraph_mode,
+                )
             logger.debug(
                 "Running batch with cudagraph_mode: %s, batch_descriptor: %s, "
                 "should_ubatch: %s, num_tokens_across_dp: %s",
@@ -3965,6 +4834,7 @@ class GPUModelRunner(
                     ubatch_slices=ubatch_slices_attn,
                     logits_indices=logits_indices,
                     use_spec_decode=use_spec_decode,
+                    spec_decode_metadata=spec_decode_metadata,
                     num_scheduled_tokens=scheduler_output.num_scheduled_tokens,
                     cascade_attn_prefix_lens=cascade_attn_prefix_lens,
                     slot_mappings=slot_mappings_by_group,
@@ -4155,6 +5025,20 @@ class GPUModelRunner(
         with record_function_or_nullcontext("gpu_model_runner: sample"):
             sampler_output = self._sample(logits, spec_decode_metadata)
 
+        if (
+            isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata)
+            and spec_decode_common_attn_metadata is not None
+        ):
+            self._compact_dflash_tree_hidden_states(
+                spec_decode_metadata,
+                hidden_states,
+                aux_hidden_states,
+            )
+            self._compact_dflash_tree_kv_cache(
+                spec_decode_metadata,
+                spec_decode_common_attn_metadata,
+            )
+
         self._update_states_after_model_execute(
             sampler_output.sampled_token_ids, scheduler_output
         )
@@ -4170,6 +5054,9 @@ class GPUModelRunner(
 
         self._draft_token_ids = None
         self._draft_token_req_ids = None
+        self._draft_tree_specs = None
+        self._dflash_tree_accept_paths = None
+        self._dflash_tree_accept_paths_gpu = None
         self.valid_sampled_token_count_gpu = None
         self.input_batch.prev_sampled_token_ids = None
 
@@ -4389,7 +5276,7 @@ class GPUModelRunner(
         if not self.num_spec_tokens or not self._draft_token_req_ids:
             return None
         draft_token_ids, req_ids = self._get_draft_token_ids_cpu()
-        return DraftTokenIds(req_ids, draft_token_ids)
+        return DraftTokenIds(req_ids, draft_token_ids, self._draft_tree_specs)
 
     def _copy_draft_token_ids_to_cpu(
         self, scheduler_output: "SchedulerOutput", zeros_only: bool = False
@@ -4710,6 +5597,10 @@ class GPUModelRunner(
                 num_rejected_tokens_gpu=num_rejected_tokens_gpu,
                 slot_mappings=slot_mappings,
             )
+            if isinstance(self.drafter, DFlashProposer):
+                self._draft_tree_specs = self.drafter.consume_tree_specs()
+            else:
+                self._draft_tree_specs = None
 
         return draft_token_ids
 
@@ -4905,6 +5796,13 @@ class GPUModelRunner(
             dflash_config = getattr(hf_config, "dflash_config", None)
             if dflash_config and isinstance(dflash_config, dict):
                 layer_ids = dflash_config.get("target_layer_ids")
+                if layer_ids is not None:
+                    # DFlash target_layer_ids are 0-based layer indices
+                    # (layer k's output is accessed as hidden_states[k + 1]
+                    # in HuggingFace).  _maybe_add_hidden_state uses an
+                    # index space where 0 = embedding and k+1 = layer k
+                    # output, so shift by +1 to align conventions.
+                    layer_ids = [lid + 1 for lid in layer_ids]
 
         if layer_ids and isinstance(layer_ids, (list, tuple)):
             return tuple(layer_ids)
@@ -5255,10 +6153,20 @@ class GPUModelRunner(
         # max_query_len == 1, or speculative decode, where
         # max_query_len == 1 + num_spec_decode_tokens.
 
+        tree_single_req_cudagraph = (
+            uniform_decode
+            and self._is_dflash_tree_mode()
+            and self.scheduler_config.max_num_seqs == 1
+        )
+
         # When setting max_query_len = 1, we switch to and capture the optimized
         # routine of FA2 for pure decode, i.e., Flashdecode + an optimization
         # for GQA/MQA.
-        max_query_len = self.uniform_decode_query_len if uniform_decode else num_tokens
+        max_query_len = (
+            num_tokens
+            if tree_single_req_cudagraph
+            else (self.uniform_decode_query_len if uniform_decode else num_tokens)
+        )
 
         # Set num_scheduled_tokens based on num_tokens and max_num_seqs
         # for dummy run with LoRA so that the num_reqs collectively
@@ -5279,10 +6187,14 @@ class GPUModelRunner(
             max_query_len = num_prefill_tokens
         elif uniform_decode:
             assert not create_mixed_batch
-            num_reqs = min(max_num_reqs, cdiv(num_tokens, max_query_len))
-            num_scheduled_tokens_list = [max_query_len] * num_reqs
-            if num_tokens % max_query_len != 0:
-                num_scheduled_tokens_list[-1] = num_tokens % max_query_len
+            if tree_single_req_cudagraph:
+                num_reqs = 1
+                num_scheduled_tokens_list = [num_tokens]
+            else:
+                num_reqs = min(max_num_reqs, cdiv(num_tokens, max_query_len))
+                num_scheduled_tokens_list = [max_query_len] * num_reqs
+                if num_tokens % max_query_len != 0:
+                    num_scheduled_tokens_list[-1] = num_tokens % max_query_len
         else:
             num_reqs = min(num_tokens, max_num_reqs)
             min_tokens_per_req = num_tokens // num_reqs
@@ -5293,6 +6205,7 @@ class GPUModelRunner(
         assert len(num_scheduled_tokens_list) == num_reqs
         num_scheduled_tokens = np.array(num_scheduled_tokens_list, dtype=np.int32)
         num_tokens_unpadded = int(num_scheduled_tokens.sum())
+        use_spec_decode = self.speculative_config is not None
 
         num_sampled_tokens = np.ones(num_reqs, dtype=np.int32)
 
@@ -5304,6 +6217,7 @@ class GPUModelRunner(
                 max_num_scheduled_tokens=max_query_len,
                 use_cascade_attn=False,
                 allow_microbatching=allow_microbatching,
+                use_spec_decode=use_spec_decode,
                 force_eager=is_profile
                 or (cudagraph_runtime_mode == CUDAGraphMode.NONE),
                 # `force_uniform_decode` is used for cudagraph capture; because for
@@ -5392,6 +6306,16 @@ class GPUModelRunner(
                 self.input_batch.block_table.commit_block_table(num_reqs_padded)
 
                 pad_attn = cudagraph_runtime_mode == CUDAGraphMode.FULL
+                dummy_spec_decode_metadata = None
+                if self._can_use_dflash_tree_cudagraph(
+                    use_spec_decode=use_spec_decode, num_reqs=num_reqs
+                ):
+                    dummy_spec_decode_metadata = (
+                        self._make_dummy_dflash_tree_spec_decode_metadata(
+                            num_scheduled_tokens,
+                            cum_num_tokens,
+                        )
+                    )
                 attn_metadata, _ = self._build_attention_metadata(
                     num_tokens=num_tokens_unpadded,
                     num_tokens_padded=num_tokens_padded if pad_attn else None,
@@ -5400,7 +6324,8 @@ class GPUModelRunner(
                     ubatch_slices=(ubatch_slices_padded if pad_attn else ubatch_slices),
                     for_cudagraph_capture=is_graph_capturing,
                     slot_mappings=slot_mappings_by_group,
-                    use_spec_decode=self.speculative_config is not None,
+                    use_spec_decode=use_spec_decode,
+                    spec_decode_metadata=dummy_spec_decode_metadata,
                 )
 
         with self.maybe_dummy_run_with_lora(
@@ -5939,6 +6864,8 @@ class GPUModelRunner(
                     per_graph / (1 << 20),
                 )
 
+            self._capture_drafter_cudagraphs()
+
         set_cudagraph_capturing_enabled(False)
         CUDAGraphWrapper.clear_all_graphs()
         for instance in list(CUDAGraphWrapper._all_instances):
@@ -5947,6 +6874,13 @@ class GPUModelRunner(
         for key_set in self.cudagraph_dispatcher.cudagraph_keys.values():
             key_set.clear()
         self.cudagraph_dispatcher.keys_initialized = False
+        if isinstance(
+            getattr(self, "drafter", None),
+            (EagleProposer, DFlashProposer, ExtractHiddenStatesProposer),
+        ):
+            for key_set in self.drafter.cudagraph_dispatcher.cudagraph_keys.values():
+                key_set.clear()
+            self.drafter.cudagraph_dispatcher.keys_initialized = False
         self.maybe_remove_all_loras(self.lora_config)
         self._cleanup_profiling_kv_cache()
         compilation_counter.num_cudagraph_captured = saved_num_cudagraph_captured
@@ -6026,6 +6960,12 @@ class GPUModelRunner(
             # Capture encoder CUDA graphs if enabled
             if self.encoder_cudagraph_manager is not None:
                 self.encoder_cudagraph_manager.capture()
+
+            # Capture drafter (EAGLE / DFlash) PIECEWISE CUDAGraphs.
+            # The drafter cannot be captured inside the target model's FULL
+            # capture (nested graph capture is unsupported), so we run a
+            # dedicated pass here.
+            self._capture_drafter_cudagraphs()
 
             torch.accelerator.synchronize()
             end_free_gpu_memory = torch.cuda.mem_get_info()[0]
@@ -6139,6 +7079,53 @@ class GPUModelRunner(
             )
             torch.accelerator.synchronize()
         self.maybe_remove_all_loras(self.lora_config)
+
+    def _capture_drafter_cudagraphs(self) -> None:
+        """Capture PIECEWISE CUDAGraphs for the drafter.
+
+        With FULL_DECODE_ONLY, the target model only does FULL captures and the
+        drafter cannot piggyback on those (nested graph capture is
+        unsupported).  This method runs a dedicated warmup + capture pass for
+        every shape the drafter's cudagraph dispatcher reports.
+        """
+        drafter = getattr(self, "drafter", None)
+        if not isinstance(
+            drafter,
+            (EagleProposer, DFlashProposer, ExtractHiddenStatesProposer),
+        ):
+            return
+
+        capture_descs = self.drafter.cudagraph_dispatcher.get_capture_descs()
+        if not capture_descs:
+            return
+
+        num_warmups = self.compilation_config.cudagraph_num_of_warmups
+        for runtime_mode, batch_descs in capture_descs:
+            if runtime_mode == CUDAGraphMode.NONE or not batch_descs:
+                continue
+
+            if is_global_first_rank():
+                batch_descs_iter: Iterable = tqdm(
+                    batch_descs,
+                    disable=not self.load_config.use_tqdm_on_load,
+                    desc=f"Capturing drafter CUDA graphs ({runtime_mode.name})",
+                )
+            else:
+                batch_descs_iter = batch_descs
+
+            for desc in batch_descs_iter:
+                for _ in range(num_warmups):
+                    self.drafter.dummy_run(
+                        desc.num_tokens,
+                        use_cudagraphs=False,
+                        is_graph_capturing=False,
+                    )
+                self.drafter.dummy_run(
+                    desc.num_tokens,
+                    use_cudagraphs=True,
+                    is_graph_capturing=True,
+                )
+                torch.accelerator.synchronize()
 
     def initialize_attn_backend(
         self,
@@ -6290,6 +7277,32 @@ class GPUModelRunner(
         # Flexible resolve the cudagraph mode
         cudagraph_mode = self.compilation_config.cudagraph_mode
         assert cudagraph_mode is not None
+
+        is_dflash_tree = self._is_dflash_tree_mode()
+        supports_dflash_tree_cudagraph = (
+            is_dflash_tree and self.scheduler_config.max_num_seqs == 1
+        )
+
+        if is_dflash_tree and supports_dflash_tree_cudagraph:
+            if cudagraph_mode not in (CUDAGraphMode.NONE, CUDAGraphMode.FULL_DECODE_ONLY):
+                logger.info(
+                    "DFlash tree mode: overriding cudagraph_mode=%s to "
+                    "FULL_DECODE_ONLY (tree verify is decode-only)",
+                    cudagraph_mode,
+                )
+                cudagraph_mode = self.compilation_config.cudagraph_mode = (
+                    CUDAGraphMode.FULL_DECODE_ONLY
+                )
+        elif is_dflash_tree and not supports_dflash_tree_cudagraph:
+            if cudagraph_mode != CUDAGraphMode.NONE:
+                logger.warning(
+                    "Disabling CUDA graphs for DFlash tree mode because "
+                    "current support requires max_num_seqs=1."
+                )
+                cudagraph_mode = self.compilation_config.cudagraph_mode = (
+                    CUDAGraphMode.NONE
+                )
+
         # check cudagraph for mixed batch is supported
         if (
             cudagraph_mode.mixed_mode() == CUDAGraphMode.FULL
@@ -6309,7 +7322,12 @@ class GPUModelRunner(
                 raise ValueError(msg)
 
             # attempt to resolve the full cudagraph related mode
-            if self.compilation_config.splitting_ops_contain_attention():
+            if self._is_dflash_tree_mode():
+                msg += "; setting cudagraph_mode=FULL_DECODE_ONLY for DFlash tree mode"
+                cudagraph_mode = self.compilation_config.cudagraph_mode = (
+                    CUDAGraphMode.FULL_DECODE_ONLY
+                )
+            elif self.compilation_config.splitting_ops_contain_attention():
                 msg += "; setting cudagraph_mode=FULL_AND_PIECEWISE"
                 cudagraph_mode = self.compilation_config.cudagraph_mode = (
                     CUDAGraphMode.FULL_AND_PIECEWISE
@@ -6400,6 +7418,11 @@ class GPUModelRunner(
             cudagraph_mode.decode_mode() == CUDAGraphMode.FULL
             and cudagraph_mode.separate_routine()
             and self.uniform_decode_query_len > 1
+            and not (
+                self.speculative_config is not None
+                and self.speculative_config.method == "dflash"
+                and self.speculative_config.tree_width > 1
+            )
         ):
             self.compilation_config.adjust_cudagraph_sizes_for_spec_decode(
                 self.uniform_decode_query_len, self.parallel_config.tensor_parallel_size

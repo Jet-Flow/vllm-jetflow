@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -64,3 +64,58 @@ class SpecDecodeMetadata:
             bonus_logits_indices=bonus_logits_indices,
             logits_indices=logits_indices,
         )
+
+
+@dataclass
+class DFlashRequestTreeSpec:
+    # Parents for speculative tree nodes only (root excluded). Parent indices
+    # are expressed in the target-query space where 0 is the already-sampled
+    # root token and the first speculative node starts at index 1.
+    parent_indices: list[int]
+    # Depth for speculative tree nodes only (root excluded). Root depth is 0.
+    depths: list[int]
+
+    @property
+    def num_draft_nodes(self) -> int:
+        return len(self.parent_indices)
+
+    def full_parent_indices(self) -> list[int]:
+        return [-1, *self.parent_indices]
+
+    def full_depths(self) -> list[int]:
+        return [0, *self.depths]
+
+    def nodes_per_depth(self, num_depths: int) -> list[int]:
+        """Count draft nodes at each depth (root excluded)."""
+        counts = [0] * num_depths
+        for d in self.depths:
+            if 0 < d <= num_depths:
+                counts[d - 1] += 1
+        return counts
+
+
+@dataclass
+class DFlashTreeSpecDecodeMetadata(SpecDecodeMetadata):
+    # Per-request query lengths including the implicit root token.
+    query_lens: list[int] = field(default_factory=list)
+    # Flattened parent indices including roots. Length = sum(query_lens).
+    parent_indices: torch.Tensor | None = None
+    # Flattened depths including roots. Length = sum(query_lens).
+    depths: torch.Tensor | None = None
+    # Block-diagonal attention bias over all scheduled query tokens.
+    tree_attn_bias: torch.Tensor | None = None
+    # Per-request query ranges in the flattened target logits tensor.
+    cu_query_lens: torch.Tensor | None = None
+    # Requests with actual DFlash tree topology. Requests without spec tokens use
+    # a causal-chain fallback block and are marked False here.
+    is_tree_req: list[bool] = field(default_factory=list)
+    # Per-request ancestor matrices for optimus SM90 kernel path.
+    # Shape: (B, N_padded, N_padded) int32.  None when using the triton bias path.
+    ancestor_masks: torch.Tensor | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if not self.query_lens:
+            self.query_lens = [n + 1 for n in self.num_draft_tokens]
+        if not self.is_tree_req:
+            self.is_tree_req = [n > 0 for n in self.num_draft_tokens]

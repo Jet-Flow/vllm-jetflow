@@ -530,7 +530,16 @@ def copy_and_expand_dflash_inputs_kernel(
         other=0,
     ).to(tl.int64)
     slot = block_id * block_size + (positions % block_size)
-    tl.store(out_context_slot_mapping_ptr + ctx_pos_out, slot, mask=is_ctx)
+    # Mask rejected-tail context slots with PAD_SLOT_ID (-1) so
+    # reshape_and_cache_flash skips those writes.  Otherwise the 255-wide
+    # context write in tree-spec lets rejected-branch hidden states
+    # overwrite accepted-prefix paged slots (H1 root cause: Test S).
+    if HAS_NUM_REJECTED:
+        is_valid_ctx = is_ctx & (j < num_ctx - num_rejected)
+        ctx_slot = tl.where(is_valid_ctx, slot, -1)
+    else:
+        ctx_slot = slot
+    tl.store(out_context_slot_mapping_ptr + ctx_pos_out, ctx_slot, mask=is_ctx)
     tl.store(out_query_slot_mapping_ptr + query_out, slot, mask=is_query)
 
     # --- Input IDs (query tokens only) ---

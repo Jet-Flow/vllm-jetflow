@@ -785,6 +785,18 @@ class VllmConfig:
                     scope="local",
                 )
                 self.scheduler_config.async_scheduling = False
+            elif (
+                self.speculative_config is not None
+                and self.speculative_config.method == "dflash"
+                and self.speculative_config.tree_width > 1
+            ):
+                logger.warning_once(
+                    "Async scheduling is not compatible with DFlash tree "
+                    "mode (tree_width=%d) and will be disabled.",
+                    self.speculative_config.tree_width,
+                    scope="local",
+                )
+                self.scheduler_config.async_scheduling = False
             elif not executor_supports_async_sched:
                 logger.warning_once(
                     "Async scheduling will be disabled because it is not supported "
@@ -1431,12 +1443,11 @@ class VllmConfig:
                 self.compilation_config.max_cudagraph_capture_size
             )
             if max_cudagraph_capture_size is None:
-                decode_query_len = 1
-                if (
-                    self.speculative_config
-                    and self.speculative_config.num_speculative_tokens
-                ):
-                    decode_query_len += self.speculative_config.num_speculative_tokens
+                decode_query_len = (
+                    self.speculative_config.cudagraph_uniform_decode_query_len
+                    if self.speculative_config is not None
+                    else 1
+                )
                 max_cudagraph_capture_size = min(
                     self.scheduler_config.max_num_seqs * decode_query_len * 2, 512
                 )
@@ -1462,7 +1473,18 @@ class VllmConfig:
                 # sort to make sure the sizes are in ascending order
                 cudagraph_capture_sizes.sort()
             else:
-                if self.performance_mode == "interactivity":
+                tree_capture_sizes = (
+                    self.speculative_config.cudagraph_tree_capture_sizes
+                    if self.speculative_config is not None
+                    else None
+                )
+                if tree_capture_sizes is not None:
+                    cudagraph_capture_sizes = [
+                        size
+                        for size in tree_capture_sizes
+                        if size <= max_cudagraph_capture_size
+                    ]
+                elif self.performance_mode == "interactivity":
                     # Fine-grained CUDA graphs at small batch sizes
                     # for minimal padding overhead
                     interactivity_max = min(max_cudagraph_capture_size, 32)
@@ -1471,12 +1493,12 @@ class VllmConfig:
                     cudagraph_capture_sizes = [
                         i for i in [1, 2, 4] if i <= max_cudagraph_capture_size
                     ]
-                if max_cudagraph_capture_size >= 8:
+                if tree_capture_sizes is None and max_cudagraph_capture_size >= 8:
                     # Step size 8 for small batch sizes, up to 256(not included)
                     cudagraph_capture_sizes += list(
                         range(8, min(max_cudagraph_capture_size + 1, 256), 8)
                     )
-                if max_cudagraph_capture_size >= 256:
+                if tree_capture_sizes is None and max_cudagraph_capture_size >= 256:
                     # Step size 16 for larger batch sizes
                     cudagraph_capture_sizes += list(
                         range(256, max_cudagraph_capture_size + 1, 16)

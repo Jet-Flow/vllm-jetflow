@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from vllm.distributed.kv_transfer.kv_connector.v1.base import (
         KVConnectorWorkerMetadata,
     )
+    from vllm.v1.spec_decode.metadata import DFlashRequestTreeSpec
     from vllm.distributed.kv_transfer.kv_connector.v1.metrics import KVConnectorStats
 else:
     KVConnectorStats = object
@@ -221,6 +222,8 @@ class DraftTokenIds:
     req_ids: list[str]
     # num_reqs x num_draft_tokens
     draft_token_ids: list[list[int]]
+    # Optional per-request DFlash tree topology, aligned with req_ids.
+    dflash_tree_specs: list["DFlashRequestTreeSpec | None"] | None = None
 
 
 def make_empty_encoder_model_runner_output(

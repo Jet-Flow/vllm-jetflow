@@ -8,11 +8,11 @@ if [[ -n "${ATTENTION_BACKEND}" ]]; then
 fi
 
 python examples/offline_inference/dflash_profiling.py \
-  --prompt-set coding \
+  --prompt-set humaneval \
   --mode both \
   --tp-sizes 1 2 4 8 \
   --batch-sizes 1 2 4 8 16 \
   --num-runs 2 \
   --num-warmup-runs 1 \
   "${ATTN_ARGS[@]}" \
-  --torch-profiler-dir /data/midas/vllm_profile_dflash_0409_coding_qwen3_template_${ATTENTION_BACKEND}
+  --torch-profiler-dir /data/midas/vllm_profile_dflash_0409_humaneval_qwen3_template_${ATTENTION_BACKEND}

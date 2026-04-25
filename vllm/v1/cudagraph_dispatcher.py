@@ -34,10 +34,19 @@ class CudagraphDispatcher:
     def __init__(self, vllm_config: VllmConfig):
         self.vllm_config = vllm_config
         self.compilation_config = vllm_config.compilation_config
+        self.speculative_config = vllm_config.speculative_config
         self.uniform_decode_query_len = (
             1
-            if not self.vllm_config.speculative_config
-            else 1 + self.vllm_config.speculative_config.num_speculative_tokens
+            if not self.speculative_config
+            else self.speculative_config.cudagraph_uniform_decode_query_len
+        )
+        self.is_dflash_tree_mode = (
+            self.speculative_config is not None
+            and self.speculative_config.method == "dflash"
+            and self.speculative_config.tree_width > 1
+        )
+        self.dflash_tree_single_req_cudagraph = (
+            self.is_dflash_tree_mode and self.vllm_config.scheduler_config.max_num_seqs == 1
         )
 
         # Dict to store valid cudagraph dispatching keys.
@@ -140,8 +149,11 @@ class CudagraphDispatcher:
         num_tokens_padded = self._bs_to_padded_graph_size[num_tokens]
 
         if uniform_decode and self.cudagraph_mode.has_mode(CUDAGraphMode.FULL):
-            num_reqs = min(num_tokens_padded // uniform_decode_query_len, max_num_seqs)
-            assert num_tokens_padded % uniform_decode_query_len == 0
+            if self.dflash_tree_single_req_cudagraph:
+                num_reqs = 1
+            else:
+                num_reqs = min(num_tokens_padded // uniform_decode_query_len, max_num_seqs)
+                assert num_tokens_padded % uniform_decode_query_len == 0
         else:
             uniform_decode = False
             num_reqs = min(num_tokens_padded, max_num_seqs)
@@ -168,6 +180,11 @@ class CudagraphDispatcher:
         # This should be called only after attention backend is initialized. So we can
         # get the correct cudagraph mode after backend support is resolved.
         self.cudagraph_mode = cudagraph_mode
+        self.cudagraph_keys = {
+            CUDAGraphMode.PIECEWISE: set(),
+            CUDAGraphMode.FULL: set(),
+        }
+        self.captured_lora_counts = []
 
         # Early exit if cudagraphs are disabled
         if cudagraph_mode == CUDAGraphMode.NONE:
@@ -207,18 +224,23 @@ class CudagraphDispatcher:
             cudagraph_mode.decode_mode() == CUDAGraphMode.FULL
             and cudagraph_mode.separate_routine()
         ):
-            max_num_tokens = (
-                uniform_decode_query_len
-                * self.vllm_config.scheduler_config.max_num_seqs
-            )
             assert self.compilation_config.cudagraph_capture_sizes is not None, (
                 "Cudagraph capture sizes must be set when full mode is enabled."
             )
-            cudagraph_capture_sizes_for_decode = [
-                x
-                for x in self.compilation_config.cudagraph_capture_sizes
-                if x <= max_num_tokens and x >= uniform_decode_query_len
-            ]
+            if self.dflash_tree_single_req_cudagraph:
+                cudagraph_capture_sizes_for_decode = (
+                    self.compilation_config.cudagraph_capture_sizes
+                )
+            else:
+                max_num_tokens = (
+                    uniform_decode_query_len
+                    * self.vllm_config.scheduler_config.max_num_seqs
+                )
+                cudagraph_capture_sizes_for_decode = [
+                    x
+                    for x in self.compilation_config.cudagraph_capture_sizes
+                    if x <= max_num_tokens and x >= uniform_decode_query_len
+                ]
             for bs, num_active_loras in product(
                 cudagraph_capture_sizes_for_decode, lora_cases
             ):

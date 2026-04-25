@@ -11,6 +11,7 @@ from vllm.logger import init_logger
 from vllm.utils.import_utils import resolve_obj_by_qualname
 from vllm.v1.attention.backend import AttentionBackend, AttentionType
 from vllm.v1.attention.backends.registry import (
+    AttentionBackendEnum,
     MAMBA_TYPE_TO_BACKEND_MAP,
     MambaAttentionBackendEnum,
 )
@@ -47,6 +48,27 @@ class AttentionSelectorConfig(NamedTuple):
         )
 
 
+def _uses_non_causal_dflash_attention(speculative_config) -> bool:
+    if speculative_config is None or speculative_config.method != "dflash":
+        return False
+
+    head_type = getattr(speculative_config, "head_type", "auto")
+    if head_type == "bidirectional":
+        return True
+    if head_type == "causal":
+        return False
+
+    draft_model_config = getattr(speculative_config, "draft_model_config", None)
+    hf_config = getattr(draft_model_config, "hf_config", None)
+    dflash_config = getattr(hf_config, "dflash_config", None)
+    if isinstance(dflash_config, dict):
+        return not bool(dflash_config.get("causal_head", False))
+
+    # Preserve the historical default for auto when no checkpoint metadata is
+    # available: DFlash is treated as bidirectional/non-causal.
+    return True
+
+
 def get_attn_backend(
     head_size: int,
     dtype: torch.dtype,
@@ -79,9 +101,14 @@ def get_attn_backend(
         block_size = None
 
     speculative_config = vllm_config.speculative_config
-    use_non_causal = (
-        speculative_config is not None and speculative_config.method == "dflash"
-    )
+    use_non_causal = _uses_non_causal_dflash_attention(speculative_config)
+    selected_backend = vllm_config.attention_config.backend
+    if (
+        speculative_config is not None
+        and speculative_config.method == "dflash"
+        and speculative_config.tree_width > 1
+    ):
+        selected_backend = AttentionBackendEnum.TREE_ATTN
 
     attn_selector_config = AttentionSelectorConfig(
         head_size=head_size,
@@ -98,7 +125,7 @@ def get_attn_backend(
     )
 
     return _cached_get_attn_backend(
-        backend=vllm_config.attention_config.backend,
+        backend=selected_backend,
         attn_selector_config=attn_selector_config,
         num_heads=num_heads,
     )

@@ -96,15 +96,12 @@ def get_metrics_snapshot() -> list[Metric]:
         elif metric.type == "counter":
             samples = _get_samples(metric, "_total")
             if metric.name == "vllm:spec_decode_num_accepted_tokens_per_pos":
-                #
-                # Ugly vllm:num_accepted_tokens_per_pos special case.
-                #
-                # This metric is a vector of counters - for each spec
-                # decoding token position, we observe the number of
-                # accepted tokens using a Counter labeled with 'position'.
-                # We convert these into a vector of integer values.
-                #
-                for labels, values in _digest_num_accepted_by_pos_samples(samples):
+                for labels, values in _digest_labeled_vector(samples, "position"):
+                    collected.append(
+                        Vector(name=metric.name, labels=labels, values=values)
+                    )
+            elif metric.name == "vllm:spec_decode_num_tree_nodes_per_depth":
+                for labels, values in _digest_labeled_vector(samples, "depth"):
                     collected.append(
                         Vector(name=metric.name, labels=labels, values=values)
                     )
@@ -214,44 +211,32 @@ def _digest_histogram(
     return output
 
 
-def _digest_num_accepted_by_pos_samples(
+def _digest_labeled_vector(
     samples: list[Sample],
+    index_label: str,
 ) -> list[tuple[dict[str, str], list[int]]]:
-    #
-    # In the case of DP, we have an indigestable
-    # per-position-per-engine count as a list of
-    # labelled samples
-    #
-    # samples (in):
-    #   labels = {pos: 0, idx: 0}, value = 10
-    #   labels = {pos: 1, idx: 0}, value = 7
-    #   labels = {pos: 2, idx: 0}, value = 2
-    #   labels = {pos: 0, idx: 1}, value = 5
-    #   labels = {pos: 1, idx: 1}, value = 3
-    #   labels = {pos: 2, idx: 1}, value = 1
-    #
-    # output: [
-    #   {idx: 0}, [10, 7, 2]
-    #   {idx: 1}, [5, 3, 1]
-    # ]
-    #
-    max_pos = 0
+    """Convert label-indexed counter samples into Vector-ready tuples.
+
+    Groups samples by all labels *except* ``index_label``, then builds an
+    ordered list of integer values indexed by that label.
+    """
+    max_idx = 0
     values_by_labels: dict[frozenset[tuple[str, str]], dict[int, int]] = {}
 
     for s in samples:
-        position = int(s.labels["position"])
-        max_pos = max(max_pos, position)
+        idx = int(s.labels[index_label])
+        max_idx = max(max_idx, idx)
 
-        labels_key = frozenset(_strip_label(s.labels, "position").items())
+        labels_key = frozenset(_strip_label(s.labels, index_label).items())
         if labels_key not in values_by_labels:
             values_by_labels[labels_key] = {}
-        values_by_labels[labels_key][position] = int(s.value)
+        values_by_labels[labels_key][idx] = int(s.value)
 
     output = []
-    for labels_key, values_by_position in values_by_labels.items():
+    for labels_key, values_by_idx in values_by_labels.items():
         labels = dict(labels_key)
-        values = [0] * (max_pos + 1)
-        for pos, val in values_by_position.items():
-            values[pos] = val
+        values = [0] * (max_idx + 1)
+        for i, val in values_by_idx.items():
+            values[i] = val
         output.append((labels, values))
     return output

@@ -26,6 +26,7 @@ from vllm.v1.utils import ConstantList
 if TYPE_CHECKING:
     from vllm.lora.request import LoRARequest
     from vllm.v1.core.kv_cache_utils import BlockHash
+    from vllm.v1.spec_decode.metadata import DFlashRequestTreeSpec
 
 
 @dataclass
@@ -132,6 +133,7 @@ class Request:
         self.discard_latest_async_tokens = False
 
         self.spec_token_ids: list[int] = []
+        self.spec_tree_metadata: "DFlashRequestTreeSpec | None" = None
         self.num_computed_tokens = 0
         self.cache_salt: str | None = cache_salt
 
