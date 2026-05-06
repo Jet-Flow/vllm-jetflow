@@ -382,7 +382,8 @@ def run_native_profile(
         llm.generate(batch_prompts, sampling_params=sampling_params)
 
     metrics_before = collect_spec_decode_counters(llm.get_metrics())
-    llm.start_profile()
+    if not getattr(args, "no_profile", False):
+        llm.start_profile()
     t0 = time.perf_counter()
     total_output_tokens = 0
     total_prompt_tokens = 0
@@ -413,7 +414,8 @@ def run_native_profile(
                     (output.prompt, output.outputs[0].text) for output in outputs
                 )
     elapsed = time.perf_counter() - t0
-    llm.stop_profile()
+    if not getattr(args, "no_profile", False):
+        llm.stop_profile()
     metrics_after = collect_spec_decode_counters(llm.get_metrics())
     metrics_delta = diff_counters(metrics_after, metrics_before)
 
@@ -607,6 +609,17 @@ def parse_args():
         type=str,
         default="./vllm_profile_dflash",
         help="Output directory for torch profiler traces.",
+    )
+    parser.add_argument(
+        "--no-profile",
+        action="store_true",
+        help=(
+            "Disable torch/cuda profiler entirely. Useful for tree mode where "
+            "the profiler accumulates huge trace buffers and stop_profile hangs "
+            "on serialization. Skips start_profile/stop_profile and passes no "
+            "profiler_config to LLM. Throughput numbers will be coarser "
+            "(no per-phase prefill/decode breakdown)."
+        ),
     )
     parser.add_argument(
         "--num-speculative-tokens",
@@ -870,18 +883,17 @@ def main():
                     f"batch_size={batch_size}"
                 )
 
-                if args.profiler == "torch":
-                    run_output_dir = Path(
-                        f"{args.torch_profiler_dir}/{mode}/tp{tp_size}/bs{batch_size}"
-                    )
+                run_output_dir = Path(
+                    f"{args.torch_profiler_dir}/{mode}/tp{tp_size}/bs{batch_size}"
+                )
+                if args.no_profile:
+                    profiler_config = None
+                elif args.profiler == "torch":
                     profiler_config = {
                         "profiler": "torch",
                         "torch_profiler_dir": str(run_output_dir),
                     }
                 else:
-                    run_output_dir = Path(
-                        f"{args.torch_profiler_dir}/{mode}/tp{tp_size}/bs{batch_size}"
-                    )
                     profiler_config = {"profiler": "cuda"}
                 run_output_dir.mkdir(parents=True, exist_ok=True)
                 result = run_native_profile(
