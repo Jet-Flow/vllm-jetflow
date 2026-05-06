@@ -60,6 +60,83 @@ def load_dataset_prompt_bank(prompt_set: str) -> list[str]:
             "passes the tests:\n```python\n{prompt}\n```"
         )
         return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "aime24":
+        dataset = load_dataset("HuggingFaceH4/aime_2024", split="train")
+        prompt_fmt = (
+            "{problem}\n"
+            "Please reason step by step, and put your final answer within \\boxed{{}}."
+        )
+        return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "aime25":
+        dataset = load_dataset("MathArena/aime_2025", split="train")
+        prompt_fmt = (
+            "{problem}\n"
+            "Please reason step by step, and put your final answer within \\boxed{{}}."
+        )
+        return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "math500":
+        dataset = load_dataset("HuggingFaceH4/MATH-500", split="test")
+        prompt_fmt = (
+            "{problem}\n"
+            "Please reason step by step, and put your final answer within \\boxed{{}}."
+        )
+        return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "mbpp":
+        dataset = load_dataset(
+            "google-research-datasets/mbpp", "sanitized", split="test"
+        )
+        return [row["prompt"] for row in dataset]
+    if prompt_set == "swe-bench":
+        dataset = load_dataset("princeton-nlp/SWE-bench_Lite", split="test")
+        prompt_fmt = (
+            "Problem Statement:\n{problem_statement}\n"
+            "Please fix the issue described above."
+        )
+        return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "mt-bench":
+        dataset = load_dataset("HuggingFaceH4/mt_bench_prompts", split="train")
+        # Each entry's "prompt" is a list of multi-turn user messages; use the
+        # first turn only (matches benchmark.py's single-turn flow).
+        return [row["prompt"][0] for row in dataset]
+    if prompt_set == "alpaca":
+        dataset = load_dataset("tatsu-lab/alpaca", split="train")
+        prompts = []
+        for row in dataset:
+            if row.get("input"):
+                prompts.append(f"{row['instruction']}\n\nInput:\n{row['input']}")
+            else:
+                prompts.append(row["instruction"])
+        return prompts
+    if prompt_set == "livecodebench":
+        base = "https://huggingface.co/datasets/livecodebench/code_generation_lite/resolve/main/"
+        allowed_files = [
+            "test.jsonl", "test2.jsonl", "test3.jsonl",
+            "test4.jsonl", "test5.jsonl", "test6.jsonl",
+        ]
+        urls = [base + fn for fn in allowed_files]
+        dataset = load_dataset("json", data_files={"test": urls})["test"]
+        system_prompt = (
+            "You are an expert Python programmer. You will be given a question "
+            "(problem specification) and will generate a correct Python program "
+            "that matches the specification and passes all tests. You will NOT "
+            "return anything except for the program"
+        )
+
+        def _format_lcb(row):
+            question_block = f"### Question:\n{row['question_content']}"
+            if row.get("starter_code"):
+                fmt_msg = "### Format: Use the following code structure:"
+                code_block = f"```python\n{row['starter_code']}\n```"
+            else:
+                fmt_msg = "### Format: Write your code in the following format:"
+                code_block = "```python\n# YOUR CODE HERE\n```"
+            answer_footer = "### Answer: (use the provided format with backticks)"
+            return (
+                f"{system_prompt}\n\n{question_block}\n\n"
+                f"{fmt_msg}\n{code_block}\n\n{answer_footer}"
+            )
+
+        return [_format_lcb(row) for row in dataset]
     raise ValueError(f"Unknown dataset-backed prompt set: {prompt_set}")
 
 
@@ -68,7 +145,10 @@ def get_prompt_bank(prompt_set: str) -> list[str]:
         return DEFAULT_PROMPTS
     if prompt_set == "coding":
         return CODING_PROMPTS
-    if prompt_set in {"gsm8k", "humaneval"}:
+    if prompt_set in {
+        "gsm8k", "humaneval", "aime24", "aime25", "math500",
+        "mbpp", "swe-bench", "mt-bench", "alpaca", "livecodebench",
+    }:
         return load_dataset_prompt_bank(prompt_set)
     raise ValueError(f"Unknown prompt set: {prompt_set}")
 
@@ -475,12 +555,17 @@ def parse_args():
         "--prompt-set",
         type=str,
         default="mix",
-        choices=["mix", "coding", "gsm8k", "humaneval"],
+        choices=[
+            "mix", "coding", "gsm8k", "humaneval", "aime24", "aime25",
+            "math500", "mbpp", "swe-bench", "mt-bench", "alpaca", "livecodebench",
+        ],
         help=(
             "Prompt set to use. "
             "'mix' uses general profiling prompts; 'coding' uses 4 Python "
-            "algorithm/data-structure tasks; 'gsm8k' and 'humaneval' match "
-            "the dataset prompt formatting used in the dflash repo."
+            "algorithm/data-structure tasks; the rest mirror the HF benchmark "
+            "datasets (gsm8k / humaneval / aime24 / aime25 / math500 / mbpp / "
+            "swe-bench / mt-bench / alpaca / livecodebench) with the same "
+            "prompt formatting as inference/model/utils.py."
         ),
     )
     parser.add_argument(
