@@ -1,0 +1,1948 @@
+{
+  "attn_tap_order": [
+    "i1_q_post_qproj",
+    "k_noise_post_kproj",
+    "v_noise_post_vproj",
+    "i2_q_post_qnorm",
+    "k_noise_post_knorm",
+    "i3_q_post_rope",
+    "k_noise_post_rope",
+    "i4_attn_out_pre_oproj",
+    "i5_attn_out_post_oproj"
+  ],
+  "chain_steps_present": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    120
+  ],
+  "configured_steps": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    120,
+    150,
+    180,
+    220
+  ],
+  "context_kv_key_order": [
+    "k_last_context_pre_rope",
+    "k_last_context",
+    "v_last_context"
+  ],
+  "cosine_threshold": 0.999,
+  "hf_steps_present": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    120,
+    150,
+    180,
+    220
+  ],
+  "per_step": {
+    "0": {
+      "chain_context_len": 150,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.9999700290397371,
+          "hf_vs_tree_cosine": 0.9999658965917331,
+          "tree_vs_chain_cosine": 0.9999583345290889
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.9999707588775364,
+          "hf_vs_tree_cosine": 0.9999663546114572,
+          "tree_vs_chain_cosine": 0.9999590227159544
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.9998472204570863,
+          "hf_vs_tree_cosine": 0.9997938190871226,
+          "tree_vs_chain_cosine": 0.9998063817010078
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 150,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.9999215420398524,
+          "hf_vs_tree_cosine": 0.9999403977518944,
+          "tree_vs_chain_cosine": 0.9999357485172666
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.99989155336644,
+          "hf_vs_tree_cosine": 0.999914901911439,
+          "tree_vs_chain_cosine": 0.9999122763281205
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.999889220882293,
+          "hf_vs_tree_cosine": 0.9999124435066754,
+          "tree_vs_chain_cosine": 0.999908878954193
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.9997330109633703,
+          "hf_vs_tree_cosine": 0.9997380545157131,
+          "tree_vs_chain_cosine": 0.9997398914009413
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.9997819887735768,
+          "hf_vs_tree_cosine": 0.999787341129531,
+          "tree_vs_chain_cosine": 0.9997778406105478
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.9999368970558993,
+          "hf_vs_tree_cosine": 0.9999568804642917,
+          "tree_vs_chain_cosine": 0.999953838722452
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.9999433066421397,
+          "hf_vs_tree_cosine": 0.9999646050033197,
+          "tree_vs_chain_cosine": 0.9999649363633502
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.9999353302687992,
+          "hf_vs_tree_cosine": 0.9999552250751222,
+          "tree_vs_chain_cosine": 0.9999521724623952
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.9997584573835084,
+          "hf_vs_tree_cosine": 0.9998510871998197,
+          "tree_vs_chain_cosine": 0.9998227501781682
+        }
+      },
+      "tree_context_len": 150,
+      "tree_present": true
+    },
+    "1": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.8523424704320602,
+          "hf_vs_tree_cosine": 0.5970646729584699,
+          "tree_vs_chain_cosine": 0.6248533488061456
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8837773641195894,
+          "hf_vs_tree_cosine": 0.7838465958703873,
+          "tree_vs_chain_cosine": 0.7943360663383922
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.4941643445089613,
+          "hf_vs_tree_cosine": 0.10174180192122265,
+          "tree_vs_chain_cosine": 0.1122238303474436
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.7284729787742106,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 151,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.7775395321664851,
+          "hf_vs_tree_cosine": 0.7254061784265071,
+          "tree_vs_chain_cosine": 0.7284729787742106
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.7326981727129352,
+          "hf_vs_tree_cosine": 0.675636834821168,
+          "tree_vs_chain_cosine": 0.6896246690457689
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.6717623872756668,
+          "hf_vs_tree_cosine": 0.3615742947244035,
+          "tree_vs_chain_cosine": 0.44912556172718937
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.47056983935450836,
+          "hf_vs_tree_cosine": 0.3331266738153692,
+          "tree_vs_chain_cosine": 0.36824433767145726
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.469993591878341,
+          "hf_vs_tree_cosine": 0.3619454582945332,
+          "tree_vs_chain_cosine": 0.34928676461154895
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.8376106271633582,
+          "hf_vs_tree_cosine": 0.7607104973594706,
+          "tree_vs_chain_cosine": 0.6941211169012931
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.8295299119213213,
+          "hf_vs_tree_cosine": 0.7680641601384257,
+          "tree_vs_chain_cosine": 0.6689016185352472
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.8217661337011103,
+          "hf_vs_tree_cosine": 0.5980351776294097,
+          "tree_vs_chain_cosine": 0.5643850220997151
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.4462501134267107,
+          "hf_vs_tree_cosine": 0.15980451116965816,
+          "tree_vs_chain_cosine": 0.18533814171844532
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "10": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.547564826650064,
+          "hf_vs_tree_cosine": 0.32553365826627606,
+          "tree_vs_chain_cosine": 0.19392404408565106
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8036050393721161,
+          "hf_vs_tree_cosine": 0.6640615268693526,
+          "tree_vs_chain_cosine": 0.7104070607594603
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.29994293790065213,
+          "hf_vs_tree_cosine": 0.050612001743464356,
+          "tree_vs_chain_cosine": 0.06606217041621648
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.8003950145522265,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 160,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.7271033102981446,
+          "hf_vs_tree_cosine": 0.8088237245143662,
+          "tree_vs_chain_cosine": 0.8003950145522265
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.6633046349252258,
+          "hf_vs_tree_cosine": 0.7697705926245583,
+          "tree_vs_chain_cosine": 0.7430252567522594
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.29443682564241064,
+          "hf_vs_tree_cosine": 0.18139635804826257,
+          "tree_vs_chain_cosine": 0.20011436489621245
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.2584009972621655,
+          "hf_vs_tree_cosine": 0.23878883262101494,
+          "tree_vs_chain_cosine": 0.17746384120176928
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.25729096587655886,
+          "hf_vs_tree_cosine": 0.2483680339097719,
+          "tree_vs_chain_cosine": 0.18894424605925264
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7265672878450289,
+          "hf_vs_tree_cosine": 0.785839283435768,
+          "tree_vs_chain_cosine": 0.8257184305539508
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7344894634228584,
+          "hf_vs_tree_cosine": 0.8039505512472186,
+          "tree_vs_chain_cosine": 0.8584387229602529
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5375392828355461,
+          "hf_vs_tree_cosine": 0.2897171618971262,
+          "tree_vs_chain_cosine": 0.4147374823299481
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.15615508084472782,
+          "hf_vs_tree_cosine": 0.3664956875326341,
+          "tree_vs_chain_cosine": 0.28545964564648424
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "100": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.32215105340517175,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.713702719296484,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.0664975005227625,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 250,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.5515331419725883,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.4879179817470585,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.20617513714033303,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.06574964828642879,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.15596263205808428,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7301144779326181,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.772284600273642,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.4195743388208103,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.20141589636964954,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "12": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.5164160879736233,
+          "hf_vs_tree_cosine": 0.3187562305935104,
+          "tree_vs_chain_cosine": 0.44929010293442195
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.7326521998818205,
+          "hf_vs_tree_cosine": 0.6860250031529388,
+          "tree_vs_chain_cosine": 0.7064515532946938
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.27155897700595194,
+          "hf_vs_tree_cosine": 0.03542044395566432,
+          "tree_vs_chain_cosine": 0.09213005519361284
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6391427426658107,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 162,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.8009768421317481,
+          "hf_vs_tree_cosine": 0.6508181942934896,
+          "tree_vs_chain_cosine": 0.6391427426658107
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.7435625032051335,
+          "hf_vs_tree_cosine": 0.5698567171018941,
+          "tree_vs_chain_cosine": 0.5649374336693049
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.36812037096864775,
+          "hf_vs_tree_cosine": 0.17920726565665654,
+          "tree_vs_chain_cosine": 0.25248736884001677
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.24124444032034953,
+          "hf_vs_tree_cosine": 0.0074075920771840015,
+          "tree_vs_chain_cosine": 0.07746722375363202
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.2637014735059559,
+          "hf_vs_tree_cosine": 0.02026232697611963,
+          "tree_vs_chain_cosine": 0.09809220300430072
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.8407354097897076,
+          "hf_vs_tree_cosine": 0.6693333602570556,
+          "tree_vs_chain_cosine": 0.7019552587164333
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.8669058697908361,
+          "hf_vs_tree_cosine": 0.6932563745843736,
+          "tree_vs_chain_cosine": 0.7337825678558505
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.568129306613542,
+          "hf_vs_tree_cosine": 0.2670396092429608,
+          "tree_vs_chain_cosine": 0.44644932959388633
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.46350444186983963,
+          "hf_vs_tree_cosine": 0.09876094152847659,
+          "tree_vs_chain_cosine": 0.16825434473255338
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "120": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.175881628306988,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.54968745654524,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.02636423107060775,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 270,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6481616303607837,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5761797680551757,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.24241451313546172,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.04850874033724244,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.09893758128225665,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7312639625025555,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7651606442753963,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.4395341119138313,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.12119725243955051,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "15": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.4384835392700904,
+          "hf_vs_tree_cosine": 0.2688461246818782,
+          "tree_vs_chain_cosine": 0.3073445507313552
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6002092183212436,
+          "hf_vs_tree_cosine": 0.6541017436170866,
+          "tree_vs_chain_cosine": 0.7238897053949019
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.1058287438574988,
+          "hf_vs_tree_cosine": 0.05589560200572386,
+          "tree_vs_chain_cosine": 0.07930748117703909
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.5864858821491699,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 165,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.4105564298275917,
+          "hf_vs_tree_cosine": 0.6576746720009106,
+          "tree_vs_chain_cosine": 0.5864858821491699
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.3313302307078063,
+          "hf_vs_tree_cosine": 0.617713089140991,
+          "tree_vs_chain_cosine": 0.49275297410017577
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.15971954846074457,
+          "hf_vs_tree_cosine": 0.1346206107825257,
+          "tree_vs_chain_cosine": 0.1870296867892335
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.139135909649197,
+          "hf_vs_tree_cosine": 0.15525160734712773,
+          "tree_vs_chain_cosine": 0.09064192196143023
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.15560369342846408,
+          "hf_vs_tree_cosine": 0.2088462336751469,
+          "tree_vs_chain_cosine": 0.1098775253298322
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.6887353307848464,
+          "hf_vs_tree_cosine": 0.7385331926699253,
+          "tree_vs_chain_cosine": 0.7597805127877704
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.6818246007047392,
+          "hf_vs_tree_cosine": 0.7510182352354593,
+          "tree_vs_chain_cosine": 0.7883780230921561
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5476843061418794,
+          "hf_vs_tree_cosine": 0.38060084966643326,
+          "tree_vs_chain_cosine": 0.4464497199038245
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.17182650520942014,
+          "hf_vs_tree_cosine": 0.25467781738494666,
+          "tree_vs_chain_cosine": 0.15489123005597902
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "150": {
+      "chain_context_len": null,
+      "chain_present": false,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 300,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "180": {
+      "chain_context_len": null,
+      "chain_present": false,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 330,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "2": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.7859444085520881,
+          "hf_vs_tree_cosine": 0.47938770806930225,
+          "tree_vs_chain_cosine": 0.4032247511905407
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8701511136659057,
+          "hf_vs_tree_cosine": 0.7117819702394248,
+          "tree_vs_chain_cosine": 0.6822734799812493
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.5153900761138904,
+          "hf_vs_tree_cosine": 0.11729187608173135,
+          "tree_vs_chain_cosine": 0.10503494139354973
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.4698650648493161,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 152,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6024594388757504,
+          "hf_vs_tree_cosine": 0.7116116752778684,
+          "tree_vs_chain_cosine": 0.4698650648493161
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5397770783710911,
+          "hf_vs_tree_cosine": 0.6497001979162349,
+          "tree_vs_chain_cosine": 0.3718668881559726
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.4395579965846203,
+          "hf_vs_tree_cosine": 0.22873832696746815,
+          "tree_vs_chain_cosine": 0.14004167956705982
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.49581858155031544,
+          "hf_vs_tree_cosine": 0.15025948578356224,
+          "tree_vs_chain_cosine": 0.10177294154927262
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.5204410329050383,
+          "hf_vs_tree_cosine": 0.14032195213713194,
+          "tree_vs_chain_cosine": 0.10689668611537384
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7221482057391985,
+          "hf_vs_tree_cosine": 0.7797962288256725,
+          "tree_vs_chain_cosine": 0.6556554159660937
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7016626694879122,
+          "hf_vs_tree_cosine": 0.7977453079889935,
+          "tree_vs_chain_cosine": 0.6616674521620395
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.631100759977746,
+          "hf_vs_tree_cosine": 0.5510403778365516,
+          "tree_vs_chain_cosine": 0.5496174732151985
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.27245503857412773,
+          "hf_vs_tree_cosine": 0.31331548113219043,
+          "tree_vs_chain_cosine": 0.07398130548539286
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "20": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.25109523834068453,
+          "hf_vs_tree_cosine": 0.2202565706119659,
+          "tree_vs_chain_cosine": 0.2888949179019058
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6867234170566584,
+          "hf_vs_tree_cosine": 0.5326248032560118,
+          "tree_vs_chain_cosine": 0.6079608019517616
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.1392645173115737,
+          "hf_vs_tree_cosine": -0.0017023974854391926,
+          "tree_vs_chain_cosine": -0.04805746589815122
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.4643109234922807,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 170,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.7262840947710262,
+          "hf_vs_tree_cosine": 0.36594000788111897,
+          "tree_vs_chain_cosine": 0.4643109234922807
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.6949037951884779,
+          "hf_vs_tree_cosine": 0.3000727201542492,
+          "tree_vs_chain_cosine": 0.3860436808249379
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.2136110911980048,
+          "hf_vs_tree_cosine": 0.103340356630618,
+          "tree_vs_chain_cosine": 0.1287677892605632
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.13273797056017814,
+          "hf_vs_tree_cosine": -0.0051516230355843655,
+          "tree_vs_chain_cosine": 0.06644751212517619
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.1250464771589569,
+          "hf_vs_tree_cosine": -0.007171208740541058,
+          "tree_vs_chain_cosine": 0.05349217262246004
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7770661905951293,
+          "hf_vs_tree_cosine": 0.6422986617093807,
+          "tree_vs_chain_cosine": 0.6747296703538993
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7996977000885878,
+          "hf_vs_tree_cosine": 0.6486360837708177,
+          "tree_vs_chain_cosine": 0.667105679296272
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.3813058490197841,
+          "hf_vs_tree_cosine": 0.3534909861139624,
+          "tree_vs_chain_cosine": 0.34673543490883674
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.29544915482248285,
+          "hf_vs_tree_cosine": -0.0136111596212281,
+          "tree_vs_chain_cosine": 0.06662006989525877
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "220": {
+      "chain_context_len": null,
+      "chain_present": false,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 370,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": null,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "25": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.25606088238583874,
+          "hf_vs_tree_cosine": 0.45427313560037463,
+          "tree_vs_chain_cosine": 0.1292027341314983
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.7544427828399419,
+          "hf_vs_tree_cosine": 0.8172131981215583,
+          "tree_vs_chain_cosine": 0.6980374231116184
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.15197561450892008,
+          "hf_vs_tree_cosine": 0.20938633095351408,
+          "tree_vs_chain_cosine": 0.051787817741069705
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.7246692851356035,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 175,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6192035010499386,
+          "hf_vs_tree_cosine": 0.7261734617451792,
+          "tree_vs_chain_cosine": 0.7246692851356035
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.529287696111821,
+          "hf_vs_tree_cosine": 0.6578808126389928,
+          "tree_vs_chain_cosine": 0.6653552031436689
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.15497096678626648,
+          "hf_vs_tree_cosine": 0.26810221477418,
+          "tree_vs_chain_cosine": 0.15720778144477932
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.11049716513577591,
+          "hf_vs_tree_cosine": 0.22261465103960967,
+          "tree_vs_chain_cosine": 0.14208533987957833
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.14067927216677611,
+          "hf_vs_tree_cosine": 0.27435298081476467,
+          "tree_vs_chain_cosine": 0.15126785161714604
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7140286773868514,
+          "hf_vs_tree_cosine": 0.8132419042071447,
+          "tree_vs_chain_cosine": 0.770526122635015
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7306306381628928,
+          "hf_vs_tree_cosine": 0.8463432129548212,
+          "tree_vs_chain_cosine": 0.7956938323885787
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.4280687051367804,
+          "hf_vs_tree_cosine": 0.45719048375085686,
+          "tree_vs_chain_cosine": 0.3834745333458831
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.2113423179931495,
+          "hf_vs_tree_cosine": 0.41948182789355043,
+          "tree_vs_chain_cosine": 0.34107751445010315
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "3": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.6648300403858587,
+          "hf_vs_tree_cosine": 0.5104630438997172,
+          "tree_vs_chain_cosine": 0.49670669274413276
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8424770474150551,
+          "hf_vs_tree_cosine": 0.6803719316444222,
+          "tree_vs_chain_cosine": 0.7273687492748193
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.2968993364952454,
+          "hf_vs_tree_cosine": 0.1501336746604107,
+          "tree_vs_chain_cosine": 0.16775898662227864
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6877006881411437,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 153,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.7314679729813727,
+          "hf_vs_tree_cosine": 0.7040633696738577,
+          "tree_vs_chain_cosine": 0.6877006881411437
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.6658076300211232,
+          "hf_vs_tree_cosine": 0.6281282897907472,
+          "tree_vs_chain_cosine": 0.6153316536977761
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.4070912788906908,
+          "hf_vs_tree_cosine": 0.30461073610179423,
+          "tree_vs_chain_cosine": 0.2967298910309483
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.32925374803074264,
+          "hf_vs_tree_cosine": 0.12896649563480753,
+          "tree_vs_chain_cosine": 0.17206709624599525
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.358034024788294,
+          "hf_vs_tree_cosine": 0.1456091057441567,
+          "tree_vs_chain_cosine": 0.18694794964703804
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.8324318295561645,
+          "hf_vs_tree_cosine": 0.7740380148153709,
+          "tree_vs_chain_cosine": 0.7871484573491222
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.8431216693638428,
+          "hf_vs_tree_cosine": 0.7968653415429361,
+          "tree_vs_chain_cosine": 0.8153010989170484
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.6573022138520593,
+          "hf_vs_tree_cosine": 0.5527499561268807,
+          "tree_vs_chain_cosine": 0.5830264784935401
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.25260714297417647,
+          "hf_vs_tree_cosine": 0.2698907335387022,
+          "tree_vs_chain_cosine": 0.16850578809762434
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "30": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.371032960050395,
+          "hf_vs_tree_cosine": 0.16400078438382254,
+          "tree_vs_chain_cosine": 0.12543180130487003
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.7701825339247502,
+          "hf_vs_tree_cosine": 0.6528564697196236,
+          "tree_vs_chain_cosine": 0.6261595766696842
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.17619723202963536,
+          "hf_vs_tree_cosine": -0.017806905316920238,
+          "tree_vs_chain_cosine": -0.021988222779681044
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.645853528113713,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 180,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6200250140372241,
+          "hf_vs_tree_cosine": 0.6360651123428525,
+          "tree_vs_chain_cosine": 0.645853528113713
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5368706758912227,
+          "hf_vs_tree_cosine": 0.5541108946833959,
+          "tree_vs_chain_cosine": 0.5454925293145824
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.21435597126911962,
+          "hf_vs_tree_cosine": 0.09821279294060949,
+          "tree_vs_chain_cosine": 0.13495000793209308
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.1981107992083104,
+          "hf_vs_tree_cosine": 0.012045020803566911,
+          "tree_vs_chain_cosine": 0.0010140444014658072
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.20060631145038652,
+          "hf_vs_tree_cosine": 0.0059407795817046595,
+          "tree_vs_chain_cosine": 0.01136742429975696
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.6601394779319141,
+          "hf_vs_tree_cosine": 0.7412745479471267,
+          "tree_vs_chain_cosine": 0.7001837881562064
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.6698902749234987,
+          "hf_vs_tree_cosine": 0.7883763815349113,
+          "tree_vs_chain_cosine": 0.7307169126440729
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.42318595797252645,
+          "hf_vs_tree_cosine": 0.37429731987797243,
+          "tree_vs_chain_cosine": 0.3244322970262607
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.14383247237558677,
+          "hf_vs_tree_cosine": 0.2046612669165298,
+          "tree_vs_chain_cosine": 0.1248446486461722
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "4": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.6453053233868449,
+          "hf_vs_tree_cosine": 0.3651121420094325,
+          "tree_vs_chain_cosine": 0.3470903419178565
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8086707519119785,
+          "hf_vs_tree_cosine": 0.6262592935245235,
+          "tree_vs_chain_cosine": 0.6429959972471281
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.36719421841037314,
+          "hf_vs_tree_cosine": 0.04589190578704059,
+          "tree_vs_chain_cosine": 0.0638483891647581
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6909852408051957,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 154,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6757015668475037,
+          "hf_vs_tree_cosine": 0.49679071828365545,
+          "tree_vs_chain_cosine": 0.6909852408051957
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.6170856268435786,
+          "hf_vs_tree_cosine": 0.4005432977944285,
+          "tree_vs_chain_cosine": 0.6173149345989964
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.35739742977915556,
+          "hf_vs_tree_cosine": 0.10202404214153978,
+          "tree_vs_chain_cosine": 0.2304030902701998
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.35202727255415905,
+          "hf_vs_tree_cosine": 0.021700692287798383,
+          "tree_vs_chain_cosine": 0.052669304238711655
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.37670194609893853,
+          "hf_vs_tree_cosine": 0.041587226734818294,
+          "tree_vs_chain_cosine": 0.04551732830740994
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.8024763168788962,
+          "hf_vs_tree_cosine": 0.7025013980065966,
+          "tree_vs_chain_cosine": 0.8164009776569295
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.8045990270296665,
+          "hf_vs_tree_cosine": 0.7217645092300597,
+          "tree_vs_chain_cosine": 0.8379745676786243
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.6494996391709761,
+          "hf_vs_tree_cosine": 0.4974390597653387,
+          "tree_vs_chain_cosine": 0.6138858139191679
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.3052184265339905,
+          "hf_vs_tree_cosine": 0.015838607196157636,
+          "tree_vs_chain_cosine": 0.2749775510791095
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "40": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.3053078515421161,
+          "hf_vs_tree_cosine": 0.24675798809762786,
+          "tree_vs_chain_cosine": 0.28682285342985453
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.5856196927443361,
+          "hf_vs_tree_cosine": 0.6790212792941522,
+          "tree_vs_chain_cosine": 0.5990466351927977
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.007185294322094877,
+          "hf_vs_tree_cosine": 0.03304441298951126,
+          "tree_vs_chain_cosine": -0.03379624996598146
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6348054285146187,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 190,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.7250131834260795,
+          "hf_vs_tree_cosine": 0.6022198010360652,
+          "tree_vs_chain_cosine": 0.6348054285146187
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.643062235544371,
+          "hf_vs_tree_cosine": 0.5096843992682404,
+          "tree_vs_chain_cosine": 0.5317357971562817
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.21820374042009108,
+          "hf_vs_tree_cosine": 0.1316933049137259,
+          "tree_vs_chain_cosine": 0.18723234061232233
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.044629456326741396,
+          "hf_vs_tree_cosine": 0.1636705931339918,
+          "tree_vs_chain_cosine": 0.043233137296016015
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.07305059530045172,
+          "hf_vs_tree_cosine": 0.19358685613785623,
+          "tree_vs_chain_cosine": 0.052465147077671775
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7979735193376057,
+          "hf_vs_tree_cosine": 0.7461177405244727,
+          "tree_vs_chain_cosine": 0.7068485312452413
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.8264977146306776,
+          "hf_vs_tree_cosine": 0.7783031949024304,
+          "tree_vs_chain_cosine": 0.7354472076126545
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5011962814184449,
+          "hf_vs_tree_cosine": 0.364466593794195,
+          "tree_vs_chain_cosine": 0.31969138656459284
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.23762266693456763,
+          "hf_vs_tree_cosine": 0.11869026711887483,
+          "tree_vs_chain_cosine": 0.21534729274497738
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "5": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.656285880042233,
+          "hf_vs_tree_cosine": 0.27337860854292645,
+          "tree_vs_chain_cosine": 0.22261559100907652
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.8149592081255705,
+          "hf_vs_tree_cosine": 0.5739729502295304,
+          "tree_vs_chain_cosine": 0.6163711744801108
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.19671186027860552,
+          "hf_vs_tree_cosine": 0.030655249990683194,
+          "tree_vs_chain_cosine": 0.061203700564507815
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6559404861573547,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 155,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6477769654078259,
+          "hf_vs_tree_cosine": 0.5926966233330552,
+          "tree_vs_chain_cosine": 0.6559404861573547
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5789111140500115,
+          "hf_vs_tree_cosine": 0.5156190942240189,
+          "tree_vs_chain_cosine": 0.5637013716732352
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.30158904130052006,
+          "hf_vs_tree_cosine": 0.21551415034987098,
+          "tree_vs_chain_cosine": 0.25001890250968417
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.31358062941522324,
+          "hf_vs_tree_cosine": 0.12545454106456433,
+          "tree_vs_chain_cosine": 0.1523847820214823
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.3189015425619731,
+          "hf_vs_tree_cosine": 0.1344275689648833,
+          "tree_vs_chain_cosine": 0.1977158595838982
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.6984416867731181,
+          "hf_vs_tree_cosine": 0.6165623864408722,
+          "tree_vs_chain_cosine": 0.6928372574026036
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.713263219382326,
+          "hf_vs_tree_cosine": 0.6507146097441715,
+          "tree_vs_chain_cosine": 0.7126923403603165
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5466070159409098,
+          "hf_vs_tree_cosine": 0.4332436900747397,
+          "tree_vs_chain_cosine": 0.4767691837881736
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.07780580404537313,
+          "hf_vs_tree_cosine": 0.05383092573961818,
+          "tree_vs_chain_cosine": 0.19056293037773556
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "50": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.23942272390423583,
+          "hf_vs_tree_cosine": 0.04230851076355596,
+          "tree_vs_chain_cosine": 0.14672572741830953
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6025743563591385,
+          "hf_vs_tree_cosine": 0.7198268325528232,
+          "tree_vs_chain_cosine": 0.6822929309965053
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.022511672907202844,
+          "hf_vs_tree_cosine": 0.11651881723708102,
+          "tree_vs_chain_cosine": 0.03589765558317995
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6612638533970459,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 200,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.611665433812597,
+          "hf_vs_tree_cosine": 0.8894046027950073,
+          "tree_vs_chain_cosine": 0.6612638533970459
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5556462556427211,
+          "hf_vs_tree_cosine": 0.8596366651077324,
+          "tree_vs_chain_cosine": 0.608498248143543
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.174054502403037,
+          "hf_vs_tree_cosine": 0.24863547743305836,
+          "tree_vs_chain_cosine": 0.0739128943009641
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.018977489038018217,
+          "hf_vs_tree_cosine": 0.24552154881933358,
+          "tree_vs_chain_cosine": 0.02706415086043303
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.014039725176328875,
+          "hf_vs_tree_cosine": 0.2720147866646069,
+          "tree_vs_chain_cosine": 0.03930565218322841
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.6841837350953034,
+          "hf_vs_tree_cosine": 0.9422604463824332,
+          "tree_vs_chain_cosine": 0.712100486972422
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.697781947428192,
+          "hf_vs_tree_cosine": 0.9551425644967958,
+          "tree_vs_chain_cosine": 0.7340295651522811
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.43940562806493283,
+          "hf_vs_tree_cosine": 0.4032475371867001,
+          "tree_vs_chain_cosine": 0.3246783795927377
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.17714405599525276,
+          "hf_vs_tree_cosine": 0.7488597122137552,
+          "tree_vs_chain_cosine": 0.19708384745438629
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "6": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.6033157186608716,
+          "hf_vs_tree_cosine": 0.3880458334072326,
+          "tree_vs_chain_cosine": 0.47872014684154884
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.7635996989993962,
+          "hf_vs_tree_cosine": 0.7041400579468294,
+          "tree_vs_chain_cosine": 0.7667938390871516
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.14385118181849843,
+          "hf_vs_tree_cosine": 0.004303035138939763,
+          "tree_vs_chain_cosine": 0.28030143541144964
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.6554724586005476,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 156,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6835711239748454,
+          "hf_vs_tree_cosine": 0.7125775518848507,
+          "tree_vs_chain_cosine": 0.6554724586005476
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.6054072090437329,
+          "hf_vs_tree_cosine": 0.6654819471210476,
+          "tree_vs_chain_cosine": 0.572070901615658
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.25191744663213606,
+          "hf_vs_tree_cosine": 0.31946956745877636,
+          "tree_vs_chain_cosine": 0.1927723705349177
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.1387708249633998,
+          "hf_vs_tree_cosine": 0.19037478884530662,
+          "tree_vs_chain_cosine": 0.048714121048052055
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.13892925900958789,
+          "hf_vs_tree_cosine": 0.21201433682765583,
+          "tree_vs_chain_cosine": 0.05507152180520606
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7464199343335287,
+          "hf_vs_tree_cosine": 0.7505341282246367,
+          "tree_vs_chain_cosine": 0.7502632496378444
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7677732218809896,
+          "hf_vs_tree_cosine": 0.7684632822186432,
+          "tree_vs_chain_cosine": 0.7805235698827925
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5795989717795104,
+          "hf_vs_tree_cosine": 0.5317673270341171,
+          "tree_vs_chain_cosine": 0.517344260955121
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.11607565073057195,
+          "hf_vs_tree_cosine": 0.11863062784777118,
+          "tree_vs_chain_cosine": 0.17641768514208925
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "60": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.18561981218556764,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.5668754605868731,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": -0.040808985481133285,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 210,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.5491286571952115,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.46384563248351185,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.11795529382985438,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": -0.013685794307047902,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.0022554519632166457,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7221358757974758,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7597366085293094,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.4196883143142116,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.14302649043779775,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    },
+    "7": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.5150607409430673,
+          "hf_vs_tree_cosine": 0.43957899165595726,
+          "tree_vs_chain_cosine": 0.3303825705566725
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6811766310830567,
+          "hf_vs_tree_cosine": 0.794703603669187,
+          "tree_vs_chain_cosine": 0.7449038243996231
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.05693428304864753,
+          "hf_vs_tree_cosine": 0.19125801505506312,
+          "tree_vs_chain_cosine": 0.07164117673645887
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.7421709704823293,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 157,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.5970880766238685,
+          "hf_vs_tree_cosine": 0.6149447003080616,
+          "tree_vs_chain_cosine": 0.7421709704823293
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.527742046553036,
+          "hf_vs_tree_cosine": 0.5509182438444016,
+          "tree_vs_chain_cosine": 0.6714007638610251
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.2907251682595798,
+          "hf_vs_tree_cosine": 0.1152141003661683,
+          "tree_vs_chain_cosine": 0.20524319233265
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.06797071610661097,
+          "hf_vs_tree_cosine": 0.09726476846139463,
+          "tree_vs_chain_cosine": 0.17163749637389258
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.040297600566124664,
+          "hf_vs_tree_cosine": 0.13124761952742062,
+          "tree_vs_chain_cosine": 0.17540583481739208
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7203115287943227,
+          "hf_vs_tree_cosine": 0.7535386881684478,
+          "tree_vs_chain_cosine": 0.793815224169097
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7624771632561378,
+          "hf_vs_tree_cosine": 0.7640098271467587,
+          "tree_vs_chain_cosine": 0.8194614836901085
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.5955949695075843,
+          "hf_vs_tree_cosine": 0.44223733831900974,
+          "tree_vs_chain_cosine": 0.46841849706891586
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.18531857293072074,
+          "hf_vs_tree_cosine": 0.1685798378330259,
+          "tree_vs_chain_cosine": 0.30592808353499973
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "8": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.4688951375329586,
+          "hf_vs_tree_cosine": 0.4230962993653724,
+          "tree_vs_chain_cosine": 0.37622282445643707
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6324536631716947,
+          "hf_vs_tree_cosine": 0.7278407671780817,
+          "tree_vs_chain_cosine": 0.7089967439005158
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.1129284179469804,
+          "hf_vs_tree_cosine": 0.11552735538476334,
+          "tree_vs_chain_cosine": 0.12714099564188697
+        }
+      },
+      "first_tree_vs_chain_split_tap": {
+        "cosine": 0.5793484616258153,
+        "tap": "i1_q_post_qproj"
+      },
+      "hf_context_len": 158,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.639534512351663,
+          "hf_vs_tree_cosine": 0.7071657394219213,
+          "tree_vs_chain_cosine": 0.5793484616258153
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5876110985042825,
+          "hf_vs_tree_cosine": 0.6348147688501256,
+          "tree_vs_chain_cosine": 0.5281034929317858
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.2465184147441494,
+          "hf_vs_tree_cosine": 0.23574434668334104,
+          "tree_vs_chain_cosine": 0.1540549059363956
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.13242951303663228,
+          "hf_vs_tree_cosine": 0.13199523079902264,
+          "tree_vs_chain_cosine": 0.21890690395494664
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.14856947692631237,
+          "hf_vs_tree_cosine": 0.14037418315465405,
+          "tree_vs_chain_cosine": 0.2391314190477634
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.7795041477304911,
+          "hf_vs_tree_cosine": 0.7799048644690554,
+          "tree_vs_chain_cosine": 0.665989890631062
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7911606978628535,
+          "hf_vs_tree_cosine": 0.8010670983958543,
+          "tree_vs_chain_cosine": 0.674708830221773
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.6457576699782644,
+          "hf_vs_tree_cosine": 0.4717581213901025,
+          "tree_vs_chain_cosine": 0.34421983998382816
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.3015349101636064,
+          "hf_vs_tree_cosine": 0.1326193827688818,
+          "tree_vs_chain_cosine": 0.012560423686713947
+        }
+      },
+      "tree_context_len": 255,
+      "tree_present": true
+    },
+    "80": {
+      "chain_context_len": 2,
+      "chain_present": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.24717889341442473,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.6148332714897672,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.1238714978485973,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "first_tree_vs_chain_split_tap": null,
+      "hf_context_len": 230,
+      "hf_present": true,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.6165129838595496,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.5650956633677412,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.2005949205935386,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.11280319046390187,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.23328293426420718,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.6995403482071983,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.7148498822540302,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.3888743755651733,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.1705748745599744,
+          "hf_vs_tree_cosine": null,
+          "tree_vs_chain_cosine": null
+        }
+      },
+      "tree_context_len": null,
+      "tree_present": false
+    }
+  },
+  "tree_steps_present": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50
+  ],
+  "verdict": {
+    "configured_steps": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      12,
+      15,
+      20,
+      25,
+      30,
+      40,
+      50,
+      60,
+      80,
+      100,
+      120,
+      150,
+      180,
+      220
+    ],
+    "i4_attn_out_hf_vs_chain_cos_latest": null,
+    "i4_attn_out_hf_vs_tree_cos_latest": null,
+    "i4_attn_out_tree_vs_chain_cos_latest": null,
+    "interpretation_hint": "Mixed / partial evidence; examine per_step details.",
+    "latest_step": 220
+  }
+}

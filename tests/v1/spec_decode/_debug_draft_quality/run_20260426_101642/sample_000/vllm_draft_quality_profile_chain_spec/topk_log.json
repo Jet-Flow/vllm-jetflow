@@ -1,0 +1,5031 @@
+[
+  {
+    "step": 0,
+    "req": 0,
+    "root_token": 1249,
+    "topk_tok_0": [
+      11625,
+      5978,
+      1281,
+      1494,
+      633,
+      11075,
+      4211
+    ],
+    "topk_lp_0": [
+      -0.607832670211792,
+      -1.482832670211792,
+      -3.107832670211792,
+      -3.232832670211792,
+      -4.045332908630371,
+      -4.545332908630371,
+      -4.670332908630371
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      11625
+    ],
+    "target_next_token": 11625,
+    "draft_top1_token": 11625,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 1,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      3491,
+      2661,
+      1565,
+      729,
+      3070,
+      2701,
+      3383
+    ],
+    "topk_lp_0": [
+      -0.007807807996869087,
+      -5.132807731628418,
+      -8.070307731628418,
+      -8.195307731628418,
+      -8.695307731628418,
+      -8.945307731628418,
+      -9.070307731628418
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3491
+    ],
+    "target_next_token": 3491,
+    "draft_top1_token": 3491,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 2,
+    "req": 0,
+    "root_token": 11,
+    "topk_tok_0": [
+      582,
+      498,
+      279,
+      1779,
+      1588,
+      109202,
+      29720
+    ],
+    "topk_lp_0": [
+      -0.013123683631420135,
+      -4.638123512268066,
+      -6.888123512268066,
+      -8.263123512268066,
+      -8.325623512268066,
+      -8.575623512268066,
+      -8.888123512268066
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      582
+    ],
+    "target_next_token": 582,
+    "draft_top1_token": 582,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 3,
+    "req": 0,
+    "root_token": 1184,
+    "topk_tok_0": [
+      311,
+      458,
+      264,
+      279,
+      1378,
+      678,
+      1447
+    ],
+    "topk_lp_0": [
+      -0.0016320730792358518,
+      -7.251632213592529,
+      -7.751632213592529,
+      -8.251631736755371,
+      -9.751631736755371,
+      -10.001631736755371,
+      -10.126631736755371
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      311
+    ],
+    "target_next_token": 311,
+    "draft_top1_token": 311,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 4,
+    "req": 0,
+    "root_token": 8253,
+    "topk_tok_0": [
+      3425,
+      421,
+      3070,
+      369,
+      1378,
+      279,
+      678
+    ],
+    "topk_lp_0": [
+      -0.6974008083343506,
+      -0.6974008083343506,
+      -5.57240104675293,
+      -9.07240104675293,
+      -9.44740104675293,
+      -9.69740104675293,
+      -10.38490104675293
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3425
+    ],
+    "target_next_token": 3425,
+    "draft_top1_token": 3425,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 3425,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 5,
+    "req": 0,
+    "root_token": 3425,
+    "topk_tok_0": [
+      3070,
+      1052,
+      894,
+      279,
+      1378,
+      264,
+      518
+    ],
+    "topk_lp_0": [
+      -0.899018406867981,
+      -1.149018406867981,
+      -1.399018406867981,
+      -4.399018287658691,
+      -4.774018287658691,
+      -5.524018287658691,
+      -6.149018287658691
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3070
+    ],
+    "target_next_token": 3070,
+    "draft_top1_token": 3070,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 6,
+    "req": 0,
+    "root_token": 3767,
+    "topk_tok_0": [
+      1378,
+      6716,
+      334,
+      894,
+      1052,
+      1372,
+      2661
+    ],
+    "topk_lp_0": [
+      -0.03984002768993378,
+      -3.28983998298645,
+      -6.539840221405029,
+      -8.664839744567871,
+      -9.789839744567871,
+      -10.664839744567871,
+      -11.789839744567871
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1378
+    ],
+    "target_next_token": 1378,
+    "draft_top1_token": 1378,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 7,
+    "req": 0,
+    "root_token": 5109,
+    "topk_tok_0": [
+      304,
+      334,
+      2878,
+      525,
+      315,
+      389,
+      504
+    ],
+    "topk_lp_0": [
+      -0.4624377191066742,
+      -1.0874377489089966,
+      -4.712437629699707,
+      -4.962437629699707,
+      -5.337437629699707,
+      -5.837437629699707,
+      -5.962437629699707
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      304
+    ],
+    "target_next_token": 304,
+    "draft_top1_token": 304,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 8,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      2661,
+      1140,
+      3897,
+      1565,
+      1946,
+      264,
+      279
+    ],
+    "topk_lp_0": [
+      -0.5395040512084961,
+      -0.9145040512084961,
+      -4.664504051208496,
+      -5.539504051208496,
+      -5.914504051208496,
+      -10.602004051208496,
+      -10.977004051208496
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1140
+    ],
+    "target_next_token": 1140,
+    "draft_top1_token": 2661,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 1140,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 9,
+    "req": 0,
+    "root_token": 1140,
+    "topk_tok_0": [
+      525,
+      334,
+      315,
+      1565,
+      1140,
+      1745,
+      614
+    ],
+    "topk_lp_0": [
+      -0.43853381276130676,
+      -1.1885337829589844,
+      -3.8135337829589844,
+      -4.063533782958984,
+      -5.563533782958984,
+      -6.063533782958984,
+      -6.063533782958984
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      525
+    ],
+    "target_next_token": 525,
+    "draft_top1_token": 525,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 10,
+    "req": 0,
+    "root_token": 12128,
+    "topk_tok_0": [
+      1091,
+      320,
+      311,
+      334,
+      264,
+      2878,
+      553
+    ],
+    "topk_lp_0": [
+      -0.11469047516584396,
+      -3.3646905422210693,
+      -3.6146905422210693,
+      -4.23969030380249,
+      -4.80219030380249,
+      -5.17719030380249,
+      -5.67719030380249
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      311
+    ],
+    "target_next_token": 311,
+    "draft_top1_token": 1091,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 311,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 11,
+    "req": 0,
+    "root_token": 311,
+    "topk_tok_0": [
+      1817,
+      825,
+      264,
+      429,
+      419,
+      862,
+      279
+    ],
+    "topk_lp_0": [
+      -0.0029320605099201202,
+      -6.127932071685791,
+      -8.377931594848633,
+      -8.940431594848633,
+      -9.752931594848633,
+      -10.190431594848633,
+      -10.252931594848633
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1817
+    ],
+    "target_next_token": 1817,
+    "draft_top1_token": 1817,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 12,
+    "req": 0,
+    "root_token": 1008,
+    "topk_tok_0": [
+      1091,
+      438,
+      334,
+      311,
+      320,
+      7707,
+      476
+    ],
+    "topk_lp_0": [
+      -0.028142306953668594,
+      -4.27814245223999,
+      -5.15314245223999,
+      -5.77814245223999,
+      -6.90314245223999,
+      -6.90314245223999,
+      -6.90314245223999
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1091
+    ],
+    "target_next_token": 1091,
+    "draft_top1_token": 1091,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 13,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      2661,
+      5189,
+      12171,
+      3897,
+      1565,
+      1946,
+      1482
+    ],
+    "topk_lp_0": [
+      -0.032145045697689056,
+      -4.032145023345947,
+      -4.532145023345947,
+      -6.157145023345947,
+      -7.657145023345947,
+      -9.719645500183105,
+      -9.907145500183105
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2661
+    ],
+    "target_next_token": 2661,
+    "draft_top1_token": 2661,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 14,
+    "req": 0,
+    "root_token": 12171,
+    "topk_tok_0": [
+      334,
+      97219,
+      13,
+      897,
+      1565,
+      28587,
+      63
+    ],
+    "topk_lp_0": [
+      -0.10081721842288971,
+      -2.4758172035217285,
+      -4.6008172035217285,
+      -7.6008172035217285,
+      -7.8508172035217285,
+      -8.600817680358887,
+      -8.913317680358887
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      334
+    ],
+    "target_next_token": 334,
+    "draft_top1_token": 334,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 15,
+    "req": 0,
+    "root_token": 13,
+    "topk_tok_0": [
+      1096,
+      4710,
+      576,
+      5692,
+      1205,
+      2938,
+      14374
+    ],
+    "topk_lp_0": [
+      -0.37915048003196716,
+      -2.254150390625,
+      -2.879150390625,
+      -3.754150390625,
+      -3.754150390625,
+      -3.754150390625,
+      -3.879150390625
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1096
+    ],
+    "target_next_token": 1096,
+    "draft_top1_token": 1096,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 16,
+    "req": 0,
+    "root_token": 646,
+    "topk_tok_0": [
+      387,
+      264,
+      3076,
+      12170,
+      3537,
+      1083,
+      3363
+    ],
+    "topk_lp_0": [
+      -0.0007333449902944267,
+      -7.500733375549316,
+      -10.438233375549316,
+      -10.813233375549316,
+      -11.000733375549316,
+      -11.500733375549316,
+      -11.750733375549316
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      387
+    ],
+    "target_next_token": 387,
+    "draft_top1_token": 387,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 17,
+    "req": 0,
+    "root_token": 29720,
+    "topk_tok_0": [
+      29720,
+      553,
+      2814,
+      304,
+      1667,
+      27956,
+      448
+    ],
+    "topk_lp_0": [
+      -0.4916171431541443,
+      -1.616617202758789,
+      -3.241617202758789,
+      -3.241617202758789,
+      -3.366617202758789,
+      -3.491617202758789,
+      -4.991617202758789
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2814
+    ],
+    "target_next_token": 2814,
+    "draft_top1_token": 29720,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 2814,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 18,
+    "req": 0,
+    "root_token": 2814,
+    "topk_tok_0": [
+      553,
+      1667,
+      304,
+      448,
+      1526,
+      4566,
+      421
+    ],
+    "topk_lp_0": [
+      -0.37425777316093445,
+      -1.2492578029632568,
+      -4.374257564544678,
+      -4.749257564544678,
+      -6.874257564544678,
+      -7.374257564544678,
+      -7.374257564544678
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      553
+    ],
+    "target_next_token": 553,
+    "draft_top1_token": 553,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 19,
+    "req": 0,
+    "root_token": 3070,
+    "topk_tok_0": [
+      67039,
+      3896,
+      6860,
+      2015,
+      82,
+      28298,
+      57854
+    ],
+    "topk_lp_0": [
+      -0.24570995569229126,
+      -1.8707098960876465,
+      -3.8707098960876465,
+      -4.3707098960876465,
+      -5.1207098960876465,
+      -5.2457098960876465,
+      -5.4957098960876465
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      67039
+    ],
+    "target_next_token": 67039,
+    "draft_top1_token": 67039,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 20,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      1140,
+      1156,
+      1334,
+      1946,
+      5109,
+      1372,
+      8500
+    ],
+    "topk_lp_0": [
+      -0.010893282480537891,
+      -5.26089334487915,
+      -6.01089334487915,
+      -6.13589334487915,
+      -7.13589334487915,
+      -9.010892868041992,
+      -10.760892868041992
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1140
+    ],
+    "target_next_token": 1140,
+    "draft_top1_token": 1140,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 21,
+    "req": 0,
+    "root_token": 1156,
+    "topk_tok_0": [
+      97219,
+      334,
+      323,
+      11,
+      13,
+      95518,
+      69979
+    ],
+    "topk_lp_0": [
+      -0.11590486764907837,
+      -2.6159048080444336,
+      -3.4909048080444336,
+      -5.365904808044434,
+      -7.865904808044434,
+      -8.490904808044434,
+      -8.928404808044434
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      97219
+    ],
+    "target_next_token": 97219,
+    "draft_top1_token": 97219,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 22,
+    "req": 0,
+    "root_token": 892,
+    "topk_tok_0": [
+      6147,
+      1221,
+      25271,
+      374,
+      3643,
+      15491,
+      686
+    ],
+    "topk_lp_0": [
+      -0.36731821298599243,
+      -2.2423181533813477,
+      -3.1173181533813477,
+      -3.2423181533813477,
+      -3.3673181533813477,
+      -4.367318153381348,
+      -4.492318153381348
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      6147
+    ],
+    "target_next_token": 6147,
+    "draft_top1_token": 6147,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 23,
+    "req": 0,
+    "root_token": 601,
+    "topk_tok_0": [
+      311,
+      26297,
+      304,
+      369,
+      264,
+      279,
+      320
+    ],
+    "topk_lp_0": [
+      -3.40932747349143e-05,
+      -12.12503433227539,
+      -12.31253433227539,
+      -12.68753433227539,
+      -12.81253433227539,
+      -12.93753433227539,
+      -13.25003433227539
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      311
+    ],
+    "target_next_token": 311,
+    "draft_top1_token": 311,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 24,
+    "req": 0,
+    "root_token": 9429,
+    "topk_tok_0": [
+      23942,
+      279,
+      5424,
+      23921,
+      1172,
+      3070,
+      13530
+    ],
+    "topk_lp_0": [
+      -1.2302206754684448,
+      -1.8552206754684448,
+      -2.2302207946777344,
+      -2.2302207946777344,
+      -2.3552207946777344,
+      -2.4802207946777344,
+      -3.1052207946777344
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1172
+    ],
+    "target_next_token": 1172,
+    "draft_top1_token": 23942,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 1172,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 25,
+    "req": 0,
+    "root_token": 1172,
+    "topk_tok_0": [
+      23942,
+      5424,
+      3070,
+      5109,
+      279,
+      13530,
+      41517
+    ],
+    "topk_lp_0": [
+      -0.718941330909729,
+      -1.593941330909729,
+      -1.968941330909729,
+      -2.7189412117004395,
+      -3.3439412117004395,
+      -3.7189412117004395,
+      -3.9689412117004395
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      23942
+    ],
+    "target_next_token": 23942,
+    "draft_top1_token": 23942,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 26,
+    "req": 0,
+    "root_token": 5424,
+    "topk_tok_0": [
+      304,
+      311,
+      369,
+      320,
+      11,
+      438,
+      315
+    ],
+    "topk_lp_0": [
+      -0.6370617151260376,
+      -1.5120617151260376,
+      -2.762061595916748,
+      -2.887061595916748,
+      -3.012061595916748,
+      -4.012061595916748,
+      -4.012061595916748
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      11
+    ],
+    "target_next_token": 11,
+    "draft_top1_token": 304,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 11,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 27,
+    "req": 0,
+    "root_token": 11,
+    "topk_tok_0": [
+      892,
+      2474,
+      438,
+      17719,
+      1576,
+      3259,
+      22573
+    ],
+    "topk_lp_0": [
+      -0.6751548051834106,
+      -1.9251548051834106,
+      -2.175154685974121,
+      -2.800154685974121,
+      -3.425154685974121,
+      -3.550154685974121,
+      -4.050154685974121
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      17719
+    ],
+    "target_next_token": 17719,
+    "draft_top1_token": 892,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 17719,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 28,
+    "req": 0,
+    "root_token": 17719,
+    "topk_tok_0": [
+      279,
+      17719,
+      47732,
+      882,
+      862,
+      894,
+      1039
+    ],
+    "topk_lp_0": [
+      -0.03293490782380104,
+      -4.28293514251709,
+      -5.28293514251709,
+      -5.72043514251709,
+      -6.78293514251709,
+      -7.03293514251709,
+      -7.47043514251709
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      279
+    ],
+    "target_next_token": 279,
+    "draft_top1_token": 279,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 29,
+    "req": 0,
+    "root_token": 882,
+    "topk_tok_0": [
+      23094,
+      504,
+      4362,
+      315,
+      2567,
+      323,
+      35495
+    ],
+    "topk_lp_0": [
+      -0.005745681468397379,
+      -6.380745887756348,
+      -7.193245887756348,
+      -7.568245887756348,
+      -7.630745887756348,
+      -7.693245887756348,
+      -8.130745887756348
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      23094
+    ],
+    "target_next_token": 23094,
+    "draft_top1_token": 23094,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 30,
+    "req": 0,
+    "root_token": 504,
+    "topk_tok_0": [
+      400,
+      1565,
+      506,
+      3070,
+      279,
+      264,
+      220
+    ],
+    "topk_lp_0": [
+      -0.7772436141967773,
+      -1.6522436141967773,
+      -1.7772436141967773,
+      -2.2772436141967773,
+      -4.277243614196777,
+      -4.339743614196777,
+      -4.652243614196777
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      506
+    ],
+    "target_next_token": 506,
+    "draft_top1_token": 400,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 506,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 31,
+    "req": 0,
+    "root_token": 506,
+    "topk_tok_0": [
+      1445,
+      8204,
+      46,
+      5969,
+      4957,
+      1255,
+      1188
+    ],
+    "topk_lp_0": [
+      -0.0581350140273571,
+      -3.0581350326538086,
+      -5.308135032653809,
+      -6.808135032653809,
+      -7.183135032653809,
+      -7.558135032653809,
+      -7.808135032653809
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1445
+    ],
+    "target_next_token": 1445,
+    "draft_top1_token": 1445,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 32,
+    "req": 0,
+    "root_token": 29456,
+    "topk_tok_0": [
+      8,
+      29456,
+      32295,
+      7287,
+      17,
+      46186,
+      7552
+    ],
+    "topk_lp_0": [
+      -0.0006237468332983553,
+      -7.50062370300293,
+      -10.87562370300293,
+      -11.25062370300293,
+      -11.75062370300293,
+      -12.25062370300293,
+      -12.31312370300293
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      8
+    ],
+    "target_next_token": 8,
+    "draft_top1_token": 8,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 33,
+    "req": 0,
+    "root_token": 311,
+    "topk_tok_0": [
+      506,
+      264,
+      3070,
+      1565,
+      400,
+      13482,
+      458
+    ],
+    "topk_lp_0": [
+      -0.002948106499388814,
+      -6.62794828414917,
+      -7.75294828414917,
+      -7.87794828414917,
+      -8.440447807312012,
+      -9.377947807312012,
+      -10.002947807312012
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      506
+    ],
+    "target_next_token": 506,
+    "draft_top1_token": 506,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 34,
+    "req": 0,
+    "root_token": 1445,
+    "topk_tok_0": [
+      1487,
+      77,
+      8,
+      1445,
+      13935,
+      701,
+      90414
+    ],
+    "topk_lp_0": [
+      -0.0004065402317792177,
+      -9.375406265258789,
+      -9.625406265258789,
+      -9.812906265258789,
+      -10.000406265258789,
+      -10.500406265258789,
+      -11.000406265258789
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1487
+    ],
+    "target_next_token": 1487,
+    "draft_top1_token": 1487,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 35,
+    "req": 0,
+    "root_token": 308,
+    "topk_tok_0": [
+      3593,
+      8,
+      701,
+      568,
+      7731,
+      4292,
+      32295
+    ],
+    "topk_lp_0": [
+      -0.050401099026203156,
+      -3.425401210784912,
+      -4.550401210784912,
+      -5.175401210784912,
+      -9.300400733947754,
+      -9.425400733947754,
+      -9.862900733947754
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3593
+    ],
+    "target_next_token": 3593,
+    "draft_top1_token": 3593,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 36,
+    "req": 0,
+    "root_token": 8420,
+    "topk_tok_0": [
+      594,
+      748,
+      374,
+      525,
+      279,
+      4041,
+      25521
+    ],
+    "topk_lp_0": [
+      -0.3322175443172455,
+      -1.3322175741195679,
+      -4.082217693328857,
+      -6.332217693328857,
+      -10.0197172164917,
+      -11.3322172164917,
+      -11.4572172164917
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      594
+    ],
+    "target_next_token": 594,
+    "draft_top1_token": 594,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 37,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      8129,
+      4583,
+      4396,
+      3070,
+      6291,
+      13027,
+      2480
+    ],
+    "topk_lp_0": [
+      -1.0238109827041626,
+      -1.5238109827041626,
+      -1.8988109827041626,
+      -2.398810863494873,
+      -2.773810863494873,
+      -3.523810863494873,
+      -3.773810863494873
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      4583
+    ],
+    "target_next_token": 4583,
+    "draft_top1_token": 8129,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 4583,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 38,
+    "req": 0,
+    "root_token": 4583,
+    "topk_tok_0": [
+      8129,
+      6291,
+      323,
+      13027,
+      2038,
+      11,
+      315
+    ],
+    "topk_lp_0": [
+      -0.9406911730766296,
+      -1.3156912326812744,
+      -1.6906912326812744,
+      -2.1906912326812744,
+      -4.690690994262695,
+      -5.440690994262695,
+      -5.565690994262695
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      323
+    ],
+    "target_next_token": 323,
+    "draft_top1_token": 8129,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 323,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 39,
+    "req": 0,
+    "root_token": 323,
+    "topk_tok_0": [
+      1632,
+      4396,
+      10277,
+      3238,
+      4240,
+      6291,
+      11050
+    ],
+    "topk_lp_0": [
+      -1.4988988637924194,
+      -1.4988988637924194,
+      -1.9988988637924194,
+      -2.373898983001709,
+      -2.998898983001709,
+      -2.998898983001709,
+      -3.123898983001709
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      4396
+    ],
+    "target_next_token": 4396,
+    "draft_top1_token": 1632,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 4396,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 40,
+    "req": 0,
+    "root_token": 4396,
+    "topk_tok_0": [
+      6291,
+      8129,
+      13027,
+      2038,
+      2319,
+      729,
+      323
+    ],
+    "topk_lp_0": [
+      -0.5321425795555115,
+      -1.1571426391601562,
+      -2.6571426391601562,
+      -4.157142639160156,
+      -5.532142639160156,
+      -5.532142639160156,
+      -6.657142639160156
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      8129
+    ],
+    "target_next_token": 8129,
+    "draft_top1_token": 6291,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 8129,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 41,
+    "req": 0,
+    "root_token": 8129,
+    "topk_tok_0": [
+      1447,
+      315,
+      304,
+      1667,
+      448,
+      429,
+      369
+    ],
+    "topk_lp_0": [
+      -0.5458014011383057,
+      -0.9208014011383057,
+      -5.045801162719727,
+      -5.170801162719727,
+      -5.295801162719727,
+      -6.545801162719727,
+      -6.920801162719727
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1447
+    ],
+    "target_next_token": 1447,
+    "draft_top1_token": 1447,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 42,
+    "req": 0,
+    "root_token": 73594,
+    "topk_tok_0": [
+      12669,
+      10135,
+      3288,
+      10374,
+      73594,
+      71929,
+      49552
+    ],
+    "topk_lp_0": [
+      -2.1457441107486375e-05,
+      -12.500020980834961,
+      -12.500020980834961,
+      -13.000020980834961,
+      -13.187520980834961,
+      -13.437520980834961,
+      -14.062520980834961
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12669
+    ],
+    "target_next_token": 12669,
+    "draft_top1_token": 12669,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 43,
+    "req": 0,
+    "root_token": 198,
+    "topk_tok_0": [
+      1499,
+      750,
+      474,
+      1958,
+      2,
+      12669,
+      262
+    ],
+    "topk_lp_0": [
+      -0.18450292944908142,
+      -2.1845028400421143,
+      -3.4345028400421143,
+      -4.434503078460693,
+      -5.434503078460693,
+      -5.684503078460693,
+      -6.934503078460693
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1499
+    ],
+    "target_next_token": 1499,
+    "draft_top1_token": 1499,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 44,
+    "req": 0,
+    "root_token": 19496,
+    "topk_tok_0": [
+      1159,
+      13,
+      271,
+      25,
+      315,
+      474,
+      621
+    ],
+    "topk_lp_0": [
+      -0.0006811682251282036,
+      -9.750680923461914,
+      -10.438180923461914,
+      -10.438180923461914,
+      -10.500680923461914,
+      -10.563180923461914,
+      -10.875680923461914
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1159
+    ],
+    "target_next_token": 1159,
+    "draft_top1_token": 1159,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 45,
+    "req": 0,
+    "root_token": 1759,
+    "topk_tok_0": [
+      271,
+      1406,
+      198,
+      11,
+      2533,
+      7213,
+      3554
+    ],
+    "topk_lp_0": [
+      -0.05117395892739296,
+      -3.0511739253997803,
+      -6.676174163818359,
+      -6.926174163818359,
+      -9.05117416381836,
+      -9.42617416381836,
+      -10.11367416381836
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1406
+    ],
+    "target_next_token": 1406,
+    "draft_top1_token": 271,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 1406,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 46,
+    "req": 0,
+    "root_token": 1406,
+    "topk_tok_0": [
+      750,
+      1040,
+      31,
+      11894,
+      474,
+      707,
+      2830
+    ],
+    "topk_lp_0": [
+      -0.004654881544411182,
+      -5.504654884338379,
+      -8.629654884338379,
+      -9.879654884338379,
+      -10.129654884338379,
+      -10.442154884338379,
+      -10.692154884338379
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      750
+    ],
+    "target_next_token": 750,
+    "draft_top1_token": 750,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 47,
+    "req": 0,
+    "root_token": 702,
+    "topk_tok_0": [
+      12704,
+      50747,
+      33574,
+      70434,
+      44697,
+      27675,
+      666
+    ],
+    "topk_lp_0": [
+      -0.002612869720906019,
+      -7.752613067626953,
+      -8.377613067626953,
+      -9.002613067626953,
+      -9.002613067626953,
+      -9.627613067626953,
+      -9.627613067626953
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12704
+    ],
+    "target_next_token": 12704,
+    "draft_top1_token": 12704,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 48,
+    "req": 0,
+    "root_token": 22801,
+    "topk_tok_0": [
+      47207,
+      1445,
+      21096,
+      46046,
+      1243,
+      30523,
+      7307
+    ],
+    "topk_lp_0": [
+      -0.1265689879655838,
+      -3.6265690326690674,
+      -3.8765690326690674,
+      -5.064068794250488,
+      -5.064068794250488,
+      -5.126568794250488,
+      -5.314068794250488
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      47207
+    ],
+    "target_next_token": 47207,
+    "draft_top1_token": 47207,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 49,
+    "req": 0,
+    "root_token": 25,
+    "topk_tok_0": [
+      1759,
+      508,
+      1140,
+      5765,
+      1416,
+      73086,
+      852
+    ],
+    "topk_lp_0": [
+      -0.005774482619017363,
+      -6.38077449798584,
+      -6.50577449798584,
+      -7.25577449798584,
+      -8.38077449798584,
+      -8.50577449798584,
+      -8.88077449798584
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1759
+    ],
+    "target_next_token": 1759,
+    "draft_top1_token": 1759,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 50,
+    "req": 0,
+    "root_token": 95381,
+    "topk_tok_0": [
+      1125,
+      2467,
+      11,
+      701,
+      60,
+      8066,
+      1259
+    ],
+    "topk_lp_0": [
+      -0.0028675172943621874,
+      -7.002867698669434,
+      -7.002867698669434,
+      -7.627867698669434,
+      -8.127867698669434,
+      -9.565367698669434,
+      -9.877867698669434
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1125
+    ],
+    "target_next_token": 1125,
+    "draft_top1_token": 1125,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 51,
+    "req": 0,
+    "root_token": 12171,
+    "topk_tok_0": [
+      25,
+      549,
+      284,
+      23211,
+      510,
+      1648,
+      374
+    ],
+    "topk_lp_0": [
+      -4.7205765440594405e-05,
+      -10.500046730041504,
+      -11.625046730041504,
+      -13.062546730041504,
+      -13.250046730041504,
+      -13.500046730041504,
+      -13.875046730041504
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      25
+    ],
+    "target_next_token": 25,
+    "draft_top1_token": 25,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 52,
+    "req": 0,
+    "root_token": 2224,
+    "topk_tok_0": [
+      8,
+      60,
+      982,
+      1648,
+      7252,
+      873,
+      25
+    ],
+    "topk_lp_0": [
+      -0.0002489972102921456,
+      -8.875248908996582,
+      -9.875248908996582,
+      -10.500248908996582,
+      -11.000248908996582,
+      -12.687748908996582,
+      -12.875248908996582
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      8
+    ],
+    "target_next_token": 8,
+    "draft_top1_token": 8,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 53,
+    "req": 0,
+    "root_token": 1464,
+    "topk_tok_0": [
+      1807,
+      2224,
+      526,
+      3557,
+      2240,
+      2710,
+      1759
+    ],
+    "topk_lp_0": [
+      -0.21319682896137238,
+      -2.3381967544555664,
+      -2.4631967544555664,
+      -5.588196754455566,
+      -5.963196754455566,
+      -7.275696754455566,
+      -7.338196754455566
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1807
+    ],
+    "target_next_token": 1807,
+    "draft_top1_token": 1807,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 54,
+    "req": 0,
+    "root_token": 510,
+    "topk_tok_0": [
+      262,
+      256,
+      286,
+      197,
+      220,
+      257,
+      310
+    ],
+    "topk_lp_0": [
+      -5.495397272170521e-05,
+      -10.375055313110352,
+      -10.875055313110352,
+      -12.687555313110352,
+      -13.875055313110352,
+      -14.812555313110352,
+      -15.687555313110352
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 55,
+    "req": 0,
+    "root_token": 4210,
+    "topk_tok_0": [
+      3973,
+      4248,
+      7925,
+      15967,
+      24843,
+      1779,
+      29901
+    ],
+    "topk_lp_0": [
+      -0.6449949145317078,
+      -0.7699949145317078,
+      -6.707494735717773,
+      -6.832494735717773,
+      -7.269994735717773,
+      -7.457494735717773,
+      -7.832494735717773
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3973
+    ],
+    "target_next_token": 3973,
+    "draft_top1_token": 3973,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 56,
+    "req": 0,
+    "root_token": 421,
+    "topk_tok_0": [
+      894,
+      1052,
+      421,
+      518,
+      279,
+      264,
+      304
+    ],
+    "topk_lp_0": [
+      -0.09831614792346954,
+      -2.973316192626953,
+      -4.098316192626953,
+      -4.973316192626953,
+      -5.098316192626953,
+      -5.348316192626953,
+      -6.160816192626953
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      304
+    ],
+    "target_next_token": 304,
+    "draft_top1_token": 894,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 304,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 57,
+    "req": 0,
+    "root_token": 304,
+    "topk_tok_0": [
+      894,
+      2661,
+      1052,
+      279,
+      518,
+      419,
+      264
+    ],
+    "topk_lp_0": [
+      -0.34698736667633057,
+      -1.5969873666763306,
+      -2.846987247467041,
+      -3.846987247467041,
+      -5.846987247467041,
+      -5.846987247467041,
+      -6.846987247467041
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2661
+    ],
+    "target_next_token": 2661,
+    "draft_top1_token": 894,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 2661,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 58,
+    "req": 0,
+    "root_token": 2661,
+    "topk_tok_0": [
+      1140,
+      2661,
+      10615,
+      279,
+      264,
+      1372,
+      1334
+    ],
+    "topk_lp_0": [
+      -0.06917829811573029,
+      -2.819178342819214,
+      -5.319178104400635,
+      -7.444178104400635,
+      -8.006678581237793,
+      -8.944178581237793,
+      -8.944178581237793
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1140
+    ],
+    "target_next_token": 1140,
+    "draft_top1_token": 1140,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 59,
+    "req": 0,
+    "root_token": 315,
+    "topk_tok_0": [
+      5109,
+      47902,
+      5424,
+      894,
+      2224,
+      47207,
+      25780
+    ],
+    "topk_lp_0": [
+      -7.772143726469949e-05,
+      -10.625077247619629,
+      -11.500077247619629,
+      -11.500077247619629,
+      -11.875077247619629,
+      -11.875077247619629,
+      -12.375077247619629
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 60,
+    "req": 0,
+    "root_token": 11,
+    "topk_tok_0": [
+      894,
+      525,
+      1052,
+      1378,
+      3767,
+      11,
+      421
+    ],
+    "topk_lp_0": [
+      -0.18362201750278473,
+      -2.308622121810913,
+      -2.683622121810913,
+      -11.558622360229492,
+      -12.183622360229492,
+      -12.683622360229492,
+      -13.058622360229492
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      525
+    ],
+    "target_next_token": 525,
+    "draft_top1_token": 894,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 525,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 61,
+    "req": 0,
+    "root_token": 525,
+    "topk_tok_0": [
+      894,
+      1052,
+      1378,
+      6716,
+      13530,
+      525,
+      315
+    ],
+    "topk_lp_0": [
+      -0.2863367795944214,
+      -1.5363367795944214,
+      -3.411336898803711,
+      -8.286336898803711,
+      -8.411336898803711,
+      -8.786336898803711,
+      -10.411336898803711
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      894
+    ],
+    "target_next_token": 894,
+    "draft_top1_token": 894,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 62,
+    "req": 0,
+    "root_token": 1378,
+    "topk_tok_0": [
+      5109,
+      5424,
+      23921,
+      23942,
+      12460,
+      1378,
+      13530
+    ],
+    "topk_lp_0": [
+      -0.005469121038913727,
+      -6.00546932220459,
+      -6.13046932220459,
+      -7.38046932220459,
+      -9.25546932220459,
+      -11.13046932220459,
+      -11.75546932220459
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 63,
+    "req": 0,
+    "root_token": 12128,
+    "topk_tok_0": [
+      311,
+      1091,
+      320,
+      476,
+      304,
+      315,
+      3786
+    ],
+    "topk_lp_0": [
+      -0.10056746751070023,
+      -2.350567579269409,
+      -9.600567817687988,
+      -9.600567817687988,
+      -9.975567817687988,
+      -10.350567817687988,
+      -10.413067817687988
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      311
+    ],
+    "target_next_token": 311,
+    "draft_top1_token": 311,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 64,
+    "req": 0,
+    "root_token": 1817,
+    "topk_tok_0": [
+      1008,
+      1575,
+      11409,
+      92894,
+      30456,
+      6944,
+      2441
+    ],
+    "topk_lp_0": [
+      -8.260862523457035e-05,
+      -10.125082969665527,
+      -11.125082969665527,
+      -11.750082969665527,
+      -12.125082969665527,
+      -12.375082969665527,
+      -12.875082969665527
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1008
+    ],
+    "target_next_token": 1008,
+    "draft_top1_token": 1008,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 65,
+    "req": 0,
+    "root_token": 1091,
+    "topk_tok_0": [
+      198,
+      279,
+      2661,
+      264,
+      715,
+      1091,
+      894
+    ],
+    "topk_lp_0": [
+      -0.8327980637550354,
+      -0.8327980637550354,
+      -2.7077980041503906,
+      -3.8327980041503906,
+      -4.582798004150391,
+      -4.832798004150391,
+      -5.082798004150391
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2661
+    ],
+    "target_next_token": 2661,
+    "draft_top1_token": 198,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 2661,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 66,
+    "req": 0,
+    "root_token": 2661,
+    "topk_tok_0": [
+      12171,
+      2661,
+      6672,
+      198,
+      897,
+      279,
+      2169
+    ],
+    "topk_lp_0": [
+      -0.040416866540908813,
+      -3.915416955947876,
+      -5.852916717529297,
+      -5.915416717529297,
+      -6.102916717529297,
+      -6.915416717529297,
+      -7.540416717529297
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12171
+    ],
+    "target_next_token": 12171,
+    "draft_top1_token": 12171,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 67,
+    "req": 0,
+    "root_token": 624,
+    "topk_tok_0": [
+      262,
+      1066,
+      286,
+      13874,
+      2303,
+      256,
+      5872
+    ],
+    "topk_lp_0": [
+      -0.058370400220155716,
+      -2.933370351791382,
+      -7.120870590209961,
+      -7.495870590209961,
+      -7.808370590209961,
+      -7.933370590209961,
+      -8.308370590209961
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1066
+    ],
+    "target_next_token": 1066,
+    "draft_top1_token": 262,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 1066,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 68,
+    "req": 0,
+    "root_token": 1066,
+    "topk_tok_0": [
+      262,
+      1066,
+      256,
+      220,
+      257,
+      1667,
+      5872
+    ],
+    "topk_lp_0": [
+      -0.03662071377038956,
+      -4.411620616912842,
+      -4.599120616912842,
+      -5.286620616912842,
+      -5.724120616912842,
+      -7.224120616912842,
+      -7.411620616912842
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 69,
+    "req": 0,
+    "root_token": 17693,
+    "topk_tok_0": [
+      510,
+      25,
+      320,
+      504,
+      279,
+      17693,
+      549
+    ],
+    "topk_lp_0": [
+      -0.5470431447029114,
+      -1.5470430850982666,
+      -3.7970430850982666,
+      -3.8595430850982666,
+      -3.9220430850982666,
+      -4.109543323516846,
+      -4.109543323516846
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      510
+    ],
+    "target_next_token": 510,
+    "draft_top1_token": 510,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 70,
+    "req": 0,
+    "root_token": 286,
+    "topk_tok_0": [
+      5109,
+      1372,
+      10307,
+      549,
+      481,
+      1140,
+      2224
+    ],
+    "topk_lp_0": [
+      -0.11298473179340363,
+      -3.6129846572875977,
+      -3.8629846572875977,
+      -4.362984657287598,
+      -4.362984657287598,
+      -4.675484657287598,
+      -5.425484657287598
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 71,
+    "req": 0,
+    "root_token": 25,
+    "topk_tok_0": [
+      1759,
+      362,
+      576,
+      1140,
+      320,
+      264,
+      5765
+    ],
+    "topk_lp_0": [
+      -0.6379377841949463,
+      -0.8879377841949463,
+      -3.6379377841949463,
+      -4.012937545776367,
+      -5.387937545776367,
+      -5.887937545776367,
+      -5.950437545776367
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      362
+    ],
+    "target_next_token": 362,
+    "draft_top1_token": 1759,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 362,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 72,
+    "req": 0,
+    "root_token": 362,
+    "topk_tok_0": [
+      1140,
+      315,
+      1759,
+      311,
+      8500,
+      10615,
+      13027
+    ],
+    "topk_lp_0": [
+      -0.2286938577890396,
+      -1.6036938428878784,
+      -6.103693962097168,
+      -8.728693962097168,
+      -9.666193962097168,
+      -9.728693962097168,
+      -9.791193962097168
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1140
+    ],
+    "target_next_token": 1140,
+    "draft_top1_token": 1140,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 73,
+    "req": 0,
+    "root_token": 315,
+    "topk_tok_0": [
+      47902,
+      5109,
+      2224,
+      19057,
+      1931,
+      6785,
+      25780
+    ],
+    "topk_lp_0": [
+      -1.0013346672058105,
+      -1.1263346672058105,
+      -1.5013346672058105,
+      -3.3763346672058105,
+      -3.8763346672058105,
+      -4.5013346672058105,
+      -5.1263346672058105
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2224
+    ],
+    "target_next_token": 2224,
+    "draft_top1_token": 47902,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 2224,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 74,
+    "req": 0,
+    "root_token": 2224,
+    "topk_tok_0": [
+      624,
+      5109,
+      16574,
+      3501,
+      198,
+      2750,
+      304
+    ],
+    "topk_lp_0": [
+      -0.5103370547294617,
+      -1.8853371143341064,
+      -2.1353371143341064,
+      -3.2603371143341064,
+      -3.6353371143341064,
+      -3.7603371143341064,
+      -5.072836875915527
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 624,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 5109,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 75,
+    "req": 0,
+    "root_token": 5109,
+    "topk_tok_0": [
+      624,
+      14064,
+      311,
+      198,
+      320,
+      11,
+      13
+    ],
+    "topk_lp_0": [
+      -0.011025341227650642,
+      -6.011025428771973,
+      -6.011025428771973,
+      -6.511025428771973,
+      -6.636025428771973,
+      -7.136025428771973,
+      -7.386025428771973
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      624
+    ],
+    "target_next_token": 624,
+    "draft_top1_token": 624,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 76,
+    "req": 0,
+    "root_token": 286,
+    "topk_tok_0": [
+      12171,
+      58079,
+      24098,
+      18526,
+      28902,
+      42166,
+      56140
+    ],
+    "topk_lp_0": [
+      -0.0002983363519888371,
+      -9.250298500061035,
+      -9.375298500061035,
+      -9.750298500061035,
+      -11.250298500061035,
+      -12.250298500061035,
+      -12.500298500061035
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12171
+    ],
+    "target_next_token": 12171,
+    "draft_top1_token": 12171,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 77,
+    "req": 0,
+    "root_token": 25,
+    "topk_tok_0": [
+      576,
+      362,
+      1527,
+      58079,
+      5765,
+      13293,
+      279
+    ],
+    "topk_lp_0": [
+      -0.31584855914115906,
+      -1.3158485889434814,
+      -6.565848350524902,
+      -8.315848350524902,
+      -9.065848350524902,
+      -9.378348350524902,
+      -9.378348350524902
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      362
+    ],
+    "target_next_token": 362,
+    "draft_top1_token": 576,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 362,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 78,
+    "req": 0,
+    "root_token": 362,
+    "topk_tok_0": [
+      2224,
+      12171,
+      8028,
+      19057,
+      7192,
+      6785,
+      897
+    ],
+    "topk_lp_0": [
+      -0.7255622148513794,
+      -1.2255622148513794,
+      -2.35056209564209,
+      -2.72556209564209,
+      -3.97556209564209,
+      -4.60056209564209,
+      -4.85056209564209
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2224
+    ],
+    "target_next_token": 2224,
+    "draft_top1_token": 2224,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 79,
+    "req": 0,
+    "root_token": 897,
+    "topk_tok_0": [
+      14064,
+      429,
+      18860,
+      369,
+      315,
+      11,
+      279
+    ],
+    "topk_lp_0": [
+      -0.8133429288864136,
+      -1.4383429288864136,
+      -1.8133429288864136,
+      -3.563343048095703,
+      -3.813343048095703,
+      -3.813343048095703,
+      -3.938343048095703
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      14064
+    ],
+    "target_next_token": 14064,
+    "draft_top1_token": 14064,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 80,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      8028,
+      7192,
+      17377,
+      24632,
+      18093,
+      21555,
+      6010
+    ],
+    "topk_lp_0": [
+      -0.42199110984802246,
+      -1.5469911098480225,
+      -2.6719911098480225,
+      -4.296991348266602,
+      -4.421991348266602,
+      -4.796991348266602,
+      -4.796991348266602
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      7192
+    ],
+    "target_next_token": 7192,
+    "draft_top1_token": 8028,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 7192,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 81,
+    "req": 0,
+    "root_token": 7192,
+    "topk_tok_0": [
+      5420,
+      6010,
+      21555,
+      6672,
+      12171,
+      84752,
+      12929
+    ],
+    "topk_lp_0": [
+      -0.3109681308269501,
+      -2.3109681606292725,
+      -2.4359681606292725,
+      -3.5609681606292725,
+      -4.060967922210693,
+      -4.310967922210693,
+      -5.185967922210693
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5420
+    ],
+    "target_next_token": 5420,
+    "draft_top1_token": 5420,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 82,
+    "req": 0,
+    "root_token": 6010,
+    "topk_tok_0": [
+      1948,
+      382,
+      624,
+      6672,
+      311,
+      320,
+      369
+    ],
+    "topk_lp_0": [
+      -0.5966300964355469,
+      -0.9716300964355469,
+      -2.971630096435547,
+      -5.221630096435547,
+      -5.346630096435547,
+      -5.596630096435547,
+      -6.096630096435547
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1948
+    ],
+    "target_next_token": 1948,
+    "draft_top1_token": 1948,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 83,
+    "req": 0,
+    "root_token": 1378,
+    "topk_tok_0": [
+      5109,
+      5424,
+      1378,
+      3265,
+      18093,
+      6716,
+      23921
+    ],
+    "topk_lp_0": [
+      -0.14771290123462677,
+      -2.1477129459381104,
+      -4.022712707519531,
+      -7.022712707519531,
+      -7.897712707519531,
+      -8.272712707519531,
+      -8.522712707519531
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 84,
+    "req": 0,
+    "root_token": 624,
+    "topk_tok_0": [
+      1789,
+      1066,
+      286,
+      6926,
+      3374,
+      2303,
+      12306
+    ],
+    "topk_lp_0": [
+      -0.2320088893175125,
+      -1.732008934020996,
+      -3.857008934020996,
+      -5.732008934020996,
+      -6.482008934020996,
+      -6.732008934020996,
+      -7.232008934020996
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1789
+    ],
+    "target_next_token": 1789,
+    "draft_top1_token": 1789,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 85,
+    "req": 0,
+    "root_token": 262,
+    "topk_tok_0": [
+      5184,
+      3411,
+      17693,
+      18099,
+      10392,
+      549,
+      18068
+    ],
+    "topk_lp_0": [
+      -0.004942698869854212,
+      -5.504942893981934,
+      -9.004942893981934,
+      -9.379942893981934,
+      -9.629942893981934,
+      -9.879942893981934,
+      -10.129942893981934
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5184
+    ],
+    "target_next_token": 5184,
+    "draft_top1_token": 5184,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 86,
+    "req": 0,
+    "root_token": 510,
+    "topk_tok_0": [
+      286,
+      981,
+      414,
+      262,
+      260,
+      1789,
+      688
+    ],
+    "topk_lp_0": [
+      -0.00027640812913887203,
+      -8.750276565551758,
+      -9.750276565551758,
+      -10.250276565551758,
+      -11.000276565551758,
+      -12.750276565551758,
+      -13.687776565551758
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      286
+    ],
+    "target_next_token": 286,
+    "draft_top1_token": 286,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 87,
+    "req": 0,
+    "root_token": 3007,
+    "topk_tok_0": [
+      25,
+      421,
+      476,
+      3425,
+      11,
+      362,
+      6992
+    ],
+    "topk_lp_0": [
+      -0.24745070934295654,
+      -1.6224507093429565,
+      -4.872450828552246,
+      -5.684950828552246,
+      -6.747450828552246,
+      -7.059950828552246,
+      -7.184950828552246
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      421
+    ],
+    "target_next_token": 421,
+    "draft_top1_token": 25,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 421,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 88,
+    "req": 0,
+    "root_token": 421,
+    "topk_tok_0": [
+      894,
+      1052,
+      279,
+      1378,
+      264,
+      902,
+      421
+    ],
+    "topk_lp_0": [
+      -0.34747713804244995,
+      -1.5974771976470947,
+      -2.9724771976470947,
+      -4.347476959228516,
+      -4.472476959228516,
+      -6.347476959228516,
+      -6.597476959228516
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      894
+    ],
+    "target_next_token": 894,
+    "draft_top1_token": 894,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 89,
+    "req": 0,
+    "root_token": 1378,
+    "topk_tok_0": [
+      5109,
+      5424,
+      23942,
+      6716,
+      13530,
+      23921,
+      12460
+    ],
+    "topk_lp_0": [
+      -0.11670925468206406,
+      -2.4917092323303223,
+      -4.616709232330322,
+      -5.241709232330322,
+      -5.491709232330322,
+      -5.616709232330322,
+      -6.116709232330322
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 90,
+    "req": 0,
+    "root_token": 525,
+    "topk_tok_0": [
+      12128,
+      2878,
+      803,
+      518,
+      304,
+      3265,
+      2686
+    ],
+    "topk_lp_0": [
+      -0.13137002289295197,
+      -2.3813700675964355,
+      -4.3813700675964355,
+      -5.0063700675964355,
+      -6.0063700675964355,
+      -6.0063700675964355,
+      -6.3813700675964355
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12128
+    ],
+    "target_next_token": 12128,
+    "draft_top1_token": 12128,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 91,
+    "req": 0,
+    "root_token": 1091,
+    "topk_tok_0": [
+      279,
+      862,
+      429,
+      1817,
+      264,
+      476,
+      807
+    ],
+    "topk_lp_0": [
+      -0.7438969016075134,
+      -2.118896961212158,
+      -2.118896961212158,
+      -2.368896961212158,
+      -2.993896961212158,
+      -3.243896961212158,
+      -3.618896961212158
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      279
+    ],
+    "target_next_token": 279,
+    "draft_top1_token": 279,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 92,
+    "req": 0,
+    "root_token": 12171,
+    "topk_tok_0": [
+      11,
+      26,
+      13,
+      320,
+      770,
+      624,
+      1091
+    ],
+    "topk_lp_0": [
+      -0.042276930063962936,
+      -3.4172768592834473,
+      -5.792276859283447,
+      -6.167276859283447,
+      -6.979776859283447,
+      -7.479776859283447,
+      -7.917276859283447
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      11
+    ],
+    "target_next_token": 11,
+    "draft_top1_token": 11,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 93,
+    "req": 0,
+    "root_token": 3557,
+    "topk_tok_0": [
+      5937,
+      421,
+      3557,
+      18214,
+      11,
+      104420,
+      624
+    ],
+    "topk_lp_0": [
+      -0.005525079555809498,
+      -5.8805251121521,
+      -7.3180251121521,
+      -7.6930251121521,
+      -8.193024635314941,
+      -8.255524635314941,
+      -9.130524635314941
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5937
+    ],
+    "target_next_token": 5937,
+    "draft_top1_token": 5937,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 94,
+    "req": 0,
+    "root_token": 624,
+    "topk_tok_0": [
+      262,
+      1066,
+      1789,
+      286,
+      13874,
+      5872,
+      7129
+    ],
+    "topk_lp_0": [
+      -0.46199288964271545,
+      -1.211992859840393,
+      -3.0869929790496826,
+      -3.9619929790496826,
+      -5.5869927406311035,
+      -7.5869927406311035,
+      -7.6494927406311035
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 95,
+    "req": 0,
+    "root_token": 3190,
+    "topk_tok_0": [
+      262,
+      286,
+      510,
+      25,
+      1066,
+      7129,
+      11
+    ],
+    "topk_lp_0": [
+      -0.016851333901286125,
+      -4.766851425170898,
+      -5.704351425170898,
+      -6.079351425170898,
+      -7.141851425170898,
+      -8.516851425170898,
+      -8.891851425170898
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 96,
+    "req": 0,
+    "root_token": 671,
+    "topk_tok_0": [
+      15967,
+      1416,
+      4248,
+      4230,
+      5512,
+      7405,
+      29279
+    ],
+    "topk_lp_0": [
+      -0.0987653061747551,
+      -3.7237653732299805,
+      -3.8487653732299805,
+      -4.3487653732299805,
+      -5.0987653732299805,
+      -5.2237653732299805,
+      -5.3487653732299805
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      15967
+    ],
+    "target_next_token": 15967,
+    "draft_top1_token": 15967,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 97,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      1140,
+      5109,
+      1334,
+      1946,
+      1372,
+      279,
+      1156
+    ],
+    "topk_lp_0": [
+      -0.025014925748109818,
+      -3.775014877319336,
+      -7.400014877319336,
+      -7.400014877319336,
+      -7.650014877319336,
+      -11.275014877319336,
+      -11.650014877319336
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1140
+    ],
+    "target_next_token": 1140,
+    "draft_top1_token": 1140,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 98,
+    "req": 0,
+    "root_token": 311,
+    "topk_tok_0": [
+      1281,
+      39721,
+      27596,
+      5978,
+      2138,
+      3705,
+      7283
+    ],
+    "topk_lp_0": [
+      -0.5666040182113647,
+      -2.3166041374206543,
+      -2.4416041374206543,
+      -2.9416041374206543,
+      -3.3166041374206543,
+      -3.6916041374206543,
+      -3.8166041374206543
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1281
+    ],
+    "target_next_token": 1281,
+    "draft_top1_token": 1281,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 99,
+    "req": 0,
+    "root_token": 432,
+    "topk_tok_0": [
+      8661,
+      11050,
+      4135,
+      3204,
+      803,
+      42203,
+      4285
+    ],
+    "topk_lp_0": [
+      -0.46454769372940063,
+      -1.7145476341247559,
+      -1.8395476341247559,
+      -3.964547634124756,
+      -5.839547634124756,
+      -6.214547634124756,
+      -6.214547634124756
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      8661
+    ],
+    "target_next_token": 8661,
+    "draft_top1_token": 8661,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 100,
+    "req": 0,
+    "root_token": 311,
+    "topk_tok_0": [
+      1779,
+      9429,
+      1477,
+      29720,
+      12564,
+      1401,
+      975
+    ],
+    "topk_lp_0": [
+      -0.46342402696609497,
+      -1.0884239673614502,
+      -3.58842396736145,
+      -5.463424205780029,
+      -7.838424205780029,
+      -8.338423728942871,
+      -8.463423728942871
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      9429
+    ],
+    "target_next_token": 9429,
+    "draft_top1_token": 1779,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 9429,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 101,
+    "req": 0,
+    "root_token": 9429,
+    "topk_tok_0": [
+      23942,
+      5424,
+      23921,
+      41517,
+      13530,
+      18709,
+      1172
+    ],
+    "topk_lp_0": [
+      -0.12362921237945557,
+      -3.248629093170166,
+      -3.998629093170166,
+      -4.248629093170166,
+      -4.248629093170166,
+      -5.248629093170166,
+      -5.248629093170166
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      23942
+    ],
+    "target_next_token": 23942,
+    "draft_top1_token": 23942,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 102,
+    "req": 0,
+    "root_token": 5424,
+    "topk_tok_0": [
+      198,
+      311,
+      624,
+      369,
+      438,
+      320,
+      1172
+    ],
+    "topk_lp_0": [
+      -0.015332217328250408,
+      -5.390332221984863,
+      -5.765332221984863,
+      -5.890332221984863,
+      -6.890332221984863,
+      -7.390332221984863,
+      -7.640332221984863
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      198
+    ],
+    "target_next_token": 198,
+    "draft_top1_token": 198,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 103,
+    "req": 0,
+    "root_token": 262,
+    "topk_tok_0": [
+      5109,
+      10615,
+      421,
+      3378,
+      10307,
+      369,
+      1629
+    ],
+    "topk_lp_0": [
+      -0.6180253028869629,
+      -0.8680253028869629,
+      -3.243025302886963,
+      -6.993025302886963,
+      -8.493024826049805,
+      -8.743024826049805,
+      -8.993024826049805
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      5109
+    ],
+    "target_next_token": 5109,
+    "draft_top1_token": 5109,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 104,
+    "req": 0,
+    "root_token": 10614,
+    "topk_tok_0": [
+      741,
+      2822,
+      368,
+      198,
+      4857,
+      7213,
+      543
+    ],
+    "topk_lp_0": [
+      -0.02484121173620224,
+      -4.02484130859375,
+      -5.14984130859375,
+      -8.83734130859375,
+      -9.21234130859375,
+      -9.52484130859375,
+      -9.71234130859375
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      741
+    ],
+    "target_next_token": 741,
+    "draft_top1_token": 741,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 105,
+    "req": 0,
+    "root_token": 1066,
+    "topk_tok_0": [
+      262,
+      1066,
+      671,
+      286,
+      2,
+      2461,
+      369
+    ],
+    "topk_lp_0": [
+      -0.00015925093612167984,
+      -8.75015926361084,
+      -14.87515926361084,
+      -15.68765926361084,
+      -16.312658309936523,
+      -16.937658309936523,
+      -17.250158309936523
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 106,
+    "req": 0,
+    "root_token": 671,
+    "topk_tok_0": [
+      4248,
+      23768,
+      54340,
+      1752,
+      1416,
+      5443,
+      4695
+    ],
+    "topk_lp_0": [
+      -0.2080506682395935,
+      -2.2080507278442383,
+      -2.8330507278442383,
+      -5.208050727844238,
+      -5.708050727844238,
+      -5.833050727844238,
+      -6.958050727844238
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      54340
+    ],
+    "target_next_token": 54340,
+    "draft_top1_token": 4248,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 54340,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 107,
+    "req": 0,
+    "root_token": 54340,
+    "topk_tok_0": [
+      1526,
+      1817,
+      23942,
+      279,
+      448,
+      916,
+      1449
+    ],
+    "topk_lp_0": [
+      -0.2793475389480591,
+      -2.0293474197387695,
+      -3.2793474197387695,
+      -3.7793474197387695,
+      -4.0293474197387695,
+      -4.2793474197387695,
+      -5.7793474197387695
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1526
+    ],
+    "target_next_token": 1526,
+    "draft_top1_token": 1526,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 108,
+    "req": 0,
+    "root_token": 279,
+    "topk_tok_0": [
+      10615,
+      1140,
+      23942,
+      1334,
+      13530,
+      6716,
+      5424
+    ],
+    "topk_lp_0": [
+      -0.2526586651802063,
+      -1.5026586055755615,
+      -8.37765884399414,
+      -8.62765884399414,
+      -9.00265884399414,
+      -9.62765884399414,
+      -11.12765884399414
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      10615
+    ],
+    "target_next_token": 10615,
+    "draft_top1_token": 10615,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 109,
+    "req": 0,
+    "root_token": 1140,
+    "topk_tok_0": [
+      323,
+      311,
+      11,
+      315,
+      26297,
+      92759,
+      198
+    ],
+    "topk_lp_0": [
+      -0.32793155312538147,
+      -1.452931523323059,
+      -3.4529316425323486,
+      -5.2029314041137695,
+      -5.5779314041137695,
+      -6.9529314041137695,
+      -7.3279314041137695
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      323
+    ],
+    "target_next_token": 323,
+    "draft_top1_token": 323,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 110,
+    "req": 0,
+    "root_token": 1779,
+    "topk_tok_0": [
+      23942,
+      1817,
+      421,
+      13530,
+      279,
+      23921,
+      369
+    ],
+    "topk_lp_0": [
+      -0.38652345538139343,
+      -2.636523485183716,
+      -2.636523485183716,
+      -3.261523485183716,
+      -3.761523485183716,
+      -3.761523485183716,
+      -3.761523485183716
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      23942
+    ],
+    "target_next_token": 23942,
+    "draft_top1_token": 23942,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 111,
+    "req": 0,
+    "root_token": 5424,
+    "topk_tok_0": [
+      198,
+      311,
+      369,
+      438,
+      448,
+      6672,
+      421
+    ],
+    "topk_lp_0": [
+      -0.027850307524204254,
+      -4.152850151062012,
+      -5.277850151062012,
+      -5.527850151062012,
+      -7.652850151062012,
+      -8.152850151062012,
+      -8.527850151062012
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      198
+    ],
+    "target_next_token": 198,
+    "draft_top1_token": 198,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 112,
+    "req": 0,
+    "root_token": 262,
+    "topk_tok_0": [
+      369,
+      671,
+      7872,
+      600,
+      308,
+      470,
+      23921
+    ],
+    "topk_lp_0": [
+      -9.738924563862383e-05,
+      -9.625097274780273,
+      -11.500097274780273,
+      -12.187597274780273,
+      -12.250097274780273,
+      -13.875097274780273,
+      -14.062597274780273
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      369
+    ],
+    "target_next_token": 369,
+    "draft_top1_token": 369,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 113,
+    "req": 0,
+    "root_token": 600,
+    "topk_tok_0": [
+      304,
+      284,
+      11,
+      488,
+      621,
+      481,
+      518
+    ],
+    "topk_lp_0": [
+      -0.0017113338690251112,
+      -6.751711368560791,
+      -7.876711368560791,
+      -10.251710891723633,
+      -10.939210891723633,
+      -11.064210891723633,
+      -11.314210891723633
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      304
+    ],
+    "target_next_token": 304,
+    "draft_top1_token": 304,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 114,
+    "req": 0,
+    "root_token": 2088,
+    "topk_tok_0": [
+      6901,
+      7,
+      14146,
+      1193,
+      1445,
+      1548,
+      27070
+    ],
+    "topk_lp_0": [
+      -0.7075170874595642,
+      -0.7075170874595642,
+      -4.582517147064209,
+      -6.832517147064209,
+      -7.332517147064209,
+      -7.332517147064209,
+      -8.58251667022705
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      7
+    ],
+    "target_next_token": 7,
+    "draft_top1_token": 6901,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 115,
+    "req": 0,
+    "root_token": 16,
+    "topk_tok_0": [
+      11,
+      8,
+      481,
+      982,
+      701,
+      1648,
+      25
+    ],
+    "topk_lp_0": [
+      -0.024723989889025688,
+      -4.399724006652832,
+      -4.524724006652832,
+      -7.024724006652832,
+      -8.837224006652832,
+      -9.274724006652832,
+      -10.087224006652832
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      11
+    ],
+    "target_next_token": 11,
+    "draft_top1_token": 11,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 116,
+    "req": 0,
+    "root_token": 2422,
+    "topk_tok_0": [
+      47207,
+      21096,
+      21370,
+      44386,
+      20103,
+      8068,
+      17918
+    ],
+    "topk_lp_0": [
+      -0.00011669908417388797,
+      -10.375116348266602,
+      -10.625116348266602,
+      -11.500116348266602,
+      -11.750116348266602,
+      -11.750116348266602,
+      -12.125116348266602
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      47207
+    ],
+    "target_next_token": 47207,
+    "draft_top1_token": 47207,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 117,
+    "req": 0,
+    "root_token": 9957,
+    "topk_tok_0": [
+      286,
+      688,
+      1789,
+      981,
+      414,
+      310,
+      982
+    ],
+    "topk_lp_0": [
+      -1.0490362910786644e-05,
+      -13.06251049041748,
+      -13.12501049041748,
+      -13.50001049041748,
+      -13.62501049041748,
+      -14.00001049041748,
+      -14.43751049041748
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      286
+    ],
+    "target_next_token": 286,
+    "draft_top1_token": 286,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 118,
+    "req": 0,
+    "root_token": 421,
+    "topk_tok_0": [
+      3647,
+      5109,
+      6888,
+      320,
+      10307,
+      2422,
+      10740
+    ],
+    "topk_lp_0": [
+      -0.03837909549474716,
+      -3.663379192352295,
+      -5.038379192352295,
+      -7.038379192352295,
+      -7.288379192352295,
+      -7.538379192352295,
+      -7.975879192352295
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3647
+    ],
+    "target_next_token": 3647,
+    "draft_top1_token": 3647,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 119,
+    "req": 0,
+    "root_token": 47207,
+    "topk_tok_0": [
+      989,
+      47207,
+      5318,
+      58,
+      3809,
+      9697,
+      5109
+    ],
+    "topk_lp_0": [
+      -5.8530047681415454e-05,
+      -12.1875581741333,
+      -12.2500581741333,
+      -12.3125581741333,
+      -12.3125581741333,
+      -12.4375581741333,
+      -12.4375581741333
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      989
+    ],
+    "target_next_token": 989,
+    "draft_top1_token": 989,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 120,
+    "req": 0,
+    "root_token": 60,
+    "topk_tok_0": [
+      481,
+      1365,
+      861,
+      621,
+      2604,
+      961,
+      60
+    ],
+    "topk_lp_0": [
+      -8.272782724816352e-05,
+      -9.500082969665527,
+      -12.625082969665527,
+      -12.687582969665527,
+      -14.562582969665527,
+      -15.250082969665527,
+      -15.625082969665527
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      481
+    ],
+    "target_next_token": 481,
+    "draft_top1_token": 481,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 121,
+    "req": 0,
+    "root_token": 5109,
+    "topk_tok_0": [
+      989,
+      58,
+      3447,
+      9697,
+      1956,
+      600,
+      15481
+    ],
+    "topk_lp_0": [
+      -3.58813522325363e-05,
+      -10.875036239624023,
+      -12.750036239624023,
+      -12.750036239624023,
+      -12.937536239624023,
+      -14.375036239624023,
+      -14.437536239624023
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      989
+    ],
+    "target_next_token": 989,
+    "draft_top1_token": 989,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 122,
+    "req": 0,
+    "root_token": 481,
+    "topk_tok_0": [
+      220,
+      481,
+      320,
+      3070,
+      16,
+      508,
+      12
+    ],
+    "topk_lp_0": [
+      -2.622600959512056e-06,
+      -12.87500286102295,
+      -17.250001907348633,
+      -18.750001907348633,
+      -19.062501907348633,
+      -19.875001907348633,
+      -20.000001907348633
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      220
+    ],
+    "target_next_token": 220,
+    "draft_top1_token": 220,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 123,
+    "req": 0,
+    "root_token": 16,
+    "topk_tok_0": [
+      2467,
+      7252,
+      14013,
+      5053,
+      60,
+      30917,
+      22165
+    ],
+    "topk_lp_0": [
+      -0.004172667395323515,
+      -6.0041728019714355,
+      -7.3791728019714355,
+      -7.6291728019714355,
+      -8.129172325134277,
+      -9.129172325134277,
+      -10.004172325134277
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2467
+    ],
+    "target_next_token": 2467,
+    "draft_top1_token": 2467,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 124,
+    "req": 0,
+    "root_token": 366,
+    "topk_tok_0": [
+      12171,
+      28902,
+      21858,
+      58079,
+      24098,
+      6672,
+      7161
+    ],
+    "topk_lp_0": [
+      -0.00042060110718011856,
+      -9.000420570373535,
+      -9.125420570373535,
+      -10.000420570373535,
+      -10.750420570373535,
+      -10.750420570373535,
+      -11.000420570373535
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      12171
+    ],
+    "target_next_token": 12171,
+    "draft_top1_token": 12171,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 125,
+    "req": 0,
+    "root_token": 510,
+    "topk_tok_0": [
+      310,
+      394,
+      1843,
+      1797,
+      688,
+      298,
+      1060
+    ],
+    "topk_lp_0": [
+      -1.0132738680113107e-05,
+      -12.62501049041748,
+      -13.06251049041748,
+      -13.18751049041748,
+      -14.31251049041748,
+      -14.68751049041748,
+      -14.87501049041748
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      310
+    ],
+    "target_next_token": 310,
+    "draft_top1_token": 310,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 126,
+    "req": 0,
+    "root_token": 470,
+    "topk_tok_0": [
+      3007,
+      330,
+      830,
+      3557,
+      364,
+      470,
+      220
+    ],
+    "topk_lp_0": [
+      -0.0204680897295475,
+      -4.520468235015869,
+      -4.770468235015869,
+      -8.270467758178711,
+      -8.270467758178711,
+      -9.207967758178711,
+      -9.707967758178711
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3007
+    ],
+    "target_next_token": 3007,
+    "draft_top1_token": 3007,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 127,
+    "req": 0,
+    "root_token": 198,
+    "topk_tok_0": [
+      262,
+      286,
+      1066,
+      12,
+      220,
+      7213,
+      256
+    ],
+    "topk_lp_0": [
+      -2.753696753643453e-05,
+      -10.625027656555176,
+      -13.375027656555176,
+      -14.437527656555176,
+      -14.750027656555176,
+      -15.312527656555176,
+      -16.50002670288086
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      262
+    ],
+    "target_next_token": 262,
+    "draft_top1_token": 262,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 128,
+    "req": 0,
+    "root_token": 470,
+    "topk_tok_0": [
+      3557,
+      2240,
+      3007,
+      895,
+      4049,
+      2308,
+      330
+    ],
+    "topk_lp_0": [
+      -0.0011524471919983625,
+      -7.376152515411377,
+      -8.313652038574219,
+      -9.251152038574219,
+      -9.438652038574219,
+      -10.813652038574219,
+      -11.063652038574219
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      3557
+    ],
+    "target_next_token": 3557,
+    "draft_top1_token": 3557,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 129,
+    "req": 0,
+    "root_token": 1406,
+    "topk_tok_0": [
+      2,
+      13874,
+      333,
+      73594,
+      750,
+      1350,
+      1944
+    ],
+    "topk_lp_0": [
+      -0.049794379621744156,
+      -3.7997944355010986,
+      -4.3622941970825195,
+      -6.4872941970825195,
+      -6.8622941970825195,
+      -7.0497941970825195,
+      -7.4247941970825195
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      2
+    ],
+    "target_next_token": 2,
+    "draft_top1_token": 2,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 130,
+    "req": 0,
+    "root_token": 13383,
+    "topk_tok_0": [
+      7032,
+      3393,
+      20150,
+      1273,
+      10431,
+      5048,
+      220
+    ],
+    "topk_lp_0": [
+      -0.7647882103919983,
+      -1.7647881507873535,
+      -1.8897881507873535,
+      -2.1397881507873535,
+      -3.6397881507873535,
+      -4.3272881507873535,
+      -5.2022881507873535
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      10431
+    ],
+    "target_next_token": 10431,
+    "draft_top1_token": 7032,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 10431,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 131,
+    "req": 0,
+    "root_token": 10431,
+    "topk_tok_0": [
+      5048,
+      510,
+      198,
+      323,
+      7032,
+      653,
+      311
+    ],
+    "topk_lp_0": [
+      -0.8872475624084473,
+      -1.2622475624084473,
+      -2.2622475624084473,
+      -2.6372475624084473,
+      -3.4497475624084473,
+      -3.8247475624084473,
+      -4.137247562408447
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      510
+    ],
+    "target_next_token": 510,
+    "draft_top1_token": 5048,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 510,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 132,
+    "req": 0,
+    "root_token": 510,
+    "topk_tok_0": [
+      2,
+      333,
+      1350,
+      20154,
+      1499,
+      1944,
+      6108
+    ],
+    "topk_lp_0": [
+      -0.6375113129615784,
+      -1.3875112533569336,
+      -2.1375112533569336,
+      -3.3875112533569336,
+      -3.8250112533569336,
+      -4.950011253356934,
+      -5.200011253356934
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      333
+    ],
+    "target_next_token": 333,
+    "draft_top1_token": 2,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 333,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 133,
+    "req": 0,
+    "root_token": 333,
+    "topk_tok_0": [
+      1304,
+      702,
+      537,
+      498,
+      31056,
+      1493,
+      419
+    ],
+    "topk_lp_0": [
+      -0.016377780586481094,
+      -5.266377925872803,
+      -7.078877925872803,
+      -7.078877925872803,
+      -7.141377925872803,
+      -7.453877925872803,
+      -7.641377925872803
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1304
+    ],
+    "target_next_token": 1304,
+    "draft_top1_token": 1304,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 134,
+    "req": 0,
+    "root_token": 606,
+    "topk_tok_0": [
+      563,
+      621,
+      13265,
+      1304,
+      18725,
+      21082,
+      4847
+    ],
+    "topk_lp_0": [
+      -0.00494969729334116,
+      -6.254949569702148,
+      -7.004949569702148,
+      -7.129949569702148,
+      -7.754949569702148,
+      -8.504949569702148,
+      -8.504949569702148
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      563
+    ],
+    "target_next_token": 563,
+    "draft_top1_token": 563,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 135,
+    "req": 0,
+    "root_token": 621,
+    "topk_tok_0": [
+      13265,
+      12112,
+      1304,
+      330,
+      15630,
+      47219,
+      364
+    ],
+    "topk_lp_0": [
+      -0.040900345891714096,
+      -3.290900230407715,
+      -6.290900230407715,
+      -7.290900230407715,
+      -10.040900230407715,
+      -10.728400230407715,
+      -10.790900230407715
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      13265
+    ],
+    "target_next_token": 13265,
+    "draft_top1_token": 13265,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 136,
+    "req": 0,
+    "root_token": 3817,
+    "topk_tok_0": [
+      21082,
+      13265,
+      563,
+      4660,
+      1,
+      16179,
+      881
+    ],
+    "topk_lp_0": [
+      -0.00047839165199548006,
+      -8.625478744506836,
+      -8.625478744506836,
+      -9.500478744506836,
+      -11.000478744506836,
+      -11.000478744506836,
+      -12.125478744506836
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      21082
+    ],
+    "target_next_token": 21082,
+    "draft_top1_token": 21082,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 137,
+    "req": 0,
+    "root_token": 262,
+    "topk_tok_0": [
+      1159,
+      671,
+      1173,
+      504,
+      2060,
+      12109,
+      421
+    ],
+    "topk_lp_0": [
+      -0.7961180210113525,
+      -1.0461180210113525,
+      -1.7961180210113525,
+      -3.7961180210113525,
+      -6.233617782592773,
+      -6.921117782592773,
+      -7.296117782592773
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      1173
+    ],
+    "target_next_token": 1173,
+    "draft_top1_token": 1159,
+    "draft_top1_match": false,
+    "target_in_topk": true,
+    "accepted_len": 0,
+    "accepted_d0": false,
+    "correction_token": 1173,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 138,
+    "req": 0,
+    "root_token": 1173,
+    "topk_tok_0": [
+      50593,
+      445,
+      955,
+      8623,
+      2561,
+      7,
+      702
+    ],
+    "topk_lp_0": [
+      -0.0479951873421669,
+      -3.547995090484619,
+      -5.297995090484619,
+      -6.297995090484619,
+      -6.297995090484619,
+      -6.672995090484619,
+      -7.172995090484619
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      50593
+    ],
+    "target_next_token": 50593,
+    "draft_top1_token": 50593,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 139,
+    "req": 0,
+    "root_token": 12704,
+    "topk_tok_0": [
+      22801,
+      7894,
+      75051,
+      30397,
+      21423,
+      12704,
+      23258
+    ],
+    "topk_lp_0": [
+      -0.001649211160838604,
+      -7.876649379730225,
+      -8.876648902893066,
+      -9.251648902893066,
+      -9.251648902893066,
+      -9.376648902893066,
+      -9.626648902893066
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      22801
+    ],
+    "target_next_token": 22801,
+    "draft_top1_token": 22801,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 140,
+    "req": 0,
+    "root_token": 2561,
+    "topk_tok_0": [
+      16,
+      18,
+      15,
+      20,
+      22,
+      58,
+      508
+    ],
+    "topk_lp_0": [
+      -4.6491513785440475e-06,
+      -12.750004768371582,
+      -13.937504768371582,
+      -14.437504768371582,
+      -15.937504768371582,
+      -16.062503814697266,
+      -16.125003814697266
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      16
+    ],
+    "target_next_token": 16,
+    "draft_top1_token": 16,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 141,
+    "req": 0,
+    "root_token": 13,
+    "topk_tok_0": [
+      15,
+      13,
+      11,
+      20,
+      936,
+      2572,
+      1773
+    ],
+    "topk_lp_0": [
+      -0.0019287331961095333,
+      -6.251928806304932,
+      -15.564428329467773,
+      -18.251928329467773,
+      -18.501928329467773,
+      -18.626928329467773,
+      -19.501928329467773
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      15
+    ],
+    "target_next_token": 15,
+    "draft_top1_token": 15,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 142,
+    "req": 0,
+    "root_token": 11,
+    "topk_tok_0": [
+      220,
+      2224,
+      508,
+      353,
+      314,
+      481,
+      17
+    ],
+    "topk_lp_0": [
+      -1.1920858014491387e-05,
+      -11.500011444091797,
+      -14.812511444091797,
+      -15.750011444091797,
+      -16.375011444091797,
+      -17.125011444091797,
+      -17.375011444091797
+    ],
+    "source": "chain_spec_probe",
+    "verify_greedy_tokens": [
+      220
+    ],
+    "target_next_token": 220,
+    "draft_top1_token": 220,
+    "draft_top1_match": true,
+    "target_in_topk": true,
+    "accepted_len": 1,
+    "accepted_d0": true,
+    "correction_token": null,
+    "tree_num_nodes": 2
+  },
+  {
+    "step": 143,
+    "req": 0,
+    "root_token": 17,
+    "topk_tok_0": [
+      13,
+      58,
+      220,
+      11,
+      62,
+      2572,
+      197
+    ],
+    "topk_lp_0": [
+      -2.3841855067985307e-07,
+      -16.0,
+      -16.6875,
+      -16.875,
+      -17.6875,
+      -18.3125,
+      -18.375
+    ],
+    "source": "chain_spec_probe"
+  }
+]

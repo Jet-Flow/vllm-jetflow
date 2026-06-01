@@ -1,0 +1,164 @@
+{
+  "aggregates": {
+    "num_matched_pairs": 3,
+    "num_pairs_with_tail_content_only_issue": 1,
+    "num_pairs_with_tail_layout_issue": 0
+  },
+  "num_prompt_tokens": {
+    "chain": 150,
+    "tree": 150
+  },
+  "per_matched_pair": [
+    {
+      "accepted_prefix_cutoff_abs_pos": 150,
+      "chain_iter": 0,
+      "decoded_position": 0,
+      "expected_tree_only_tail_positions": [],
+      "first_divergent_shared_tail_pos": null,
+      "min_shared_tail_cosine": null,
+      "per_shared_tail_position": [],
+      "per_tree_only_tail_position": [],
+      "shared_tail_positions": [],
+      "shared_tail_slot_mismatch_count": 0,
+      "shared_tail_slot_mod_mismatch_count": 0,
+      "tail_content_only_issue": false,
+      "tail_layout_issue": false,
+      "tree_iter": 0,
+      "tree_only_tail_positions": [],
+      "tree_only_tail_positions_match_expected": true,
+      "tree_only_tail_slot_mod_mismatch_count": 0
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 195,
+      "chain_iter": 25,
+      "decoded_position": 45,
+      "expected_tree_only_tail_positions": [
+        196,
+        197
+      ],
+      "first_divergent_shared_tail_pos": 195,
+      "min_shared_tail_cosine": 0.4390842070352702,
+      "per_shared_tail_position": [
+        {
+          "abs_pos": 195,
+          "chain_idx": 1,
+          "chain_slot": -1,
+          "chain_slot_mod_matches_position_mod": null,
+          "tree_idx": 22,
+          "tree_slot": -1,
+          "tree_slot_matches_chain": true,
+          "tree_slot_mod_matches_position_mod": null
+        }
+      ],
+      "per_tree_only_tail_position": [
+        {
+          "abs_pos": 196,
+          "tree_idx": 43,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        },
+        {
+          "abs_pos": 197,
+          "tree_idx": 183,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        }
+      ],
+      "shared_tail_positions": [
+        195
+      ],
+      "shared_tail_slot_mismatch_count": 0,
+      "shared_tail_slot_mod_mismatch_count": 0,
+      "tail_content_only_issue": true,
+      "tail_layout_issue": false,
+      "tree_iter": 10,
+      "tree_only_tail_positions": [
+        196,
+        197
+      ],
+      "tree_only_tail_positions_match_expected": true,
+      "tree_only_tail_slot_mod_mismatch_count": 0
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 203,
+      "chain_iter": 30,
+      "decoded_position": 53,
+      "expected_tree_only_tail_positions": [
+        203,
+        204,
+        205,
+        206,
+        207
+      ],
+      "first_divergent_shared_tail_pos": null,
+      "min_shared_tail_cosine": null,
+      "per_shared_tail_position": [],
+      "per_tree_only_tail_position": [
+        {
+          "abs_pos": 203,
+          "tree_idx": 22,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        },
+        {
+          "abs_pos": 204,
+          "tree_idx": 43,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        },
+        {
+          "abs_pos": 205,
+          "tree_idx": 168,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        },
+        {
+          "abs_pos": 206,
+          "tree_idx": 208,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        },
+        {
+          "abs_pos": 207,
+          "tree_idx": 250,
+          "tree_slot": -1,
+          "tree_slot_mod_matches_position_mod": null
+        }
+      ],
+      "shared_tail_positions": [],
+      "shared_tail_slot_mismatch_count": 0,
+      "shared_tail_slot_mod_mismatch_count": 0,
+      "tail_content_only_issue": false,
+      "tail_layout_issue": false,
+      "tree_iter": 12,
+      "tree_only_tail_positions": [
+        203,
+        204,
+        205,
+        206,
+        207
+      ],
+      "tree_only_tail_positions_match_expected": true,
+      "tree_only_tail_slot_mod_mismatch_count": 0
+    }
+  ],
+  "sample_index": 0,
+  "verdict": {
+    "block_size": 16,
+    "cosine_threshold": 0.99,
+    "hypothesis_scores": {
+      "H2_tail_precompute_content": {
+        "num_pairs": 1,
+        "suspected": true
+      },
+      "H5_slot_mapping_offbydepth": {
+        "num_pairs": 0,
+        "suspected": false
+      }
+    },
+    "label": "H2_suspected_tail_content_only",
+    "reasons": [
+      "1/3 matched pairs have tail content cosine below threshold while all tested tail layout checks pass. This points at a tree-specific tail precompute content/write-back issue rather than slot layout."
+    ]
+  }
+}

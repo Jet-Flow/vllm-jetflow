@@ -1,0 +1,32 @@
+{
+  "aggregate": {
+    "num_common_steps": 112,
+    "root_token_agreement_rate": 0.25892857142857145,
+    "top1_agreement_rate": 0.25892857142857145,
+    "topk_overlap_rate": 0.26913265306122447
+  },
+  "per_sample": [
+    {
+      "first_top1_divergence_with_same_root": null,
+      "num_common_steps": 55,
+      "num_prompt_tokens": 150,
+      "num_ref_steps": 256,
+      "num_vllm_steps": 55,
+      "root_token_agreement_rate": 0.3090909090909091,
+      "sample_index": 0,
+      "top1_agreement_rate": 0.3090909090909091,
+      "topk_overlap_rate": 0.3142857142857143
+    },
+    {
+      "first_top1_divergence_with_same_root": null,
+      "num_common_steps": 57,
+      "num_prompt_tokens": 141,
+      "num_ref_steps": 256,
+      "num_vllm_steps": 57,
+      "root_token_agreement_rate": 0.21052631578947367,
+      "sample_index": 1,
+      "top1_agreement_rate": 0.21052631578947367,
+      "topk_overlap_rate": 0.22556390977443608
+    }
+  ]
+}

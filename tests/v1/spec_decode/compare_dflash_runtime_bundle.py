@@ -58,6 +58,162 @@ def _compare_tensor(name: str, reference: torch.Tensor, candidate: torch.Tensor)
     return result
 
 
+def _as_int_list(value: Any) -> list[int] | None:
+    if isinstance(value, torch.Tensor):
+        if value.ndim == 0:
+            return [int(value.item())]
+        return [int(x) for x in value.detach().cpu().reshape(-1).tolist()]
+    if isinstance(value, (list, tuple)):
+        try:
+            return [int(x) for x in value]
+        except Exception:
+            return None
+    return None
+
+
+def _first_index(values: list[int], target: int) -> int | None:
+    for idx, value in enumerate(values):
+        if int(value) == int(target):
+            return idx
+    return None
+
+
+def _kv_visibility_audit(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Audit metadata-visible KV length against freshly-written context slots.
+
+    DFlash first pass pre-inserts context K/V with ``context_slot_mapping`` and
+    then runs query tokens with attention metadata ``seq_lens``. If
+    ``seq_lens - query_len`` is larger than the front-valid copied context
+    slots, attention is relying on older cache-resident prefix slots in addition
+    to the freshly written context rows. That can be correct, but it is the
+    exact seam where stale rejected-tail visibility can hide.
+    """
+    seq_lens = _as_int_list(bundle.get("seq_lens"))
+    query_positions = _as_int_list(bundle.get("query_positions"))
+    context_positions = _as_int_list(bundle.get("context_positions"))
+    context_slot_mapping = _as_int_list(bundle.get("context_slot_mapping"))
+    compact_src_slots = _as_int_list(bundle.get("compact_src_slots"))
+    compact_dst_slots = _as_int_list(bundle.get("compact_dst_slots"))
+
+    out: dict[str, Any] = {
+        "available": bool(seq_lens and query_positions),
+        "has_context_slot_mapping": context_slot_mapping is not None,
+        "has_compaction_slots": (
+            compact_src_slots is not None and compact_dst_slots is not None
+        ),
+    }
+    if not seq_lens or not query_positions:
+        out["reason"] = "missing_seq_lens_or_query_positions"
+        return out
+
+    query_len = len(query_positions)
+    seq_len0 = int(seq_lens[0])
+    visible_context_len = seq_len0 - query_len
+    out.update(
+        {
+            "seq_len0": seq_len0,
+            "query_len": query_len,
+            "visible_context_len": visible_context_len,
+            "query_positions_head": query_positions[:16],
+        }
+    )
+
+    if context_positions is not None:
+        out.update(
+            {
+                "num_context_rows": len(context_positions),
+                "context_positions_head": context_positions[:16],
+            }
+        )
+    if context_slot_mapping is not None:
+        first_pad_idx = _first_index(context_slot_mapping, -1)
+        front_valid_len = (
+            first_pad_idx
+            if first_pad_idx is not None
+            else len(context_slot_mapping)
+        )
+        visible_slots = context_slot_mapping[: max(0, visible_context_len)]
+        num_pad_slots_in_visible = sum(1 for s in visible_slots if int(s) == -1)
+        refreshed_valid_slots = [s for s in context_slot_mapping if int(s) >= 0]
+        out.update(
+            {
+                "first_pad_idx": first_pad_idx,
+                "front_valid_context_len": front_valid_len,
+                "refreshed_valid_slot_count": len(refreshed_valid_slots),
+                "visible_exceeds_front_valid_context": (
+                    visible_context_len > front_valid_len
+                ),
+                "visible_exceeds_refreshed_valid_slots": (
+                    visible_context_len > len(refreshed_valid_slots)
+                ),
+                "visible_tail_not_refreshed_count": max(
+                    0, visible_context_len - front_valid_len
+                ),
+                "num_pad_slots_inside_visible_window": num_pad_slots_in_visible,
+                "context_slot_mapping_head": context_slot_mapping[:16],
+                "visible_slot_mapping_head": visible_slots[:16],
+            }
+        )
+
+    if compact_src_slots is not None and compact_dst_slots is not None:
+        out.update(
+            {
+                "compact_src_slots_count": len(compact_src_slots),
+                "compact_dst_slots_count": len(compact_dst_slots),
+                "compact_src_slots_head": compact_src_slots[:16],
+                "compact_dst_slots_head": compact_dst_slots[:16],
+            }
+        )
+
+    if (
+        context_slot_mapping is not None
+        and out.get("visible_exceeds_front_valid_context") is True
+    ):
+        out["interpretation_hint"] = (
+            "The metadata-visible context is longer than the front-valid "
+            "freshly-written context rows. Attention therefore depends on "
+            "older cache-resident prefix slots beyond this iteration's copied "
+            "context rows; stale rejected-tail visibility must be ruled out at "
+            "the cache/block-table level."
+        )
+    elif context_slot_mapping is not None:
+        out["interpretation_hint"] = (
+            "The metadata-visible context is covered by the freshly-written "
+            "front-valid context rows for this bundle."
+        )
+    else:
+        out["interpretation_hint"] = (
+            "No context_slot_mapping was captured, so the audit cannot compare "
+            "metadata-visible length to freshly-written context slots."
+        )
+    return out
+
+
+def _compare_kv_visibility(
+    reference_audit: dict[str, Any],
+    vllm_audit: dict[str, Any],
+) -> dict[str, Any]:
+    keys = [
+        "visible_context_len",
+        "front_valid_context_len",
+        "visible_tail_not_refreshed_count",
+        "num_pad_slots_inside_visible_window",
+        "refreshed_valid_slot_count",
+    ]
+    out: dict[str, Any] = {}
+    for key in keys:
+        out[f"{key}_match"] = reference_audit.get(key) == vllm_audit.get(key)
+        out[f"reference_{key}"] = reference_audit.get(key)
+        out[f"vllm_{key}"] = vllm_audit.get(key)
+    out["vllm_visible_exceeds_front_valid_context"] = vllm_audit.get(
+        "visible_exceeds_front_valid_context"
+    )
+    out["reference_visible_exceeds_front_valid_context"] = reference_audit.get(
+        "visible_exceeds_front_valid_context"
+    )
+    return out
+
+
 def compare_runtime_bundles(
     *,
     reference_bundle: str,
@@ -82,6 +238,7 @@ def compare_runtime_bundles(
         "raw_target_hidden_states",
         "combined_target_hidden_states",
         "context_positions",
+        "context_slot_mapping",
         "query_input_ids",
         "query_positions",
         "token_indices_to_sample",
@@ -170,6 +327,14 @@ def compare_runtime_bundles(
             "vllm": cand_topk,
             "intersection": sorted(set(ref_topk).intersection(cand_topk)),
         }
+
+    ref_kv_audit = _kv_visibility_audit(ref)
+    vllm_kv_audit = _kv_visibility_audit(cand)
+    summary["kv_visibility_audit"] = {
+        "reference": ref_kv_audit,
+        "vllm": vllm_kv_audit,
+        "comparison": _compare_kv_visibility(ref_kv_audit, vllm_kv_audit),
+    }
 
     if output_json is not None:
         output_path = Path(output_json)

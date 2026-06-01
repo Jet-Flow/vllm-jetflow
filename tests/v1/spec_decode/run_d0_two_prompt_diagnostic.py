@@ -113,6 +113,9 @@ def _make_sample_summary(
     scalar_cmp = compare_summary.get("scalar_fields", {})
     topk_lp_cmp = tensor_cmp.get("topk_lp_0", {})
     builder_topk_tok_cmp = tensor_cmp.get("builder_topk_tok", {})
+    kv_audit = compare_summary.get("kv_visibility_audit", {})
+    vllm_kv_audit = kv_audit.get("vllm", {})
+    kv_audit_cmp = kv_audit.get("comparison", {})
 
     return {
         "sample_index": sample_index,
@@ -154,6 +157,22 @@ def _make_sample_summary(
             "builder_tree_depths_num_unequal": tensor_cmp.get(
                 "builder_tree_depths", {}
             ).get("num_unequal"),
+            "kv_visible_context_len": vllm_kv_audit.get("visible_context_len"),
+            "kv_front_valid_context_len": vllm_kv_audit.get(
+                "front_valid_context_len"
+            ),
+            "kv_visible_tail_not_refreshed_count": vllm_kv_audit.get(
+                "visible_tail_not_refreshed_count"
+            ),
+            "kv_visible_exceeds_front_valid_context": vllm_kv_audit.get(
+                "visible_exceeds_front_valid_context"
+            ),
+            "kv_num_pad_slots_inside_visible_window": vllm_kv_audit.get(
+                "num_pad_slots_inside_visible_window"
+            ),
+            "kv_visible_tail_not_refreshed_count_match": kv_audit_cmp.get(
+                "visible_tail_not_refreshed_count_match"
+            ),
         },
     }
 
@@ -178,6 +197,7 @@ def run_diagnostic(
     draft_model: str,
     sample_indices: list[int],
     tree_attn_kernel: str,
+    max_draft_passes: int,
 ) -> dict[str, Any]:
     debug_dir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
@@ -219,6 +239,8 @@ def run_diagnostic(
             "--enforce-eager",
             "--tree-attn-kernel",
             tree_attn_kernel,
+            "--max-draft-passes",
+            str(max_draft_passes),
             "--prompt-set",
             "humaneval",
             "--sample-index",
@@ -277,6 +299,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--draft-model", default=DEFAULT_DRAFT_MODEL)
     parser.add_argument("--sample-indices", default="0,1")
     parser.add_argument("--tree-attn-kernel", default="optimus")
+    parser.add_argument("--max-draft-passes", type=int, default=0)
     return parser
 
 
@@ -289,6 +312,7 @@ def main() -> None:
         draft_model=args.draft_model,
         sample_indices=_parse_sample_indices(args.sample_indices),
         tree_attn_kernel=args.tree_attn_kernel,
+        max_draft_passes=args.max_draft_passes,
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
 

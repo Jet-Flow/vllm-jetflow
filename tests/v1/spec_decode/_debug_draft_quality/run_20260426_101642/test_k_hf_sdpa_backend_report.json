@@ -1,0 +1,482 @@
+{
+  "anchor_pairwise": {
+    "hf_kernel_default_vs_vllm_kernel": {
+      "a_norm": 162.0648573756289,
+      "b_norm": 157.52723542113145,
+      "cosine": 0.8337517761874683,
+      "l2_diff": 92.244788173485,
+      "len": 4096,
+      "max_abs_diff": 9.10546875,
+      "status": "ok"
+    },
+    "hf_manual_fp32_vs_hf_kernel_default": {
+      "a_norm": 162.05207401469232,
+      "b_norm": 162.0648573756289,
+      "cosine": 0.999999370641145,
+      "l2_diff": 0.1822664255673744,
+      "len": 4096,
+      "max_abs_diff": 0.03125,
+      "status": "ok"
+    },
+    "hf_manual_fp32_vs_vllm_kernel": {
+      "a_norm": 162.05207401469232,
+      "b_norm": 157.52723542113145,
+      "cosine": 0.833733781310834,
+      "l2_diff": 92.2455108490231,
+      "len": 4096,
+      "max_abs_diff": 9.10546875,
+      "status": "ok"
+    }
+  },
+  "anchors_present": {
+    "hf_kernel_default": true,
+    "hf_manual_fp32": true,
+    "vllm_kernel": true
+  },
+  "cosine_threshold": 0.999,
+  "hf_sdpa_metadata": {
+    "attn_implementation": "flash_attention_2",
+    "d0_mask_num_attended": 152,
+    "d0_mask_num_masked": 14,
+    "k3_flash_bf16_error": "No available kernel. Aborting execution.",
+    "k_dtype": "torch.bfloat16",
+    "k_shape": [
+      1,
+      32,
+      166,
+      128
+    ],
+    "layer_idx": 1,
+    "mask_dtype": "torch.bfloat16",
+    "mask_max": 0.0,
+    "mask_min": -3.3895313892515355e+38,
+    "mask_shape": [
+      1,
+      1,
+      16,
+      166
+    ],
+    "mask_synthesized_causal": true,
+    "num_heads": 32,
+    "num_kv_heads": 8,
+    "q_dtype": "torch.bfloat16",
+    "q_shape": [
+      1,
+      32,
+      16,
+      128
+    ],
+    "scaling": 0.08838834764831845,
+    "sdp_flags": {
+      "cudnn_sdp_enabled": false,
+      "flash_sdp_enabled": true,
+      "math_sdp_enabled": true,
+      "mem_efficient_sdp_enabled": true
+    },
+    "sliding_window": null,
+    "v_dtype": "torch.bfloat16",
+    "v_shape": [
+      1,
+      32,
+      166,
+      128
+    ]
+  },
+  "per_variant": {
+    "k1_math_bf16": {
+      "stats": {
+        "abs_mean": 1.9254096746444702,
+        "dtype": "torch.bfloat16",
+        "norm": 162.0520782470703,
+        "shape": [
+          4096
+        ],
+        "std": 2.531860828399658
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999993706432113,
+        "l2_diff": 0.18226614881627617,
+        "len": 4096,
+        "max_abs_diff": 0.03125,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.9999999999942902,
+        "l2_diff": 0.0005476216823729601,
+        "len": 4096,
+        "max_abs_diff": 0.00048828125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8337337375663594,
+        "l2_diff": 92.24552285429148,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    },
+    "k2_efficient_bf16": {
+      "stats": {
+        "abs_mean": 1.9256041049957275,
+        "dtype": "torch.bfloat16",
+        "norm": 162.06484985351562,
+        "shape": [
+          4096
+        ],
+        "std": 2.5320608615875244
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999999999999999,
+        "l2_diff": 0.0,
+        "len": 4096,
+        "max_abs_diff": 0.0,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.999999370641145,
+        "l2_diff": 0.1822664255673744,
+        "len": 4096,
+        "max_abs_diff": 0.03125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8337517761874683,
+        "l2_diff": 92.244788173485,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    },
+    "k4_cudnn_bf16": {
+      "stats": {
+        "abs_mean": 1.9256041049957275,
+        "dtype": "torch.bfloat16",
+        "norm": 162.06484985351562,
+        "shape": [
+          4096
+        ],
+        "std": 2.5320608615875244
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999999999999999,
+        "l2_diff": 0.0,
+        "len": 4096,
+        "max_abs_diff": 0.0,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.999999370641145,
+        "l2_diff": 0.1822664255673744,
+        "len": 4096,
+        "max_abs_diff": 0.03125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8337517761874683,
+        "l2_diff": 92.244788173485,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    },
+    "k5_math_fp32": {
+      "stats": {
+        "abs_mean": 1.9254096746444702,
+        "dtype": "torch.bfloat16",
+        "norm": 162.0520782470703,
+        "shape": [
+          4096
+        ],
+        "std": 2.531860828399658
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999993706432113,
+        "l2_diff": 0.18226614881627617,
+        "len": 4096,
+        "max_abs_diff": 0.03125,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.9999999999942902,
+        "l2_diff": 0.0005476216823729601,
+        "len": 4096,
+        "max_abs_diff": 0.00048828125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.05207371322615,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8337337375663594,
+        "l2_diff": 92.24552285429148,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    },
+    "k6_default_bf16": {
+      "stats": {
+        "abs_mean": 1.9256041049957275,
+        "dtype": "torch.bfloat16",
+        "norm": 162.06484985351562,
+        "shape": [
+          4096
+        ],
+        "std": 2.5320608615875244
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999999999999999,
+        "l2_diff": 0.0,
+        "len": 4096,
+        "max_abs_diff": 0.0,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.999999370641145,
+        "l2_diff": 0.1822664255673744,
+        "len": 4096,
+        "max_abs_diff": 0.03125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.0648573756289,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8337517761874683,
+        "l2_diff": 92.244788173485,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    },
+    "k7_manual_bf16": {
+      "stats": {
+        "abs_mean": 1.9264776706695557,
+        "dtype": "torch.bfloat16",
+        "norm": 162.25985717773438,
+        "shape": [
+          4096
+        ],
+        "std": 2.5351123809814453
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.25985043827203,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9998927223172497,
+        "l2_diff": 2.383296688794904,
+        "len": 4096,
+        "max_abs_diff": 0.2578125,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.25985043827203,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.9998947970200052,
+        "l2_diff": 2.3612920376406907,
+        "len": 4096,
+        "max_abs_diff": 0.2578125,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.25985043827203,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8327022154054193,
+        "l2_diff": 92.60008666019083,
+        "len": 4096,
+        "max_abs_diff": 9.16796875,
+        "status": "ok"
+      }
+    },
+    "k8_softmax_fp32_matmul_bf16": {
+      "stats": {
+        "abs_mean": 1.9257235527038574,
+        "dtype": "torch.bfloat16",
+        "norm": 162.09033203125,
+        "shape": [
+          4096
+        ],
+        "std": 2.532459020614624
+      },
+      "vs_hf_kernel_default": {
+        "a_norm": 162.09033813562854,
+        "b_norm": 162.0648573756289,
+        "cosine": 0.9999965289732144,
+        "l2_diff": 0.42779796465708897,
+        "len": 4096,
+        "max_abs_diff": 0.0625,
+        "status": "ok"
+      },
+      "vs_hf_manual_fp32": {
+        "a_norm": 162.09033813562854,
+        "b_norm": 162.05207401469232,
+        "cosine": 0.9999966541353374,
+        "l2_diff": 0.4209944206011933,
+        "len": 4096,
+        "max_abs_diff": 0.0625,
+        "status": "ok"
+      },
+      "vs_vllm_kernel": {
+        "a_norm": 162.09033813562854,
+        "b_norm": 157.52723542113145,
+        "cosine": 0.8338326975176242,
+        "l2_diff": 92.23087887418473,
+        "len": 4096,
+        "max_abs_diff": 9.10546875,
+        "status": "ok"
+      }
+    }
+  },
+  "variant_stats": {
+    "k1_math_bf16": {
+      "abs_mean": 1.9254096746444702,
+      "dtype": "torch.bfloat16",
+      "norm": 162.0520782470703,
+      "shape": [
+        4096
+      ],
+      "std": 2.531860828399658
+    },
+    "k2_efficient_bf16": {
+      "abs_mean": 1.9256041049957275,
+      "dtype": "torch.bfloat16",
+      "norm": 162.06484985351562,
+      "shape": [
+        4096
+      ],
+      "std": 2.5320608615875244
+    },
+    "k4_cudnn_bf16": {
+      "abs_mean": 1.9256041049957275,
+      "dtype": "torch.bfloat16",
+      "norm": 162.06484985351562,
+      "shape": [
+        4096
+      ],
+      "std": 2.5320608615875244
+    },
+    "k5_math_fp32": {
+      "abs_mean": 1.9254096746444702,
+      "dtype": "torch.bfloat16",
+      "norm": 162.0520782470703,
+      "shape": [
+        4096
+      ],
+      "std": 2.531860828399658
+    },
+    "k6_default_bf16": {
+      "abs_mean": 1.9256041049957275,
+      "dtype": "torch.bfloat16",
+      "norm": 162.06484985351562,
+      "shape": [
+        4096
+      ],
+      "std": 2.5320608615875244
+    },
+    "k7_manual_bf16": {
+      "abs_mean": 1.9264776706695557,
+      "dtype": "torch.bfloat16",
+      "norm": 162.25985717773438,
+      "shape": [
+        4096
+      ],
+      "std": 2.5351123809814453
+    },
+    "k8_softmax_fp32_matmul_bf16": {
+      "abs_mean": 1.9257235527038574,
+      "dtype": "torch.bfloat16",
+      "norm": 162.09033203125,
+      "shape": [
+        4096
+      ],
+      "std": 2.532459020614624
+    }
+  },
+  "verdict": {
+    "interpretation_hint": "At least one variant reproduces HF's default kernel output but none match the vLLM / textbook SDPA output; this suggests the HF default kernel is systematically deviating (backend selection and/or bf16 precision) from textbook SDPA, while vLLM's flash-attn matches textbook.",
+    "variants_matching_hf_kernel_default": [
+      {
+        "cosine": 0.9999993706432113,
+        "variant": "k1_math_bf16"
+      },
+      {
+        "cosine": 0.9999999999999999,
+        "variant": "k2_efficient_bf16"
+      },
+      {
+        "cosine": 0.9999999999999999,
+        "variant": "k4_cudnn_bf16"
+      },
+      {
+        "cosine": 0.9999993706432113,
+        "variant": "k5_math_fp32"
+      },
+      {
+        "cosine": 0.9999999999999999,
+        "variant": "k6_default_bf16"
+      },
+      {
+        "cosine": 0.9998927223172497,
+        "variant": "k7_manual_bf16"
+      },
+      {
+        "cosine": 0.9999965289732144,
+        "variant": "k8_softmax_fp32_matmul_bf16"
+      }
+    ],
+    "variants_matching_hf_manual_fp32": [
+      {
+        "cosine": 0.9999999999942902,
+        "variant": "k1_math_bf16"
+      },
+      {
+        "cosine": 0.999999370641145,
+        "variant": "k2_efficient_bf16"
+      },
+      {
+        "cosine": 0.999999370641145,
+        "variant": "k4_cudnn_bf16"
+      },
+      {
+        "cosine": 0.9999999999942902,
+        "variant": "k5_math_fp32"
+      },
+      {
+        "cosine": 0.999999370641145,
+        "variant": "k6_default_bf16"
+      },
+      {
+        "cosine": 0.9998947970200052,
+        "variant": "k7_manual_bf16"
+      },
+      {
+        "cosine": 0.9999966541353374,
+        "variant": "k8_softmax_fp32_matmul_bf16"
+      }
+    ],
+    "variants_matching_vllm_kernel": []
+  }
+}

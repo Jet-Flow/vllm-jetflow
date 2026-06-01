@@ -1,0 +1,87 @@
+{
+  "aggregates": {
+    "num_matched_pairs": 5,
+    "num_pairs_with_shared_valid_tail_rows": 0,
+    "num_pairs_with_valid_tail_divergence": 0,
+    "num_pairs_without_shared_valid_tail_rows": 5,
+    "shared_valid_tail_cosine": {
+      "count": 0
+    }
+  },
+  "num_prompt_tokens": {
+    "chain": 150,
+    "tree": 150
+  },
+  "per_matched_pair": [
+    {
+      "accepted_prefix_cutoff_abs_pos": 150,
+      "chain_iter": 0,
+      "decoded_position": 0,
+      "first_divergent_shared_valid_tail_pos": null,
+      "has_valid_tail_divergence": false,
+      "min_shared_valid_tail_cosine": null,
+      "num_shared_valid_tail_rows": 0,
+      "per_shared_valid_tail_position": [],
+      "shared_tail_candidate_positions": [],
+      "tree_iter": 0
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 161,
+      "chain_iter": 6,
+      "decoded_position": 11,
+      "first_divergent_shared_valid_tail_pos": null,
+      "has_valid_tail_divergence": false,
+      "min_shared_valid_tail_cosine": null,
+      "num_shared_valid_tail_rows": 0,
+      "per_shared_valid_tail_position": [],
+      "shared_tail_candidate_positions": [],
+      "tree_iter": 2
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 171,
+      "chain_iter": 12,
+      "decoded_position": 21,
+      "first_divergent_shared_valid_tail_pos": null,
+      "has_valid_tail_divergence": false,
+      "min_shared_valid_tail_cosine": null,
+      "num_shared_valid_tail_rows": 0,
+      "per_shared_valid_tail_position": [],
+      "shared_tail_candidate_positions": [],
+      "tree_iter": 4
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 195,
+      "chain_iter": 25,
+      "decoded_position": 45,
+      "first_divergent_shared_valid_tail_pos": null,
+      "has_valid_tail_divergence": false,
+      "min_shared_valid_tail_cosine": null,
+      "num_shared_valid_tail_rows": 0,
+      "per_shared_valid_tail_position": [],
+      "shared_tail_candidate_positions": [
+        195
+      ],
+      "tree_iter": 10
+    },
+    {
+      "accepted_prefix_cutoff_abs_pos": 203,
+      "chain_iter": 30,
+      "decoded_position": 53,
+      "first_divergent_shared_valid_tail_pos": null,
+      "has_valid_tail_divergence": false,
+      "min_shared_valid_tail_cosine": null,
+      "num_shared_valid_tail_rows": 0,
+      "per_shared_valid_tail_position": [],
+      "shared_tail_candidate_positions": [],
+      "tree_iter": 12
+    }
+  ],
+  "sample_index": 0,
+  "verdict": {
+    "cosine_threshold": 0.99,
+    "label": "inconclusive_no_shared_valid_tail_rows",
+    "reasons": [
+      "No matched pair contains a shared tail position with slot != -1 on both tree and chain. The previously observed tail-only mismatch is confined to masked rows, so this audit cannot yet attribute the residual gap to written tail K/V."
+    ]
+  }
+}

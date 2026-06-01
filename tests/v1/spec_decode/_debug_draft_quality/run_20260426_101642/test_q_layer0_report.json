@@ -1,0 +1,525 @@
+{
+  "chain_captured_positions": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    9,
+    11,
+    13,
+    15,
+    18,
+    21,
+    27,
+    36,
+    45,
+    53,
+    69,
+    87,
+    105,
+    138,
+    176,
+    214
+  ],
+  "cosine_threshold": 0.999,
+  "matched_positions": [
+    0,
+    45,
+    53
+  ],
+  "per_matched_pair": [
+    {
+      "chain_iter": 0,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9998228266891943,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9998228266891943
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9999710003254356
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.999970998422564
+        }
+      },
+      "position": 0,
+      "root_token_chain": 1249,
+      "root_token_tree": 1249,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 150,
+        "chain_context_positions_head": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "chain_context_positions_len": 150,
+        "chain_context_slot_mapping_head": [
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "chain_context_slot_mapping_len": 150,
+        "context_positions_first_mismatch_idx": null,
+        "context_positions_num_mismatch_in_overlap": 0,
+        "context_slot_mapping_first_mismatch_idx": null,
+        "context_slot_mapping_num_mismatch_in_overlap": 0,
+        "overlap_len": 150,
+        "tree_context_len": 150,
+        "tree_context_positions_head": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "tree_context_positions_len": 150,
+        "tree_context_slot_mapping_head": [
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "tree_context_slot_mapping_len": 150
+      },
+      "tree_iter": 0
+    },
+    {
+      "chain_iter": 25,
+      "pair_first_low_tap": {
+        "cosine": 0.8909223060388587,
+        "tap": "layer0_self_attn_out"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.19158955650236284,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.19158955650236284
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.8909213008009281
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.8909223060388587
+        }
+      },
+      "position": 45,
+      "root_token_chain": 1172,
+      "root_token_tree": 1172,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          194,
+          195
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          322,
+          -1
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          191,
+          192,
+          193,
+          194,
+          192,
+          192,
+          192,
+          192
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          319,
+          320,
+          321,
+          322,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 10
+    },
+    {
+      "chain_iter": 30,
+      "pair_first_low_tap": {
+        "cosine": 0.8811563359111703,
+        "tap": "layer0_self_attn_out"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.17338437914129726,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.17338437914129726
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.8811568217393068
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.8811563359111703
+        }
+      },
+      "position": 53,
+      "root_token_chain": 504,
+      "root_token_tree": 504,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          201,
+          202
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          329,
+          330
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          199,
+          200,
+          201,
+          202,
+          200,
+          200,
+          200,
+          200
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          327,
+          328,
+          329,
+          330,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 12
+    }
+  ],
+  "sample_index": 0,
+  "summary": {
+    "capture_row": null,
+    "num_captured_chain_positions": 21,
+    "num_captured_tree_positions": 16,
+    "num_matched_pairs": 3,
+    "num_pairs_with_context_positions_mismatch_in_overlap": 2,
+    "num_pairs_with_context_slot_mapping_mismatch_in_overlap": 2,
+    "per_tap": {
+      "layer0_input_hidden": {
+        "mean_tree_vs_chain_cosine": 1.0,
+        "min_tree_vs_chain_cosine": 1.0,
+        "num_pairs": 3
+      },
+      "layer0_input_residual": {
+        "mean_tree_vs_chain_cosine": null,
+        "min_tree_vs_chain_cosine": null,
+        "num_pairs": 0
+      },
+      "layer0_output_hidden": {
+        "mean_tree_vs_chain_cosine": 0.45493225411095145,
+        "min_tree_vs_chain_cosine": 0.17338437914129726,
+        "num_pairs": 3
+      },
+      "layer0_output_residual": {
+        "mean_tree_vs_chain_cosine": 0.9240163742885569,
+        "min_tree_vs_chain_cosine": 0.8811568217393068,
+        "num_pairs": 3
+      },
+      "layer0_self_attn_out": {
+        "mean_tree_vs_chain_cosine": 0.9240165467908644,
+        "min_tree_vs_chain_cosine": 0.8811563359111703,
+        "num_pairs": 3
+      }
+    },
+    "row_label": "depth-0 row"
+  },
+  "tap_order": [
+    "layer0_input_hidden",
+    "layer0_input_residual",
+    "layer0_self_attn_out",
+    "layer0_output_hidden",
+    "layer0_output_residual"
+  ],
+  "tree_captured_positions": [
+    0,
+    7,
+    12,
+    16,
+    20,
+    24,
+    30,
+    35,
+    38,
+    45,
+    53,
+    67,
+    98,
+    125,
+    144,
+    199
+  ],
+  "verdict": {
+    "capture_row": null,
+    "cosine_threshold": 0.999,
+    "first_low_cos": {
+      "cosine": 0.8909223060388587,
+      "position": 45,
+      "tap": "layer0_self_attn_out"
+    },
+    "interpretation_hint": "For the depth-0 row, layer-0 INPUT cos is ~1.0000 but self_attn_out cos is 0.9240.  Divergence is born inside layer-0 self_attn -- i.e. the paged-attention kernel reads different K/V content, different attention mask, or different slot indices.  Cross-reference slot_mapping fields in ``per_matched_pair`` to pin H5-slot; if slot-mapping matches, inspect accepted-prefix ctx_per_position in the Test-L captures to disambiguate H1 vs H2/H3.",
+    "mean_layer0_input_hidden_cosine": 1.0,
+    "mean_layer0_output_hidden_cosine": 0.45493225411095145,
+    "mean_layer0_self_attn_out_cosine": 0.9240165467908644,
+    "num_matched_pairs": 3,
+    "row_label": "depth-0 row",
+    "sample_index": 0
+  }
+}

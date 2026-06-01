@@ -1,0 +1,481 @@
+{
+  "aggregate": {
+    "num_branch_rows_examined": 12,
+    "num_captured_iters": 12,
+    "num_diff_actual_input_id_and_low_hidden_cos": 0,
+    "num_rows_diff_actual_input_id": 0,
+    "num_rows_missing_actual_forward_meta": 0,
+    "num_rows_same_actual_input_id": 12,
+    "num_rows_with_unexpected_actual_position_stride": 0,
+    "num_same_actual_input_id_but_low_hidden_cos": 0
+  },
+  "anchor_row": 1,
+  "branch_rows": [
+    2
+  ],
+  "hidden_cos_threshold": 0.999,
+  "per_iter": [
+    {
+      "accepted_len": 4,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 151
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 151,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 152,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 872,
+          "runner_branch_query_input_id": 198,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 0,
+      "root_token": 1249,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 872,
+        "query_position": 151
+      },
+      "step": 0
+    },
+    {
+      "accepted_len": 5,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 156
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 156,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 157,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 11625,
+          "runner_branch_query_input_id": 279,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 5,
+      "root_token": 582,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 11625,
+        "query_position": 156
+      },
+      "step": 1
+    },
+    {
+      "accepted_len": 5,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 162
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 162,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 163,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 1184,
+          "runner_branch_query_input_id": 311,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 11,
+      "root_token": 3767,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 1184,
+        "query_position": 162
+      },
+      "step": 2
+    },
+    {
+      "accepted_len": 3,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 168
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 168,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 169,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 1378,
+          "runner_branch_query_input_id": 5109,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 17,
+      "root_token": 525,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 1378,
+        "query_position": 168
+      },
+      "step": 3
+    },
+    {
+      "accepted_len": 2,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 172
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 172,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 173,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 12128,
+          "runner_branch_query_input_id": 311,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 21,
+      "root_token": 1008,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 12128,
+        "query_position": 172
+      },
+      "step": 4
+    },
+    {
+      "accepted_len": 5,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 175
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 175,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 176,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 1091,
+          "runner_branch_query_input_id": 279,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 24,
+      "root_token": 2661,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 1091,
+        "query_position": 175
+      },
+      "step": 5
+    },
+    {
+      "accepted_len": 4,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 181
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 181,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 182,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 12171,
+          "runner_branch_query_input_id": 334,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 30,
+      "root_token": 387,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 12171,
+        "query_position": 181
+      },
+      "step": 6
+    },
+    {
+      "accepted_len": 2,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 186
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 186,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 187,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 29720,
+          "runner_branch_query_input_id": 2814,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 35,
+      "root_token": 67039,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 29720,
+        "query_position": 186
+      },
+      "step": 7
+    },
+    {
+      "accepted_len": 2,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 189
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 189,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 190,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 279,
+          "runner_branch_query_input_id": 1140,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 38,
+      "root_token": 1156,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 279,
+        "query_position": 189
+      },
+      "step": 8
+    },
+    {
+      "accepted_len": 3,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 196
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 196,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 197,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 601,
+          "runner_branch_query_input_id": 311,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 45,
+      "root_token": 1172,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 601,
+        "query_position": 196
+      },
+      "step": 10
+    },
+    {
+      "accepted_len": 3,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 204
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 204,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 205,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 279,
+          "runner_branch_query_input_id": 882,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 53,
+      "root_token": 504,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 279,
+        "query_position": 204
+      },
+      "step": 12
+    },
+    {
+      "accepted_len": 1,
+      "actual_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 151669,
+        "query_position": 218
+      },
+      "anchor_row": 1,
+      "per_branch": [
+        {
+          "actual_anchor_query_input_id": 151669,
+          "actual_anchor_query_position": 218,
+          "actual_branch_query_input_id": 151669,
+          "actual_branch_query_position": 219,
+          "actual_expected_position_delta": 1,
+          "actual_observed_position_delta": 1,
+          "actual_position_stride_ok": true,
+          "actual_same_input_id": true,
+          "diagnosis": "same_actual_input_id_and_hidden_matches_anchor",
+          "layer0_input_hidden_cos_to_anchor": 1.0,
+          "row": 2,
+          "runner_anchor_query_input_id": 594,
+          "runner_branch_query_input_id": 279,
+          "runner_same_input_id": false
+        }
+      ],
+      "position": 67,
+      "root_token": 4583,
+      "runner_anchor_meta": {
+        "global_row": 1,
+        "local_row": 1,
+        "query_input_id": 594,
+        "query_position": 218
+      },
+      "step": 15
+    }
+  ],
+  "sample_index": 0,
+  "verdict": {
+    "anchor_row": 1,
+    "branch_rows": [
+      2
+    ],
+    "hidden_cos_threshold": 0.999,
+    "interpretation_hint": "Actual forward-boundary metadata shows no evidence of pre-attention branch-row corruption. The top remaining suspect stays the depth-0 layer-0 self-attention divergence seen in Tests Q/W.",
+    "num_branch_rows_examined": 12,
+    "num_captured_iters": 12,
+    "num_diff_actual_input_id_and_low_hidden_cos": 0,
+    "num_rows_diff_actual_input_id": 0,
+    "num_rows_missing_actual_forward_meta": 0,
+    "num_rows_same_actual_input_id": 12,
+    "num_rows_with_unexpected_actual_position_stride": 0,
+    "num_same_actual_input_id_but_low_hidden_cos": 0,
+    "sample_index": 0
+  }
+}

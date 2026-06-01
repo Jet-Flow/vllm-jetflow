@@ -1,0 +1,13 @@
+{
+  "allocated_bytes": 33554432,
+  "cuda_available": true,
+  "device": "0",
+  "free_bytes": 84264681472,
+  "free_gib": 78.47760009765625,
+  "label": "post_vllm_chain_cleanup",
+  "max_allocated_bytes": 23582740992,
+  "max_reserved_bytes": 23794286592,
+  "reserved_bytes": 33554432,
+  "total_bytes": 85029158912,
+  "total_gib": 79.1895751953125
+}

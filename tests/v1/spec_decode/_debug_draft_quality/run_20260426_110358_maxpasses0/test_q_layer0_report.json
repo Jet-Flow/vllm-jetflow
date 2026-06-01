@@ -1,0 +1,782 @@
+{
+  "chain_captured_positions": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    9,
+    11,
+    13,
+    15,
+    18,
+    21,
+    27,
+    36,
+    45,
+    53,
+    69
+  ],
+  "cosine_threshold": 0.999,
+  "matched_positions": [
+    0,
+    11,
+    21,
+    45,
+    53
+  ],
+  "per_matched_pair": [
+    {
+      "chain_iter": 0,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9998228266891943,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9998228266891943
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9999710003254356
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.999970998422564
+        }
+      },
+      "position": 0,
+      "root_token_chain": 1249,
+      "root_token_tree": 1249,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 150,
+        "chain_context_positions_head": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "chain_context_positions_len": 150,
+        "chain_context_slot_mapping_head": [
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "chain_context_slot_mapping_len": 150,
+        "context_positions_first_mismatch_idx": null,
+        "context_positions_num_mismatch_in_overlap": 0,
+        "context_slot_mapping_first_mismatch_idx": null,
+        "context_slot_mapping_num_mismatch_in_overlap": 0,
+        "overlap_len": 150,
+        "tree_context_len": 150,
+        "tree_context_positions_head": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "tree_context_positions_len": 150,
+        "tree_context_slot_mapping_head": [
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "tree_context_slot_mapping_len": 150
+      },
+      "tree_iter": 0
+    },
+    {
+      "chain_iter": 6,
+      "pair_first_low_tap": {
+        "cosine": 0.995971669644322,
+        "tap": "layer0_output_hidden"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.995971669644322,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.995971669644322
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9991389903068117
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9991390100469018
+        }
+      },
+      "position": 11,
+      "root_token_chain": 3767,
+      "root_token_tree": 3767,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          159,
+          160
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          287,
+          288
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          155,
+          156,
+          157,
+          158,
+          159,
+          160,
+          156,
+          156
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          283,
+          284,
+          285,
+          286,
+          287,
+          288,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 2
+    },
+    {
+      "chain_iter": 12,
+      "pair_first_low_tap": {
+        "cosine": 0.9961118018740253,
+        "tap": "layer0_output_hidden"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.9961118018740253,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9961118018740253
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9993985701251719
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9993986715560719
+        }
+      },
+      "position": 21,
+      "root_token_chain": 1008,
+      "root_token_tree": 1008,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          169,
+          170
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          297,
+          298
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          167,
+          168,
+          169,
+          170,
+          168,
+          168,
+          168,
+          168
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          295,
+          296,
+          297,
+          298,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 4
+    },
+    {
+      "chain_iter": 25,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9991617739514815,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9991617739514815
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9999563097657607
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9999563099261713
+        }
+      },
+      "position": 45,
+      "root_token_chain": 1172,
+      "root_token_tree": 1172,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          194,
+          195
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          322,
+          -1
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          191,
+          192,
+          193,
+          194,
+          192,
+          192,
+          192,
+          192
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          319,
+          320,
+          321,
+          322,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 10
+    },
+    {
+      "chain_iter": 30,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9993553799510606,
+      "per_tap": {
+        "layer0_input_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 1.0
+        },
+        "layer0_input_residual": {
+          "chain_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_stats": {
+            "dtype": null,
+            "shape": null
+          },
+          "tree_vs_chain_cosine": null
+        },
+        "layer0_output_hidden": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9993553799510606
+        },
+        "layer0_output_residual": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9998818799031142
+        },
+        "layer0_self_attn_out": {
+          "chain_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              2,
+              4096
+            ]
+          },
+          "tree_stats": {
+            "dtype": "torch.bfloat16",
+            "shape": [
+              16,
+              4096
+            ]
+          },
+          "tree_vs_chain_cosine": 0.9998818495184938
+        }
+      },
+      "position": 53,
+      "root_token_chain": 504,
+      "root_token_tree": 504,
+      "root_tokens_match": true,
+      "slot_mapping": {
+        "chain_context_len": 2,
+        "chain_context_positions_head": [
+          201,
+          202
+        ],
+        "chain_context_positions_len": 2,
+        "chain_context_slot_mapping_head": [
+          329,
+          330
+        ],
+        "chain_context_slot_mapping_len": 2,
+        "context_positions_first_mismatch_idx": 0,
+        "context_positions_num_mismatch_in_overlap": 2,
+        "context_slot_mapping_first_mismatch_idx": 0,
+        "context_slot_mapping_num_mismatch_in_overlap": 2,
+        "overlap_len": 2,
+        "tree_context_len": 255,
+        "tree_context_positions_head": [
+          199,
+          200,
+          201,
+          202,
+          200,
+          200,
+          200,
+          200
+        ],
+        "tree_context_positions_len": 255,
+        "tree_context_slot_mapping_head": [
+          327,
+          328,
+          329,
+          330,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "tree_context_slot_mapping_len": 255
+      },
+      "tree_iter": 12
+    }
+  ],
+  "sample_index": 0,
+  "summary": {
+    "capture_row": null,
+    "num_captured_chain_positions": 16,
+    "num_captured_tree_positions": 12,
+    "num_matched_pairs": 5,
+    "num_pairs_with_context_positions_mismatch_in_overlap": 4,
+    "num_pairs_with_context_slot_mapping_mismatch_in_overlap": 4,
+    "per_tap": {
+      "layer0_input_hidden": {
+        "mean_tree_vs_chain_cosine": 1.0,
+        "min_tree_vs_chain_cosine": 1.0,
+        "num_pairs": 5
+      },
+      "layer0_input_residual": {
+        "mean_tree_vs_chain_cosine": null,
+        "min_tree_vs_chain_cosine": null,
+        "num_pairs": 0
+      },
+      "layer0_output_hidden": {
+        "mean_tree_vs_chain_cosine": 0.9980846904220166,
+        "min_tree_vs_chain_cosine": 0.995971669644322,
+        "num_pairs": 5
+      },
+      "layer0_output_residual": {
+        "mean_tree_vs_chain_cosine": 0.9996693500852588,
+        "min_tree_vs_chain_cosine": 0.9991389903068117,
+        "num_pairs": 5
+      },
+      "layer0_self_attn_out": {
+        "mean_tree_vs_chain_cosine": 0.9996693678940405,
+        "min_tree_vs_chain_cosine": 0.9991390100469018,
+        "num_pairs": 5
+      }
+    },
+    "row_label": "depth-0 row"
+  },
+  "tap_order": [
+    "layer0_input_hidden",
+    "layer0_input_residual",
+    "layer0_self_attn_out",
+    "layer0_output_hidden",
+    "layer0_output_residual"
+  ],
+  "tree_captured_positions": [
+    0,
+    5,
+    11,
+    17,
+    21,
+    24,
+    30,
+    35,
+    38,
+    45,
+    53,
+    67
+  ],
+  "verdict": {
+    "capture_row": null,
+    "cosine_threshold": 0.999,
+    "first_low_cos": {
+      "cosine": 0.995971669644322,
+      "position": 11,
+      "tap": "layer0_output_hidden"
+    },
+    "interpretation_hint": "All layer-0 taps for the depth-0 row match at ~1.0 across matched pairs.  This CONTRADICTS the Test-P localization and means the tree-vs-chain gap must arise BETWEEN layer 0 and layer 1 (e.g. residual normalization, positions-tensor reshaping) or probe alignment is off.  Double-check d0_row and num_query_per_req on both runs.",
+    "mean_layer0_input_hidden_cosine": 1.0,
+    "mean_layer0_output_hidden_cosine": 0.9980846904220166,
+    "mean_layer0_self_attn_out_cosine": 0.9996693678940405,
+    "num_matched_pairs": 5,
+    "row_label": "depth-0 row",
+    "sample_index": 0
+  }
+}

@@ -1,0 +1,585 @@
+{
+  "captured_steps": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50
+  ],
+  "num_snapshots_captured": 17,
+  "snapshots": [
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 166,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        166
+      ],
+      "slot_mapping": [
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293
+      ],
+      "tree_propose_step": 0
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 421,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        171
+      ],
+      "slot_mapping": [
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298
+      ],
+      "tree_propose_step": 1
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 426,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        177
+      ],
+      "slot_mapping": [
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        303,
+        304
+      ],
+      "tree_propose_step": 2
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 432,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        183
+      ],
+      "slot_mapping": [
+        295,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310
+      ],
+      "tree_propose_step": 3
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 438,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        187
+      ],
+      "slot_mapping": [
+        299,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314
+      ],
+      "tree_propose_step": 4
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 442,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        190
+      ],
+      "slot_mapping": [
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317
+      ],
+      "tree_propose_step": 5
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 445,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        196
+      ],
+      "slot_mapping": [
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323
+      ],
+      "tree_propose_step": 6
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 451,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        201
+      ],
+      "slot_mapping": [
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328
+      ],
+      "tree_propose_step": 7
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 456,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        204
+      ],
+      "slot_mapping": [
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331
+      ],
+      "tree_propose_step": 8
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 462,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        211
+      ],
+      "slot_mapping": [
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338
+      ],
+      "tree_propose_step": 10
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 470,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        219
+      ],
+      "slot_mapping": [
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346
+      ],
+      "tree_propose_step": 12
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 485,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        233
+      ],
+      "slot_mapping": [
+        345,
+        346,
+        347,
+        348,
+        349,
+        350,
+        351,
+        352,
+        353,
+        354,
+        355,
+        356,
+        357,
+        358,
+        359,
+        360
+      ],
+      "tree_propose_step": 15
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 507,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        261
+      ],
+      "slot_mapping": [
+        373,
+        374,
+        375,
+        376,
+        377,
+        378,
+        379,
+        380,
+        381,
+        382,
+        383,
+        384,
+        385,
+        386,
+        387,
+        388
+      ],
+      "tree_propose_step": 20
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 528,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        279
+      ],
+      "slot_mapping": [
+        391,
+        392,
+        393,
+        394,
+        395,
+        396,
+        397,
+        398,
+        399,
+        400,
+        401,
+        402,
+        403,
+        404,
+        405,
+        406
+      ],
+      "tree_propose_step": 25
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 548,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        297
+      ],
+      "slot_mapping": [
+        409,
+        410,
+        411,
+        412,
+        413,
+        414,
+        415,
+        416,
+        417,
+        418,
+        419,
+        420,
+        421,
+        422,
+        423,
+        424
+      ],
+      "tree_propose_step": 30
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 590,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        345
+      ],
+      "slot_mapping": [
+        457,
+        458,
+        459,
+        460,
+        461,
+        462,
+        463,
+        464,
+        465,
+        466,
+        467,
+        468,
+        469,
+        470,
+        471,
+        472
+      ],
+      "tree_propose_step": 40
+    },
+    {
+      "draft_index": 0,
+      "max_query_len": 16,
+      "max_seq_len": 655,
+      "num_actual_tokens": 16,
+      "num_reqs": 1,
+      "query_start_loc": [
+        0,
+        16
+      ],
+      "seq_lens": [
+        404
+      ],
+      "slot_mapping": [
+        516,
+        517,
+        518,
+        519,
+        520,
+        521,
+        522,
+        523,
+        524,
+        525,
+        526,
+        527,
+        528,
+        529,
+        530,
+        531
+      ],
+      "tree_propose_step": 50
+    }
+  ]
+}

@@ -1,0 +1,2267 @@
+{
+  "ctx_tap_order": [
+    "k_ctx_pre_rope",
+    "k_ctx_post_rope",
+    "v_ctx"
+  ],
+  "first_k_cosine_threshold": 0.95,
+  "hf_steps_present": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    120,
+    150,
+    180,
+    220
+  ],
+  "per_step": {
+    "0": {
+      "hf_ctx_len": 150,
+      "overlap_n": 150,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 150,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              1.0,
+              0.9999741749328889,
+              0.9999300023996264,
+              0.9999585535774771
+            ],
+            "large_norm_count": 0,
+            "low_cos_count": 0,
+            "overlap_n": 150
+          },
+          "status": "ok",
+          "vllm_num_positions": 150,
+          "vllm_tail": {
+            "tail_n": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 150,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              1.0,
+              0.9999715368886867,
+              0.9999230394381167,
+              0.9999175848805637
+            ],
+            "large_norm_count": 0,
+            "low_cos_count": 0,
+            "overlap_n": 150
+          },
+          "status": "ok",
+          "vllm_num_positions": 150,
+          "vllm_tail": {
+            "tail_n": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 150,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              1.0000000000000002,
+              0.9999007535674246,
+              0.9994455932284985,
+              0.9997881560636883
+            ],
+            "large_norm_count": 0,
+            "low_cos_count": 0,
+            "overlap_n": 150
+          },
+          "status": "ok",
+          "vllm_num_positions": 150,
+          "vllm_tail": {
+            "tail_n": 0
+          }
+        }
+      },
+      "step": 0,
+      "vllm_context_positions_contiguous_from_zero": true,
+      "vllm_context_positions_head": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "vllm_context_positions_len": 150,
+      "vllm_context_positions_tail": [
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149
+      ],
+      "vllm_context_slot_mapping_head": [
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135
+      ],
+      "vllm_context_slot_mapping_len": 150,
+      "vllm_context_slot_mapping_tail": [
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277
+      ],
+      "vllm_ctx_len": 150,
+      "vllm_tail_n": 0
+    },
+    "1": {
+      "hf_ctx_len": 151,
+      "overlap_n": 151,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              0.9999800975388571,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 150,
+            "low_cos_count": 0,
+            "overlap_n": 151
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2951531467529445,
+            "norm_max": 53.429039001464844,
+            "norm_mean": 52.93148708343506,
+            "norm_min": 52.48093795776367,
+            "tail_n": 104,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              0.9999735736338542,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 150,
+            "low_cos_count": 0,
+            "overlap_n": 151
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2846408623915453,
+            "norm_max": 53.42957305908203,
+            "norm_mean": 52.94350873506986,
+            "norm_min": 52.48753356933594,
+            "tail_n": 104,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": null,
+            "first_k_cos_sample": [
+              0.9998985294619966,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 150,
+            "low_cos_count": 0,
+            "overlap_n": 151
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.5939639715047984,
+            "norm_max": 155.80796813964844,
+            "norm_mean": 145.18603383577786,
+            "norm_min": 131.37908935546875,
+            "tail_n": 104,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 1,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        150,
+        151,
+        152,
+        153,
+        154,
+        151,
+        151,
+        151
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        154,
+        154,
+        154,
+        154,
+        154,
+        154,
+        154,
+        154
+      ],
+      "vllm_context_slot_mapping_head": [
+        278,
+        279,
+        280,
+        281,
+        282,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 104
+    },
+    "10": {
+      "hf_ctx_len": 160,
+      "overlap_n": 160,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.374419992679231,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 159,
+            "low_cos_count": 1,
+            "overlap_n": 160
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2584874090395475,
+            "norm_max": 52.78807067871094,
+            "norm_mean": 52.3618209035773,
+            "norm_min": 51.98056411743164,
+            "tail_n": 95,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.9245040984651027,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 159,
+            "low_cos_count": 1,
+            "overlap_n": 160
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2482514870794197,
+            "norm_max": 52.769229888916016,
+            "norm_mean": 52.3537129050807,
+            "norm_min": 51.970741271972656,
+            "tail_n": 95,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.17744802193935777,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 159,
+            "low_cos_count": 1,
+            "overlap_n": 160
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.69548104436774,
+            "norm_max": 156.9667205810547,
+            "norm_mean": 148.21320736533718,
+            "norm_min": 135.6858673095703,
+            "tail_n": 95,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 10,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        191,
+        192,
+        193,
+        194,
+        192,
+        192,
+        192,
+        192
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        195,
+        195,
+        195,
+        195,
+        195,
+        195,
+        196,
+        196
+      ],
+      "vllm_context_slot_mapping_head": [
+        319,
+        320,
+        321,
+        322,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 95
+    },
+    "12": {
+      "hf_ctx_len": 162,
+      "overlap_n": 162,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.40095462533798093,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 161,
+            "low_cos_count": 1,
+            "overlap_n": 162
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2731005376385105,
+            "norm_max": 53.93540954589844,
+            "norm_mean": 52.614164495980866,
+            "norm_min": 51.846397399902344,
+            "tail_n": 93,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.9179670691265642,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 161,
+            "low_cos_count": 1,
+            "overlap_n": 162
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2664651088817145,
+            "norm_max": 53.93761444091797,
+            "norm_mean": 52.60799801734186,
+            "norm_min": 51.85767364501953,
+            "tail_n": 93,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.3808167311659056,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 161,
+            "low_cos_count": 1,
+            "overlap_n": 162
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.5673166526261197,
+            "norm_max": 160.9490203857422,
+            "norm_mean": 143.72553031675278,
+            "norm_min": 112.81417846679688,
+            "tail_n": 93,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 12,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        199,
+        200,
+        201,
+        202,
+        200,
+        200,
+        200,
+        200
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        204,
+        204,
+        204,
+        204,
+        204,
+        204,
+        204,
+        204
+      ],
+      "vllm_context_slot_mapping_head": [
+        327,
+        328,
+        329,
+        330,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 93
+    },
+    "15": {
+      "hf_ctx_len": 165,
+      "overlap_n": 165,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.443449701457896,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 164,
+            "low_cos_count": 1,
+            "overlap_n": 165
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2822812477747598,
+            "norm_max": 53.649295806884766,
+            "norm_mean": 52.88541480170356,
+            "norm_min": 52.4500732421875,
+            "tail_n": 90,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.7322050311120216,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 164,
+            "low_cos_count": 1,
+            "overlap_n": 165
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2852229118347167,
+            "norm_max": 53.64256286621094,
+            "norm_mean": 52.880212275187176,
+            "norm_min": 52.442745208740234,
+            "tail_n": 90,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.10324938182235974,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 164,
+            "low_cos_count": 1,
+            "overlap_n": 165
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.501115088992649,
+            "norm_max": 150.3677520751953,
+            "norm_mean": 141.01248541937935,
+            "norm_min": 119.7214126586914,
+            "tail_n": 90,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 15,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        214,
+        215,
+        216,
+        215,
+        215,
+        215,
+        215,
+        215
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        219,
+        219,
+        219,
+        219,
+        219,
+        219,
+        218,
+        218
+      ],
+      "vllm_context_slot_mapping_head": [
+        342,
+        343,
+        344,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 90
+    },
+    "2": {
+      "hf_ctx_len": 152,
+      "overlap_n": 152,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.5769175772071673,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 151,
+            "low_cos_count": 1,
+            "overlap_n": 152
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2729377237338464,
+            "norm_max": 53.07102584838867,
+            "norm_mean": 52.533920028834665,
+            "norm_min": 52.12113952636719,
+            "tail_n": 103,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.8637959748323567,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 151,
+            "low_cos_count": 1,
+            "overlap_n": 152
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2665356293465326,
+            "norm_max": 53.07194519042969,
+            "norm_mean": 52.53642491461004,
+            "norm_min": 52.12895202636719,
+            "tail_n": 103,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.149407054250647,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 151,
+            "low_cos_count": 1,
+            "overlap_n": 152
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.5249757350069806,
+            "norm_max": 152.77613830566406,
+            "norm_mean": 142.75029376872536,
+            "norm_min": 131.30548095703125,
+            "tail_n": 103,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 2,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        156,
+        156
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        162,
+        162,
+        162,
+        162,
+        162,
+        162,
+        163,
+        163
+      ],
+      "vllm_context_slot_mapping_head": [
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 103
+    },
+    "20": {
+      "hf_ctx_len": 170,
+      "overlap_n": 170,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.20149742235713206,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 169,
+            "low_cos_count": 1,
+            "overlap_n": 170
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.277210997132694,
+            "norm_max": 53.29972457885742,
+            "norm_mean": 52.878178944307216,
+            "norm_min": 51.94621276855469,
+            "tail_n": 85,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.844002012447901,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 169,
+            "low_cos_count": 1,
+            "overlap_n": 170
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2712609206928926,
+            "norm_max": 53.32331848144531,
+            "norm_mean": 52.893053795309626,
+            "norm_min": 51.96271896362305,
+            "tail_n": 85,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.09079248171344517,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 169,
+            "low_cos_count": 1,
+            "overlap_n": 170
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.7197033040663774,
+            "norm_max": 160.2062530517578,
+            "norm_mean": 150.5540105483111,
+            "norm_min": 135.8601531982422,
+            "tail_n": 85,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 20,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        243,
+        243,
+        243,
+        243,
+        243,
+        243,
+        244,
+        244
+      ],
+      "vllm_context_slot_mapping_head": [
+        364,
+        365,
+        366,
+        367,
+        368,
+        369,
+        370,
+        371
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 85
+    },
+    "25": {
+      "hf_ctx_len": 175,
+      "overlap_n": 175,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.21122932111930204,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 174,
+            "low_cos_count": 1,
+            "overlap_n": 175
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2584121733903886,
+            "norm_max": 52.93250274658203,
+            "norm_mean": 52.442387390136716,
+            "norm_min": 51.945091247558594,
+            "tail_n": 80,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.8670501645660175,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 174,
+            "low_cos_count": 1,
+            "overlap_n": 175
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.253632241487503,
+            "norm_max": 52.93527603149414,
+            "norm_mean": 52.44912238121033,
+            "norm_min": 51.96562957763672,
+            "tail_n": 80,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.027976974321528163,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 174,
+            "low_cos_count": 1,
+            "overlap_n": 175
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.822016251087189,
+            "norm_max": 164.8062744140625,
+            "norm_mean": 154.68625164031982,
+            "norm_min": 146.2653045654297,
+            "tail_n": 80,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 25,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        258,
+        258
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        262,
+        262,
+        262,
+        262,
+        262,
+        262,
+        262,
+        262
+      ],
+      "vllm_context_slot_mapping_head": [
+        385,
+        386,
+        387,
+        388,
+        389,
+        390,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 80
+    },
+    "3": {
+      "hf_ctx_len": 153,
+      "overlap_n": 153,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.17508079458936873,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 152,
+            "low_cos_count": 1,
+            "overlap_n": 153
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2830266672022201,
+            "norm_max": 53.269371032714844,
+            "norm_mean": 52.52501098782408,
+            "norm_min": 52.04362487792969,
+            "tail_n": 102,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.8677783758715504,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 152,
+            "low_cos_count": 1,
+            "overlap_n": 153
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.276383687468136,
+            "norm_max": 53.26667404174805,
+            "norm_mean": 52.52807381573845,
+            "norm_min": 52.05474853515625,
+            "tail_n": 102,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.15762859958357514,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 152,
+            "low_cos_count": 1,
+            "overlap_n": 153
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.5540061464496686,
+            "norm_max": 158.6214599609375,
+            "norm_mean": 143.59840243470435,
+            "norm_min": 133.72232055664062,
+            "tail_n": 102,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 3,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        162,
+        162
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        167,
+        167,
+        167,
+        167,
+        167,
+        167,
+        164,
+        164
+      ],
+      "vllm_context_slot_mapping_head": [
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 102
+    },
+    "30": {
+      "hf_ctx_len": 180,
+      "overlap_n": 180,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.28459273527703555,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 179,
+            "low_cos_count": 1,
+            "overlap_n": 180
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.281278166770935,
+            "norm_max": 53.21354293823242,
+            "norm_mean": 52.61543477376302,
+            "norm_min": 52.16510009765625,
+            "tail_n": 75,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.699253769418768,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 179,
+            "low_cos_count": 1,
+            "overlap_n": 180
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2632477251688639,
+            "norm_max": 53.22800827026367,
+            "norm_mean": 52.61498255411784,
+            "norm_min": 52.153846740722656,
+            "tail_n": 75,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.3475393665644937,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 179,
+            "low_cos_count": 1,
+            "overlap_n": 180
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.7718547217051186,
+            "norm_max": 173.27081298828125,
+            "norm_mean": 153.3856504313151,
+            "norm_min": 141.3285369873047,
+            "tail_n": 75,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 30,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        277,
+        278,
+        279,
+        280,
+        278,
+        278,
+        278,
+        278
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        280,
+        280,
+        280,
+        280,
+        280,
+        280,
+        280,
+        280
+      ],
+      "vllm_context_slot_mapping_head": [
+        405,
+        406,
+        407,
+        408,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 75
+    },
+    "4": {
+      "hf_ctx_len": 154,
+      "overlap_n": 154,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.29046440272173424,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 153,
+            "low_cos_count": 1,
+            "overlap_n": 154
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2748623378206008,
+            "norm_max": 52.89710235595703,
+            "norm_mean": 52.40482519168665,
+            "norm_min": 51.711490631103516,
+            "tail_n": 101,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.7001696300238927,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 153,
+            "low_cos_count": 1,
+            "overlap_n": 154
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2694600006141286,
+            "norm_max": 52.90362548828125,
+            "norm_mean": 52.41079541952303,
+            "norm_min": 51.713436126708984,
+            "tail_n": 101,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.24994239065776958,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 153,
+            "low_cos_count": 1,
+            "overlap_n": 154
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.643165187080308,
+            "norm_max": 157.05084228515625,
+            "norm_mean": 147.47173724788252,
+            "norm_min": 136.82061767578125,
+            "tail_n": 101,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 4,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        167,
+        168,
+        169,
+        170,
+        168,
+        168,
+        168,
+        168
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        170,
+        170,
+        170,
+        170,
+        170,
+        170,
+        171,
+        171
+      ],
+      "vllm_context_slot_mapping_head": [
+        295,
+        296,
+        297,
+        298,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 101
+    },
+    "40": {
+      "hf_ctx_len": 190,
+      "overlap_n": 190,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.14787817811006085,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 189,
+            "low_cos_count": 1,
+            "overlap_n": 190
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.277951719210698,
+            "norm_max": 53.4064826965332,
+            "norm_mean": 52.863587482158955,
+            "norm_min": 52.26890563964844,
+            "tail_n": 65,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.8077335476441739,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 189,
+            "low_cos_count": 1,
+            "overlap_n": 190
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.264154316828801,
+            "norm_max": 53.4067268371582,
+            "norm_mean": 52.88212655874399,
+            "norm_min": 52.280662536621094,
+            "tail_n": 65,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.10937694941724545,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 189,
+            "low_cos_count": 1,
+            "overlap_n": 190
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.7900828728309044,
+            "norm_max": 164.0360107421875,
+            "norm_mean": 153.55244915301984,
+            "norm_min": 143.32846069335938,
+            "tail_n": 65,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 40,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        328,
+        328,
+        328,
+        328,
+        328,
+        328,
+        326,
+        326
+      ],
+      "vllm_context_slot_mapping_head": [
+        447,
+        448,
+        449,
+        450,
+        451,
+        452,
+        453,
+        454
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 65
+    },
+    "5": {
+      "hf_ctx_len": 155,
+      "overlap_n": 155,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.2350641485001443,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 154,
+            "low_cos_count": 1,
+            "overlap_n": 155
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2794801247119905,
+            "norm_max": 52.8647575378418,
+            "norm_mean": 52.375766105651856,
+            "norm_min": 51.80695343017578,
+            "tail_n": 100,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.720996449624946,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 154,
+            "low_cos_count": 1,
+            "overlap_n": 155
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2736885368824005,
+            "norm_max": 52.87841796875,
+            "norm_mean": 52.38233150482178,
+            "norm_min": 51.823638916015625,
+            "tail_n": 100,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.10056161057693781,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 154,
+            "low_cos_count": 1,
+            "overlap_n": 155
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.5867150950431825,
+            "norm_max": 156.71058654785156,
+            "norm_mean": 145.22693466186524,
+            "norm_min": 129.4121856689453,
+            "tail_n": 100,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 5,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        171,
+        172,
+        173,
+        172,
+        172,
+        172,
+        172,
+        172
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        176,
+        176,
+        176,
+        176,
+        176,
+        176,
+        175,
+        175
+      ],
+      "vllm_context_slot_mapping_head": [
+        299,
+        300,
+        301,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 100
+    },
+    "50": {
+      "hf_ctx_len": 200,
+      "overlap_n": 200,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.08203487618007821,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 199,
+            "low_cos_count": 1,
+            "overlap_n": 200
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2750832492654973,
+            "norm_max": 53.24791717529297,
+            "norm_mean": 52.80147212635387,
+            "norm_min": 52.448978424072266,
+            "tail_n": 55,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.7924036944301978,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 199,
+            "low_cos_count": 1,
+            "overlap_n": 200
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2550190383737738,
+            "norm_max": 53.241695404052734,
+            "norm_mean": 52.80182675448331,
+            "norm_min": 52.4367561340332,
+            "tail_n": 55,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.016679955920800158,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 199,
+            "low_cos_count": 1,
+            "overlap_n": 200
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.690351811322299,
+            "norm_max": 159.44821166992188,
+            "norm_mean": 148.90643671209162,
+            "norm_min": 136.61927795410156,
+            "tail_n": 55,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 50,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        384,
+        385,
+        386,
+        387,
+        385,
+        385,
+        385,
+        385
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        388,
+        388,
+        388,
+        388,
+        388,
+        388,
+        389,
+        389
+      ],
+      "vllm_context_slot_mapping_head": [
+        512,
+        513,
+        514,
+        515,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 55
+    },
+    "6": {
+      "hf_ctx_len": 156,
+      "overlap_n": 156,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.44495586070173965,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 155,
+            "low_cos_count": 1,
+            "overlap_n": 156
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.284460115914393,
+            "norm_max": 53.3028564453125,
+            "norm_mean": 52.50000458534318,
+            "norm_min": 51.84290313720703,
+            "tail_n": 99,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.6974422657544896,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 155,
+            "low_cos_count": 1,
+            "overlap_n": 156
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2734070065045597,
+            "norm_max": 53.2976188659668,
+            "norm_mean": 52.510771356447776,
+            "norm_min": 51.852752685546875,
+            "tail_n": 99,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              -0.06025312333449858,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 155,
+            "low_cos_count": 1,
+            "overlap_n": 156
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.507450368669298,
+            "norm_max": 151.2970733642578,
+            "norm_mean": 140.91412153147687,
+            "norm_min": 119.22177124023438,
+            "tail_n": 99,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 6,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        175,
+        175
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        179,
+        179,
+        179,
+        179,
+        179,
+        179,
+        178,
+        178
+      ],
+      "vllm_context_slot_mapping_head": [
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 99
+    },
+    "7": {
+      "hf_ctx_len": 157,
+      "overlap_n": 157,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.14162661895813441,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 156,
+            "low_cos_count": 1,
+            "overlap_n": 157
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2748830659048898,
+            "norm_max": 53.273563385009766,
+            "norm_mean": 52.436366762433735,
+            "norm_min": 51.84421157836914,
+            "tail_n": 98,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.7709749151675178,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 156,
+            "low_cos_count": 1,
+            "overlap_n": 157
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2676556913220152,
+            "norm_max": 53.262916564941406,
+            "norm_mean": 52.4461355403978,
+            "norm_min": 51.84923553466797,
+            "tail_n": 98,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.17822808382636243,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 156,
+            "low_cos_count": 1,
+            "overlap_n": 157
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.590894409588405,
+            "norm_max": 154.59115600585938,
+            "norm_mean": 144.14210198850049,
+            "norm_min": 111.99440002441406,
+            "tail_n": 98,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 7,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        180,
+        181,
+        182,
+        183,
+        184,
+        181,
+        181,
+        181
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        182,
+        182,
+        182,
+        182,
+        182,
+        182,
+        183,
+        183
+      ],
+      "vllm_context_slot_mapping_head": [
+        308,
+        309,
+        310,
+        311,
+        312,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 98
+    },
+    "8": {
+      "hf_ctx_len": 158,
+      "overlap_n": 158,
+      "per_ctx_tap": {
+        "k_ctx_post_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.20306699737407144,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 157,
+            "low_cos_count": 1,
+            "overlap_n": 158
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2720744683570469,
+            "norm_max": 53.06281661987305,
+            "norm_mean": 52.44459411778401,
+            "norm_min": 51.99537658691406,
+            "tail_n": 97,
+            "zero_norm_count": 0
+          }
+        },
+        "k_ctx_pre_rope": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.7063829110563181,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 157,
+            "low_cos_count": 1,
+            "overlap_n": 158
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 1.2625482549372407,
+            "norm_max": 53.0817985534668,
+            "norm_mean": 52.45930028699108,
+            "norm_min": 52.01493835449219,
+            "tail_n": 97,
+            "zero_norm_count": 0
+          }
+        },
+        "v_ctx": {
+          "hf_num_positions": 1,
+          "overlap": {
+            "first_divergent_position": 0,
+            "first_k_cos_sample": [
+              0.12034472097491272,
+              null,
+              null,
+              null
+            ],
+            "large_norm_count": 157,
+            "low_cos_count": 1,
+            "overlap_n": 158
+          },
+          "status": "ok",
+          "vllm_num_positions": 255,
+          "vllm_tail": {
+            "abs_mean_mean": 3.7742132993088555,
+            "norm_max": 158.8307342529297,
+            "norm_mean": 151.3591478485422,
+            "norm_min": 141.61795043945312,
+            "tail_n": 97,
+            "zero_norm_count": 0
+          }
+        }
+      },
+      "step": 8,
+      "vllm_context_positions_contiguous_from_zero": false,
+      "vllm_context_positions_head": [
+        185,
+        186,
+        187,
+        186,
+        186,
+        186,
+        186,
+        186
+      ],
+      "vllm_context_positions_len": 255,
+      "vllm_context_positions_tail": [
+        189,
+        189,
+        189,
+        189,
+        189,
+        189,
+        188,
+        188
+      ],
+      "vllm_context_slot_mapping_head": [
+        313,
+        314,
+        315,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_context_slot_mapping_len": 255,
+      "vllm_context_slot_mapping_tail": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "vllm_ctx_len": 255,
+      "vllm_tail_n": 97
+    }
+  },
+  "tail_mismatch_norm_ratio_threshold": 0.2,
+  "verdict": {
+    "cliff_positions": {
+      "k_ctx_post_rope": 0,
+      "k_ctx_pre_rope": 0,
+      "v_ctx": 0
+    },
+    "hf_context_grows": true,
+    "hf_ctx_lens": [
+      150,
+      151,
+      152,
+      153,
+      154,
+      155,
+      156,
+      157,
+      158,
+      160,
+      162,
+      165,
+      170,
+      175,
+      180,
+      190,
+      200
+    ],
+    "interpretation_hint": "v_ctx first diverges at position 0 in the overlap region -- this is the position at which vLLM's V-cache starts disagreeing with HF's rolling V, so the slot-mapping / write-offset / refresh cadence is wrong starting there (P\u03b4).",
+    "steps": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      12,
+      15,
+      20,
+      25,
+      30,
+      40,
+      50
+    ],
+    "vllm_context_pinned": false,
+    "vllm_ctx_lens": [
+      150,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255,
+      255
+    ]
+  },
+  "vllm_steps_present": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50
+  ]
+}

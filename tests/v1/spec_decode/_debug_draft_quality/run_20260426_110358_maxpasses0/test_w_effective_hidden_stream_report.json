@@ -1,0 +1,193 @@
+{
+  "aggregates": {
+    "effective_input_cosine": {
+      "mean": 1.0,
+      "min": 1.0,
+      "num": 5
+    },
+    "effective_output_cosine": {
+      "mean": 0.9995679792548966,
+      "min": 0.9989728036233048,
+      "num": 5
+    },
+    "num_matched_pairs": 5,
+    "raw_output_hidden_cosine": {
+      "mean": 0.9980846904220166,
+      "min": 0.995971669644322,
+      "num": 5
+    },
+    "raw_output_residual_cosine": {
+      "mean": 0.9996693500852588,
+      "min": 0.9991389903068117,
+      "num": 5
+    }
+  },
+  "capture_row": null,
+  "cosine_threshold": 0.999,
+  "matched_positions": [
+    0,
+    11,
+    21,
+    45,
+    53
+  ],
+  "per_matched_pair": [
+    {
+      "chain_iter": 0,
+      "chain_shapes": {
+        "layer0_output_hidden": [
+          2,
+          4096
+        ],
+        "layer0_output_residual": [
+          2,
+          4096
+        ]
+      },
+      "effective_input_cosine": 1.0,
+      "effective_output_cosine": 0.9999542098683512,
+      "position": 0,
+      "raw_output_hidden_cosine": 0.9998228266891943,
+      "raw_output_residual_cosine": 0.9999710003254356,
+      "tree_iter": 0,
+      "tree_shapes": {
+        "layer0_output_hidden": [
+          16,
+          4096
+        ],
+        "layer0_output_residual": [
+          16,
+          4096
+        ]
+      }
+    },
+    {
+      "chain_iter": 6,
+      "chain_shapes": {
+        "layer0_output_hidden": [
+          2,
+          4096
+        ],
+        "layer0_output_residual": [
+          2,
+          4096
+        ]
+      },
+      "effective_input_cosine": 1.0,
+      "effective_output_cosine": 0.9989728036233048,
+      "position": 11,
+      "raw_output_hidden_cosine": 0.995971669644322,
+      "raw_output_residual_cosine": 0.9991389903068117,
+      "tree_iter": 2,
+      "tree_shapes": {
+        "layer0_output_hidden": [
+          16,
+          4096
+        ],
+        "layer0_output_residual": [
+          16,
+          4096
+        ]
+      }
+    },
+    {
+      "chain_iter": 12,
+      "chain_shapes": {
+        "layer0_output_hidden": [
+          2,
+          4096
+        ],
+        "layer0_output_residual": [
+          2,
+          4096
+        ]
+      },
+      "effective_input_cosine": 1.0,
+      "effective_output_cosine": 0.9992211663980965,
+      "position": 21,
+      "raw_output_hidden_cosine": 0.9961118018740253,
+      "raw_output_residual_cosine": 0.9993985701251719,
+      "tree_iter": 4,
+      "tree_shapes": {
+        "layer0_output_hidden": [
+          16,
+          4096
+        ],
+        "layer0_output_residual": [
+          16,
+          4096
+        ]
+      }
+    },
+    {
+      "chain_iter": 25,
+      "chain_shapes": {
+        "layer0_output_hidden": [
+          2,
+          4096
+        ],
+        "layer0_output_residual": [
+          2,
+          4096
+        ]
+      },
+      "effective_input_cosine": 1.0,
+      "effective_output_cosine": 0.9999092075905064,
+      "position": 45,
+      "raw_output_hidden_cosine": 0.9991617739514815,
+      "raw_output_residual_cosine": 0.9999563097657607,
+      "tree_iter": 10,
+      "tree_shapes": {
+        "layer0_output_hidden": [
+          16,
+          4096
+        ],
+        "layer0_output_residual": [
+          16,
+          4096
+        ]
+      }
+    },
+    {
+      "chain_iter": 30,
+      "chain_shapes": {
+        "layer0_output_hidden": [
+          2,
+          4096
+        ],
+        "layer0_output_residual": [
+          2,
+          4096
+        ]
+      },
+      "effective_input_cosine": 1.0,
+      "effective_output_cosine": 0.9997825087942244,
+      "position": 53,
+      "raw_output_hidden_cosine": 0.9993553799510606,
+      "raw_output_residual_cosine": 0.9998818799031142,
+      "tree_iter": 12,
+      "tree_shapes": {
+        "layer0_output_hidden": [
+          16,
+          4096
+        ],
+        "layer0_output_residual": [
+          16,
+          4096
+        ]
+      }
+    }
+  ],
+  "row_label": "depth-0 row",
+  "sample_index": 0,
+  "verdict": {
+    "capture_row": null,
+    "chain_probe_d0_row": 1,
+    "cosine_threshold": 0.999,
+    "interpretation_hint": "Effective layer-0 output stream for depth-0 row matches at mean cos=0.9996 -- the earlier split between raw hidden cos=0.9980846904220166 and residual cos=0.9996693500852588 was a probe-accounting artifact (Qwen3 returns (hidden,residual) separately; the next layer adds them).  Layer 0's output boundary is clean for this row; any residual tree-vs-chain gap must live at deeper layers, in the sampling head, or in depth>0 branch rows.  Cross-reference Test P (layer 1 taps) and Test X (branch-row health) to localize.",
+    "num_matched_pairs": 5,
+    "row_label": "depth-0 row",
+    "sample_index": 0,
+    "tree_probe_d0_row": 1
+  }
+}

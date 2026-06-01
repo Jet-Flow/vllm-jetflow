@@ -1,0 +1,939 @@
+{
+  "aggregate_top1": {
+    "hf": 0.8,
+    "vllm_chain": 0.7391304347826086,
+    "vllm_tree": 0.7777777777777778
+  },
+  "histogram_summary_hf": {
+    "first_quartile_mean_rate": 0.75,
+    "last_quartile_mean_rate": 0.9,
+    "mean_rate": 0.8,
+    "num_bins": 80,
+    "step0_rate": 1.0,
+    "step_last_rate": 1.0
+  },
+  "histogram_summary_vllm_chain": {
+    "first_quartile_mean_rate": 0.8181818181818182,
+    "last_quartile_mean_rate": 0.5454545454545454,
+    "mean_rate": 0.7391304347826086,
+    "num_bins": 46,
+    "step0_rate": 1.0,
+    "step_last_rate": 0.0
+  },
+  "histogram_summary_vllm_tree": {
+    "first_quartile_mean_rate": 0.75,
+    "last_quartile_mean_rate": 0.5,
+    "mean_rate": 0.7777777777777778,
+    "num_bins": 18,
+    "step0_rate": 1.0,
+    "step_last_rate": 1.0
+  },
+  "per_step_histogram_hf": [
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 0,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 1,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 2,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 3,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 4,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 5,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 6,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 7,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 8,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 9,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 10,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 11,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 12,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 13,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 14,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 15,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 16,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 17,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 18,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 19,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 20,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 21,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 22,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 23,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 24,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 25,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 26,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 27,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 28,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 29,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 30,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 31,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 32,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 33,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 34,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 35,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 36,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 37,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 38,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 39,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 40,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 41,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 42,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 43,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 44,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 45,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 46,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 47,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 48,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 49,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 50,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 51,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 52,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 53,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 54,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 55,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 56,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 57,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 58,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 59,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 60,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 61,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 62,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 63,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 64,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 65,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 66,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 67,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 68,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 69,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 70,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 71,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 72,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 73,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 74,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 75,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 76,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 77,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 78,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 79,
+      "top1_match_rate": 1.0
+    }
+  ],
+  "per_step_histogram_vllm_chain": [
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 0,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 1,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 2,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 3,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 4,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 5,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 6,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 7,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 8,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 9,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 10,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 11,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 12,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 13,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 14,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 15,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 16,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 17,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 18,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 19,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 20,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 21,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 22,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 23,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 24,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 25,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 26,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 27,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 28,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 29,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 30,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 31,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 32,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 33,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 34,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 35,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 36,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 37,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 38,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 39,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 40,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 41,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 42,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 43,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 44,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 45,
+      "top1_match_rate": 0.0
+    }
+  ],
+  "per_step_histogram_vllm_tree": [
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 0,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 1,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 2,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 3,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 4,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 5,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 6,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 7,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 8,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 9,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 10,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 11,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 12,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 13,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 14,
+      "top1_match_rate": 1.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 15,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 0,
+      "step": 16,
+      "top1_match_rate": 0.0
+    },
+    {
+      "num_samples_at_step": 1,
+      "num_top1_matches": 1,
+      "step": 17,
+      "top1_match_rate": 1.0
+    }
+  ],
+  "position_aligned": {
+    "aggregate": {
+      "hf_top1_match_rate_same_root": 0.8125,
+      "num_same_root_positions": 16,
+      "num_shared_positions": 18,
+      "top1_agreement_rate_same_root": 1.0,
+      "vllm_top1_match_rate_same_root": 0.8125
+    },
+    "per_sample": [
+      {
+        "hf_top1_match_rate_same_root": 0.8125,
+        "num_same_root_positions": 16,
+        "num_shared_positions": 18,
+        "sample_index": 0,
+        "top1_agreement_rate_same_root": 1.0,
+        "vllm_top1_match_rate_same_root": 0.8125
+      }
+    ]
+  },
+  "source": "test_n_per_iteration_and_trajectory",
+  "trajectory_divergence": [
+    {
+      "first_divergence_position": 155,
+      "first_divergence_step": 1,
+      "hf_root_token_at_divergence": 11625,
+      "num_hf_steps": 80,
+      "num_vllm_steps": 18,
+      "sample_index": 0,
+      "vllm_root_token_at_divergence": 582
+    }
+  ],
+  "verdict": [
+    "HF aggregate top1: 0.8000; vLLM tree aggregate top1: 0.7778.",
+    "vLLM chain-spec aggregate top1: 0.7391.",
+    "Same-root positions examined: 16.  HF top1-match-rate on shared-prefix positions: 0.8125;  vLLM top1-match-rate on same positions: 0.8125.",
+    "VERDICT: Draft quality on shared-prefix positions matches HF within tolerance; the aggregate gap is dominated by trajectory divergence (tree-spec explores a different on-policy prefix than HF's chain-greedy).",
+    "Chain-spec gap HF-vs-vLLM: +0.061 -> partial match; suggests a mixture of structural and tree-induced effects."
+  ]
+}

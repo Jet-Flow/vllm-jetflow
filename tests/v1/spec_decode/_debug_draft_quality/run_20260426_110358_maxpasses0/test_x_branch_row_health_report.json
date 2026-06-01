@@ -1,0 +1,678 @@
+{
+  "aggregate": {
+    "branch_rows": [
+      2
+    ],
+    "num_captured_iters": 12,
+    "num_flagged_branches": 0,
+    "num_flagged_iters": 0,
+    "per_branch_cos_to_anchor": {
+      "2": {
+        "layer0_input_hidden": {
+          "max": 1.0,
+          "mean": 1.0,
+          "min": 1.0,
+          "num": 12
+        },
+        "layer0_input_residual": {
+          "max": null,
+          "mean": null,
+          "min": null,
+          "num": 0
+        },
+        "layer0_output_hidden": {
+          "max": 0.8262758324717732,
+          "mean": 0.7175140786336353,
+          "min": 0.505582862471961,
+          "num": 12
+        },
+        "layer0_output_residual": {
+          "max": 0.9821236595968142,
+          "mean": 0.9694123792922729,
+          "min": 0.9557413105646871,
+          "num": 12
+        },
+        "layer0_self_attn_out": {
+          "max": 0.9821237062681795,
+          "mean": 0.9694124752374086,
+          "min": 0.955741023592033,
+          "num": 12
+        }
+      }
+    }
+  },
+  "anchor_row": 1,
+  "branch_cos_low_threshold": 0.5,
+  "branch_rows": [
+    2
+  ],
+  "norm_ratio_high_threshold": 10.0,
+  "per_iter": [
+    {
+      "accepted_len": 4,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 685.6613165459661,
+        "layer0_output_residual": 1318.4200965339255,
+        "layer0_self_attn_out": 1318.417167136911
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.12318074144423,
+              "cos_to_anchor": 0.8262758324717732,
+              "norm": 425.76980460715356
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.687643848359585,
+              "cos_to_anchor": 0.9689550689091279,
+              "norm": 1327.6045246520575
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.687518402934074,
+              "cos_to_anchor": 0.968954628998818,
+              "norm": 1327.6036901899474
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 0,
+      "root_token": 1249,
+      "step": 0
+    },
+    {
+      "accepted_len": 5,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 1296.170419330001,
+        "layer0_output_residual": 1851.3141270186563,
+        "layer0_self_attn_out": 1851.3143784914002
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 7.548240666277707,
+              "cos_to_anchor": 0.505582862471961,
+              "norm": 621.76356842001
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.310468651354313,
+              "cos_to_anchor": 0.9557413105646871,
+              "norm": 1678.9706083123888
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.310348491184413,
+              "cos_to_anchor": 0.955741023592033,
+              "norm": 1678.9690063701862
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 5,
+      "root_token": 582,
+      "step": 1
+    },
+    {
+      "accepted_len": 5,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 732.4619902977618,
+        "layer0_output_residual": 2121.2776218156055,
+        "layer0_self_attn_out": 2121.2792399458954
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 6.547613277100027,
+              "cos_to_anchor": 0.7473031500449331,
+              "norm": 531.9854691391912
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.235310085117817,
+              "cos_to_anchor": 0.9725660422783433,
+              "norm": 1775.3329199641332
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.235229244455695,
+              "cos_to_anchor": 0.9725661826652298,
+              "norm": 1775.3319769670172
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 11,
+      "root_token": 3767,
+      "step": 2
+    },
+    {
+      "accepted_len": 3,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 708.8943456004978,
+        "layer0_output_residual": 1852.7772770781166,
+        "layer0_self_attn_out": 1852.7758161302568
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.445229031145573,
+              "cos_to_anchor": 0.6462211342751903,
+              "norm": 368.10473574650683
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.986025910824537,
+              "cos_to_anchor": 0.9562229418509263,
+              "norm": 1717.7997269818136
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.986218631267548,
+              "cos_to_anchor": 0.9562238133210258,
+              "norm": 1717.8012380525802
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 17,
+      "root_token": 525,
+      "step": 3
+    },
+    {
+      "accepted_len": 2,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 631.7982533174289,
+        "layer0_output_residual": 1956.1723441235697,
+        "layer0_self_attn_out": 1956.172699697233
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 5.396144327707589,
+              "cos_to_anchor": 0.7841649863326428,
+              "norm": 440.83877657070735
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.861294060945511,
+              "cos_to_anchor": 0.9821236595968142,
+              "norm": 1853.1162577355835
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.86139652878046,
+              "cos_to_anchor": 0.9821237062681795,
+              "norm": 1853.1171164162774
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 21,
+      "root_token": 1008,
+      "step": 4
+    },
+    {
+      "accepted_len": 5,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 657.7982378044023,
+        "layer0_output_residual": 1919.5288123536443,
+        "layer0_self_attn_out": 1919.528289346131
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.999303586781025,
+              "cos_to_anchor": 0.6535181919449379,
+              "norm": 408.88995216934387
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.957481138408184,
+              "cos_to_anchor": 0.9726592588667929,
+              "norm": 1743.793639879023
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.957267940044403,
+              "cos_to_anchor": 0.9726582055281141,
+              "norm": 1743.7921613243145
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 24,
+      "root_token": 2661,
+      "step": 5
+    },
+    {
+      "accepted_len": 4,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 1060.8284490183285,
+        "layer0_output_residual": 1931.0294673976634,
+        "layer0_self_attn_out": 1931.0307860383168
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 6.8592334389686584,
+              "cos_to_anchor": 0.7097493981466707,
+              "norm": 558.3758856601042
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.447347059845924,
+              "cos_to_anchor": 0.967984616917558,
+              "norm": 1739.940534228559
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.447268709540367,
+              "cos_to_anchor": 0.9679859162895953,
+              "norm": 1739.9402971995557
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 30,
+      "root_token": 387,
+      "step": 6
+    },
+    {
+      "accepted_len": 2,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 661.4466229191056,
+        "layer0_output_residual": 2111.874456849455,
+        "layer0_self_attn_out": 2111.874567360312
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.777958566322923,
+              "cos_to_anchor": 0.6891035946945282,
+              "norm": 408.3416662702891
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.913735181093216,
+              "cos_to_anchor": 0.974241667416245,
+              "norm": 1828.1193808317566
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.913665872416459,
+              "cos_to_anchor": 0.9742434689120505,
+              "norm": 1828.1199902812607
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 35,
+      "root_token": 67039,
+      "step": 7
+    },
+    {
+      "accepted_len": 2,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 865.8530453169058,
+        "layer0_output_residual": 1748.8839068131329,
+        "layer0_self_attn_out": 1748.8852587798694
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 6.108542502392083,
+              "cos_to_anchor": 0.8106110547640337,
+              "norm": 506.160611764497
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.524915851652622,
+              "cos_to_anchor": 0.9706621707096977,
+              "norm": 1660.542342238618
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.525110863149166,
+              "cos_to_anchor": 0.970662232585085,
+              "norm": 1660.5440373816025
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 38,
+      "root_token": 1156,
+      "step": 8
+    },
+    {
+      "accepted_len": 3,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 464.9322243086279,
+        "layer0_output_residual": 1881.6793194328297,
+        "layer0_self_attn_out": 1881.6800886769965
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.514438398182392,
+              "cos_to_anchor": 0.6589095821625951,
+              "norm": 367.67290583437443
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.228032313287258,
+              "cos_to_anchor": 0.9722402181538053,
+              "norm": 1767.500395499853
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.2278797114267945,
+              "cos_to_anchor": 0.9722398856690698,
+              "norm": 1767.498944608899
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 45,
+      "root_token": 1172,
+      "step": 10
+    },
+    {
+      "accepted_len": 3,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 1018.1560176198427,
+        "layer0_output_residual": 1846.628339364389,
+        "layer0_self_attn_out": 1846.6283750917748
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 4.467870167689398,
+              "cos_to_anchor": 0.7694987588608317,
+              "norm": 378.6233048968915
+            },
+            "layer0_output_residual": {
+              "abs_mean": 7.183839723467827,
+              "cos_to_anchor": 0.9670416924859578,
+              "norm": 1745.1201441251017
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 7.183685004711151,
+              "cos_to_anchor": 0.967040478122282,
+              "norm": 1745.1183674261015
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 53,
+      "root_token": 504,
+      "step": 12
+    },
+    {
+      "accepted_len": 1,
+      "anchor_norms": {
+        "layer0_input_hidden": 0.5722374368282327,
+        "layer0_input_residual": null,
+        "layer0_output_hidden": 500.2524991671725,
+        "layer0_output_residual": 1846.3714590204668,
+        "layer0_self_attn_out": 1846.3721722861847
+      },
+      "anchor_row": 1,
+      "branch_rows": [
+        2
+      ],
+      "iter_flagged": false,
+      "per_branch": [
+        {
+          "flags": [],
+          "per_tap": {
+            "layer0_input_hidden": {
+              "abs_mean": 0.007146845833631232,
+              "cos_to_anchor": 1.0,
+              "norm": 0.5722374368282327
+            },
+            "layer0_input_residual": {
+              "abs_mean": null,
+              "cos_to_anchor": null,
+              "norm": null
+            },
+            "layer0_output_hidden": {
+              "abs_mean": 5.929505534702912,
+              "cos_to_anchor": 0.8092303974335252,
+              "norm": 528.8159510125734
+            },
+            "layer0_output_residual": {
+              "abs_mean": 6.248501531779766,
+              "cos_to_anchor": 0.9725099037573185,
+              "norm": 1552.7352497493418
+            },
+            "layer0_self_attn_out": {
+              "abs_mean": 6.248782433569431,
+              "cos_to_anchor": 0.9725101608974194,
+              "norm": 1552.7378642315775
+            }
+          },
+          "row": 2
+        }
+      ],
+      "position": 67,
+      "root_token": 4583,
+      "step": 15
+    }
+  ],
+  "sample_index": 0,
+  "verdict": {
+    "anchor_row": 1,
+    "branch_cos_low_threshold": 0.5,
+    "branch_rows": [
+      2
+    ],
+    "interpretation_hint": "No pathological branch rows detected: branch rows share the mask-token embedding and show sane norms + high input cosine to the d0 row.  This REFUTES 'branch plumbing catastrophe' as a cause of the residual tree gap.  Residual gap must come from deeper layers or downstream sampling / KV-cache effects rather than branch-row input corruption.",
+    "norm_ratio_high_threshold": 10.0,
+    "num_captured_iters": 12,
+    "num_flagged_branches": 0,
+    "num_flagged_iters": 0,
+    "sample_index": 0
+  }
+}

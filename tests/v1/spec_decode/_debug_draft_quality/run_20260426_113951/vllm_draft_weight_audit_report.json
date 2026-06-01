@@ -1,0 +1,42 @@
+{
+  "aux_hidden_state_layer_ids": [],
+  "d2t_is_none": true,
+  "d2t_stats": {
+    "is_none": true
+  },
+  "draft_vocab_size": 151936,
+  "suspicious_items": [
+    "draft_id_to_target_id"
+  ],
+  "vocab_size": 151936,
+  "weights": [
+    {
+      "abs_mean": 0.020412737503647804,
+      "looks_random_or_zero": false,
+      "name": "lm_head.weight",
+      "norm": 649.2103881835938,
+      "status": "present"
+    },
+    {
+      "abs_mean": 0.04398845136165619,
+      "looks_random_or_zero": false,
+      "name": "model.fc.weight",
+      "norm": 515.3748168945312,
+      "status": "present"
+    },
+    {
+      "abs_mean": 1.1417531967163086,
+      "looks_random_or_zero": false,
+      "name": "model.hidden_norm.weight",
+      "norm": 73.10332489013672,
+      "status": "present"
+    },
+    {
+      "abs_mean": 0.017142266035079956,
+      "looks_random_or_zero": false,
+      "name": "model.embed_tokens.weight",
+      "norm": 550.0750122070312,
+      "status": "present"
+    }
+  ]
+}

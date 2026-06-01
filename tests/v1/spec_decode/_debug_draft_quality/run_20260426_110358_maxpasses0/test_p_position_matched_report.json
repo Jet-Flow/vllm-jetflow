@@ -1,0 +1,513 @@
+{
+  "attn_tap_order": [
+    "i1_q_post_qproj",
+    "k_noise_post_kproj",
+    "v_noise_post_vproj",
+    "i2_q_post_qnorm",
+    "k_noise_post_knorm",
+    "i3_q_post_rope",
+    "k_noise_post_rope",
+    "i4_attn_out_pre_oproj",
+    "i5_attn_out_post_oproj"
+  ],
+  "chain_captured_positions": [
+    0,
+    2,
+    4,
+    6,
+    8,
+    9,
+    11,
+    13,
+    15,
+    18,
+    21,
+    27,
+    36,
+    45,
+    53,
+    69
+  ],
+  "context_kv_key_order": [
+    "k_last_context_pre_rope",
+    "k_last_context",
+    "v_last_context"
+  ],
+  "cosine_threshold": 0.999,
+  "hf_captured_positions": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60
+  ],
+  "matched_positions": [
+    0,
+    11,
+    21,
+    45,
+    53
+  ],
+  "num_prompt_tokens_chain": 0,
+  "num_prompt_tokens_tree": 0,
+  "per_matched_pair": [
+    {
+      "chain_context_len": 150,
+      "chain_iter": 0,
+      "chain_top1_matches_target": true,
+      "context_kv": {
+        "k_last_context": {
+          "hf_vs_chain_cosine": 0.9999700290397371,
+          "hf_vs_tree_cosine": 0.9999658965917331,
+          "tree_vs_chain_cosine": 0.9999583345290889
+        },
+        "k_last_context_pre_rope": {
+          "hf_vs_chain_cosine": 0.9999707588775364,
+          "hf_vs_tree_cosine": 0.9999663546114572,
+          "tree_vs_chain_cosine": 0.9999590227159544
+        },
+        "v_last_context": {
+          "hf_vs_chain_cosine": 0.9998472204570863,
+          "hf_vs_tree_cosine": 0.9997938190871226,
+          "tree_vs_chain_cosine": 0.9998063817010078
+        }
+      },
+      "draft_top1_agree": true,
+      "draft_top1_chain": 11625,
+      "draft_top1_tree": 11625,
+      "hf_context_len": 150,
+      "hf_iter": 0,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9997398914009413,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "hf_vs_chain_cosine": 0.9999215420398524,
+          "hf_vs_tree_cosine": 0.9999403977518944,
+          "tree_vs_chain_cosine": 0.9999357485172666
+        },
+        "i2_q_post_qnorm": {
+          "hf_vs_chain_cosine": 0.99989155336644,
+          "hf_vs_tree_cosine": 0.999914901911439,
+          "tree_vs_chain_cosine": 0.9999122763281205
+        },
+        "i3_q_post_rope": {
+          "hf_vs_chain_cosine": 0.999889220882293,
+          "hf_vs_tree_cosine": 0.9999124435066754,
+          "tree_vs_chain_cosine": 0.999908878954193
+        },
+        "i4_attn_out_pre_oproj": {
+          "hf_vs_chain_cosine": 0.9997330109633703,
+          "hf_vs_tree_cosine": 0.9997380545157131,
+          "tree_vs_chain_cosine": 0.9997398914009413
+        },
+        "i5_attn_out_post_oproj": {
+          "hf_vs_chain_cosine": 0.9997819887735768,
+          "hf_vs_tree_cosine": 0.999787341129531,
+          "tree_vs_chain_cosine": 0.9997778406105478
+        },
+        "k_noise_post_knorm": {
+          "hf_vs_chain_cosine": 0.9999368970558993,
+          "hf_vs_tree_cosine": 0.9999568804642917,
+          "tree_vs_chain_cosine": 0.999953838722452
+        },
+        "k_noise_post_kproj": {
+          "hf_vs_chain_cosine": 0.9999433066421397,
+          "hf_vs_tree_cosine": 0.9999646050033197,
+          "tree_vs_chain_cosine": 0.9999649363633502
+        },
+        "k_noise_post_rope": {
+          "hf_vs_chain_cosine": 0.9999353302687992,
+          "hf_vs_tree_cosine": 0.9999552250751222,
+          "tree_vs_chain_cosine": 0.9999521724623952
+        },
+        "v_noise_post_vproj": {
+          "hf_vs_chain_cosine": 0.9997584573835084,
+          "hf_vs_tree_cosine": 0.9998510871998197,
+          "tree_vs_chain_cosine": 0.9998227501781682
+        }
+      },
+      "position": 0,
+      "root_token_chain": 1249,
+      "root_token_tree": 1249,
+      "root_tokens_match": true,
+      "target_next_token_chain": 11625,
+      "target_next_token_tree": 11625,
+      "target_next_tokens_match": true,
+      "tree_context_len": 150,
+      "tree_iter": 0,
+      "tree_top1_matches_target": true
+    },
+    {
+      "chain_context_len": 2,
+      "chain_iter": 6,
+      "chain_top1_matches_target": true,
+      "context_kv": {
+        "k_last_context": {
+          "tree_vs_chain_cosine": 0.5630784542187436
+        },
+        "k_last_context_pre_rope": {
+          "tree_vs_chain_cosine": 0.7861274769258385
+        },
+        "v_last_context": {
+          "tree_vs_chain_cosine": 0.27310897717695193
+        }
+      },
+      "draft_top1_agree": true,
+      "draft_top1_chain": 1378,
+      "draft_top1_tree": 1378,
+      "hf_context_len": null,
+      "hf_iter": null,
+      "pair_first_low_tap": {
+        "cosine": 0.998827295541133,
+        "tap": "i1_q_post_qproj"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.9916018691755305,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "tree_vs_chain_cosine": 0.998827295541133
+        },
+        "i2_q_post_qnorm": {
+          "tree_vs_chain_cosine": 0.9985213199669275
+        },
+        "i3_q_post_rope": {
+          "tree_vs_chain_cosine": 0.9985193922443282
+        },
+        "i4_attn_out_pre_oproj": {
+          "tree_vs_chain_cosine": 0.9916018691755305
+        },
+        "i5_attn_out_post_oproj": {
+          "tree_vs_chain_cosine": 0.9929286063151646
+        },
+        "k_noise_post_knorm": {
+          "tree_vs_chain_cosine": 0.9990143819687233
+        },
+        "k_noise_post_kproj": {
+          "tree_vs_chain_cosine": 0.999173571603105
+        },
+        "k_noise_post_rope": {
+          "tree_vs_chain_cosine": 0.9990118153096417
+        },
+        "v_noise_post_vproj": {
+          "tree_vs_chain_cosine": 0.9962345810279208
+        }
+      },
+      "position": 11,
+      "root_token_chain": 3767,
+      "root_token_tree": 3767,
+      "root_tokens_match": true,
+      "target_next_token_chain": 1378,
+      "target_next_token_tree": 1378,
+      "target_next_tokens_match": true,
+      "tree_context_len": 255,
+      "tree_iter": 2,
+      "tree_top1_matches_target": true
+    },
+    {
+      "chain_context_len": 2,
+      "chain_iter": 12,
+      "chain_top1_matches_target": true,
+      "context_kv": {
+        "k_last_context": {
+          "tree_vs_chain_cosine": 0.5827933977799091
+        },
+        "k_last_context_pre_rope": {
+          "tree_vs_chain_cosine": 0.6219022097650013
+        },
+        "v_last_context": {
+          "tree_vs_chain_cosine": 0.1491291638549582
+        }
+      },
+      "draft_top1_agree": true,
+      "draft_top1_chain": 1091,
+      "draft_top1_tree": 1091,
+      "hf_context_len": null,
+      "hf_iter": null,
+      "pair_first_low_tap": {
+        "cosine": 0.9966595926888403,
+        "tap": "v_noise_post_vproj"
+      },
+      "pair_min_tree_vs_chain_cosine": 0.9966595926888403,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "tree_vs_chain_cosine": 0.9991701625724766
+        },
+        "i2_q_post_qnorm": {
+          "tree_vs_chain_cosine": 0.9990262444036216
+        },
+        "i3_q_post_rope": {
+          "tree_vs_chain_cosine": 0.9990246694468342
+        },
+        "i4_attn_out_pre_oproj": {
+          "tree_vs_chain_cosine": 0.9979807155840281
+        },
+        "i5_attn_out_post_oproj": {
+          "tree_vs_chain_cosine": 0.9983792775854684
+        },
+        "k_noise_post_knorm": {
+          "tree_vs_chain_cosine": 0.9991832812369036
+        },
+        "k_noise_post_kproj": {
+          "tree_vs_chain_cosine": 0.9993438366508229
+        },
+        "k_noise_post_rope": {
+          "tree_vs_chain_cosine": 0.9991786234267906
+        },
+        "v_noise_post_vproj": {
+          "tree_vs_chain_cosine": 0.9966595926888403
+        }
+      },
+      "position": 21,
+      "root_token_chain": 1008,
+      "root_token_tree": 1008,
+      "root_tokens_match": true,
+      "target_next_token_chain": 1091,
+      "target_next_token_tree": 1091,
+      "target_next_tokens_match": true,
+      "tree_context_len": 255,
+      "tree_iter": 4,
+      "tree_top1_matches_target": true
+    },
+    {
+      "chain_context_len": 2,
+      "chain_iter": 25,
+      "chain_top1_matches_target": true,
+      "context_kv": {
+        "k_last_context": {
+          "tree_vs_chain_cosine": 0.7705488474708697
+        },
+        "k_last_context_pre_rope": {
+          "tree_vs_chain_cosine": 0.8241669563058176
+        },
+        "v_last_context": {
+          "tree_vs_chain_cosine": 0.27591015836116134
+        }
+      },
+      "draft_top1_agree": true,
+      "draft_top1_chain": 23942,
+      "draft_top1_tree": 23942,
+      "hf_context_len": null,
+      "hf_iter": null,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9995720836035028,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "tree_vs_chain_cosine": 0.9998889133155453
+        },
+        "i2_q_post_qnorm": {
+          "tree_vs_chain_cosine": 0.999855306016696
+        },
+        "i3_q_post_rope": {
+          "tree_vs_chain_cosine": 0.9998517761205331
+        },
+        "i4_attn_out_pre_oproj": {
+          "tree_vs_chain_cosine": 0.9995720836035028
+        },
+        "i5_attn_out_post_oproj": {
+          "tree_vs_chain_cosine": 0.9996471221278553
+        },
+        "k_noise_post_knorm": {
+          "tree_vs_chain_cosine": 0.99990166021707
+        },
+        "k_noise_post_kproj": {
+          "tree_vs_chain_cosine": 0.9999213764749906
+        },
+        "k_noise_post_rope": {
+          "tree_vs_chain_cosine": 0.9999002143499505
+        },
+        "v_noise_post_vproj": {
+          "tree_vs_chain_cosine": 0.9995857956473905
+        }
+      },
+      "position": 45,
+      "root_token_chain": 1172,
+      "root_token_tree": 1172,
+      "root_tokens_match": true,
+      "target_next_token_chain": 23942,
+      "target_next_token_tree": 23942,
+      "target_next_tokens_match": true,
+      "tree_context_len": 255,
+      "tree_iter": 10,
+      "tree_top1_matches_target": true
+    },
+    {
+      "chain_context_len": 2,
+      "chain_iter": 30,
+      "chain_top1_matches_target": false,
+      "context_kv": {
+        "k_last_context": {
+          "tree_vs_chain_cosine": 0.6812884637001535
+        },
+        "k_last_context_pre_rope": {
+          "tree_vs_chain_cosine": 0.7831773561416577
+        },
+        "v_last_context": {
+          "tree_vs_chain_cosine": 0.22609851168358186
+        }
+      },
+      "draft_top1_agree": true,
+      "draft_top1_chain": 400,
+      "draft_top1_tree": 400,
+      "hf_context_len": null,
+      "hf_iter": null,
+      "pair_first_low_tap": null,
+      "pair_min_tree_vs_chain_cosine": 0.9991986784578709,
+      "per_attn_tap": {
+        "i1_q_post_qproj": {
+          "tree_vs_chain_cosine": 0.9997732514250354
+        },
+        "i2_q_post_qnorm": {
+          "tree_vs_chain_cosine": 0.999720869767379
+        },
+        "i3_q_post_rope": {
+          "tree_vs_chain_cosine": 0.9997185231058925
+        },
+        "i4_attn_out_pre_oproj": {
+          "tree_vs_chain_cosine": 0.9991986784578709
+        },
+        "i5_attn_out_post_oproj": {
+          "tree_vs_chain_cosine": 0.9994284692569378
+        },
+        "k_noise_post_knorm": {
+          "tree_vs_chain_cosine": 0.9998424627399656
+        },
+        "k_noise_post_kproj": {
+          "tree_vs_chain_cosine": 0.9998712472041553
+        },
+        "k_noise_post_rope": {
+          "tree_vs_chain_cosine": 0.9998408671093997
+        },
+        "v_noise_post_vproj": {
+          "tree_vs_chain_cosine": 0.9996211413392527
+        }
+      },
+      "position": 53,
+      "root_token_chain": 504,
+      "root_token_tree": 504,
+      "root_tokens_match": true,
+      "target_next_token_chain": 506,
+      "target_next_token_tree": 506,
+      "target_next_tokens_match": true,
+      "tree_context_len": 255,
+      "tree_iter": 12,
+      "tree_top1_matches_target": false
+    }
+  ],
+  "sample_index": 0,
+  "summary": {
+    "chain_top1_hit_rate_on_matched": 0.8,
+    "context_kv": {
+      "k_last_context": {
+        "mean_tree_vs_chain_cosine": 0.719533499539753,
+        "min_tree_vs_chain_cosine": 0.5630784542187436,
+        "num_pairs": 5
+      },
+      "k_last_context_pre_rope": {
+        "mean_tree_vs_chain_cosine": 0.8030666043708539,
+        "min_tree_vs_chain_cosine": 0.6219022097650013,
+        "num_pairs": 5
+      },
+      "v_last_context": {
+        "mean_tree_vs_chain_cosine": 0.3848106385555322,
+        "min_tree_vs_chain_cosine": 0.1491291638549582,
+        "num_pairs": 5
+      }
+    },
+    "draft_top1_agreement_rate_on_matched": 1.0,
+    "num_captured_chain_positions": 16,
+    "num_captured_hf_positions": 18,
+    "num_captured_tree_positions": 12,
+    "num_matched_pairs": 5,
+    "num_pairs_with_draft_top1_agree": 5,
+    "num_pairs_with_root_match": 5,
+    "num_pairs_with_target_next_match": 5,
+    "per_attn_tap": {
+      "i1_q_post_qproj": {
+        "mean_tree_vs_chain_cosine": 0.9995190742742913,
+        "min_tree_vs_chain_cosine": 0.998827295541133,
+        "num_pairs": 5
+      },
+      "i2_q_post_qnorm": {
+        "mean_tree_vs_chain_cosine": 0.9994072032965489,
+        "min_tree_vs_chain_cosine": 0.9985213199669275,
+        "num_pairs": 5
+      },
+      "i3_q_post_rope": {
+        "mean_tree_vs_chain_cosine": 0.9994046479743561,
+        "min_tree_vs_chain_cosine": 0.9985193922443282,
+        "num_pairs": 5
+      },
+      "i4_attn_out_pre_oproj": {
+        "mean_tree_vs_chain_cosine": 0.9976186476443747,
+        "min_tree_vs_chain_cosine": 0.9916018691755305,
+        "num_pairs": 5
+      },
+      "i5_attn_out_post_oproj": {
+        "mean_tree_vs_chain_cosine": 0.9980322631791948,
+        "min_tree_vs_chain_cosine": 0.9929286063151646,
+        "num_pairs": 5
+      },
+      "k_noise_post_knorm": {
+        "mean_tree_vs_chain_cosine": 0.9995791249770228,
+        "min_tree_vs_chain_cosine": 0.9990143819687233,
+        "num_pairs": 5
+      },
+      "k_noise_post_kproj": {
+        "mean_tree_vs_chain_cosine": 0.9996549936592848,
+        "min_tree_vs_chain_cosine": 0.999173571603105,
+        "num_pairs": 5
+      },
+      "k_noise_post_rope": {
+        "mean_tree_vs_chain_cosine": 0.9995767385316355,
+        "min_tree_vs_chain_cosine": 0.9990118153096417,
+        "num_pairs": 5
+      },
+      "v_noise_post_vproj": {
+        "mean_tree_vs_chain_cosine": 0.9983847721763144,
+        "min_tree_vs_chain_cosine": 0.9962345810279208,
+        "num_pairs": 5
+      }
+    },
+    "tree_top1_hit_rate_on_matched": 0.8
+  },
+  "tree_captured_positions": [
+    0,
+    5,
+    11,
+    17,
+    21,
+    24,
+    30,
+    35,
+    38,
+    45,
+    53,
+    67
+  ],
+  "verdict": {
+    "cosine_threshold": 0.999,
+    "first_low_cos_pair": {
+      "cosine": 0.998827295541133,
+      "position": 11,
+      "tap": "i1_q_post_qproj"
+    },
+    "interpretation_hint": "At matched decoded positions, tree and chain self_attn output cosines are ~1.0 across all pairs; the tree-vs-chain gap does NOT come from kernel/state divergence at layer-1 depth-0.  The corruption is either at later layers or at depth>0 branches -- add depth>0 taps.",
+    "mean_i4_attn_out_pre_oproj_tree_vs_chain_cosine": 0.9976186476443747,
+    "mean_i5_attn_out_post_oproj_tree_vs_chain_cosine": 0.9980322631791948,
+    "min_i4_attn_out_pre_oproj_tree_vs_chain_cosine": 0.9916018691755305,
+    "num_matched_pairs": 5,
+    "sample_index": 0
+  }
+}

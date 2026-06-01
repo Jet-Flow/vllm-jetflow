@@ -1,0 +1,116 @@
+{
+  "cosine_threshold": 0.999,
+  "d0_row_vllm": 1,
+  "first_divergence_tap": null,
+  "layer_idx_check": {
+    "match": true,
+    "reference_layer_idx": 1,
+    "vllm_bisect_layer_idx": 1
+  },
+  "per_tap_parity": {
+    "layer_input": {
+      "cosine": 0.999963279086126,
+      "l2_diff": 15.139110036667661,
+      "len": 4096,
+      "max_abs_diff": 4.0,
+      "mean_abs_diff": 0.17982697486877441,
+      "ref_norm": 1759.7116291939694,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 1760.980414411081,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    },
+    "mlp_out": {
+      "cosine": 0.9998041183043107,
+      "l2_diff": 30.478983868784614,
+      "len": 4096,
+      "max_abs_diff": 3.0,
+      "mean_abs_diff": 0.37415976356714964,
+      "ref_norm": 1539.9335141589208,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 1539.8152008188108,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    },
+    "post_attn_residual": {
+      "cosine": 0.9999215726716579,
+      "l2_diff": 22.908409365554068,
+      "len": 4096,
+      "max_abs_diff": 4.0,
+      "mean_abs_diff": 0.28096115589141846,
+      "ref_norm": 1828.4422615700573,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 1828.946257896144,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    },
+    "post_input_ln": {
+      "cosine": 0.9999063194253544,
+      "l2_diff": 0.5917760067514729,
+      "len": 4096,
+      "max_abs_diff": 0.125,
+      "mean_abs_diff": 0.007045724894851446,
+      "ref_norm": 42.5257799715448,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 42.415105229513756,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    },
+    "post_post_attn_ln": {
+      "cosine": 0.9997991881993572,
+      "l2_diff": 0.6105389364676491,
+      "len": 4096,
+      "max_abs_diff": 0.0341796875,
+      "mean_abs_diff": 0.007469402393326163,
+      "ref_norm": 30.378155822246242,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 30.3255393581366,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    },
+    "self_attn_out": {
+      "cosine": 0.999787341129531,
+      "l2_diff": 16.389787366362203,
+      "len": 4096,
+      "max_abs_diff": 1.0,
+      "mean_abs_diff": 0.2026037061586976,
+      "ref_norm": 793.096287750935,
+      "status": "ok",
+      "vllm_dtype": "torch.bfloat16",
+      "vllm_norm": 791.8655626604793,
+      "vllm_shape": [
+        16,
+        4096
+      ]
+    }
+  },
+  "tap_order": [
+    "layer_input",
+    "post_input_ln",
+    "self_attn_out",
+    "post_attn_residual",
+    "post_post_attn_ln",
+    "mlp_out"
+  ],
+  "vllm_captured_flags": {
+    "input_layernorm": true,
+    "mlp": true,
+    "post_attention_layernorm": true,
+    "self_attn": true
+  }
+}
