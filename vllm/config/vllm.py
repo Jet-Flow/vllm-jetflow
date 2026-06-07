@@ -1448,9 +1448,27 @@ class VllmConfig:
                     if self.speculative_config is not None
                     else 1
                 )
-                max_cudagraph_capture_size = min(
-                    self.scheduler_config.max_num_seqs * decode_query_len * 2, 512
+                tree_capture_sizes = (
+                    self.speculative_config.cudagraph_tree_capture_sizes
+                    if self.speculative_config is not None
+                    else None
                 )
+                if tree_capture_sizes is not None:
+                    # DFlash tree verification captures full batched tree
+                    # forwards.  Capture max-budget multiples such as
+                    # 16 * 255 = 4080; the generic 512-token decode cap would
+                    # otherwise force eager verification.
+                    max_cudagraph_capture_size = (
+                        self.scheduler_config.max_num_seqs
+                        * max(tree_capture_sizes)
+                    )
+                else:
+                    max_cudagraph_capture_size = min(
+                        self.scheduler_config.max_num_seqs
+                        * decode_query_len
+                        * 2,
+                        512,
+                    )
             max_num_tokens = self.scheduler_config.max_num_batched_tokens
             max_cudagraph_capture_size = min(max_num_tokens, max_cudagraph_capture_size)
 
@@ -1480,9 +1498,12 @@ class VllmConfig:
                 )
                 if tree_capture_sizes is not None:
                     cudagraph_capture_sizes = [
-                        size
+                        size * num_reqs
                         for size in tree_capture_sizes
-                        if size <= max_cudagraph_capture_size
+                        for num_reqs in range(
+                            1, self.scheduler_config.max_num_seqs + 1
+                        )
+                        if size * num_reqs <= max_cudagraph_capture_size
                     ]
                 elif self.performance_mode == "interactivity":
                     # Fine-grained CUDA graphs at small batch sizes

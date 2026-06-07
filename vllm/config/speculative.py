@@ -167,7 +167,7 @@ class SpeculativeConfig:
     tree_prune_ratio: float = Field(default=0.25, gt=0.0, lt=1.0)
     """Fraction of leaves to prune in each refinement pass.
     Only used when max_draft_passes > 0."""
-    tree_construction: Literal["depth_first", "breadth_first"] = "depth_first"
+    tree_construction: Literal["depth_first", "breadth_first"] = "breadth_first"
     """Tree node allocation strategy. 'depth_first' pre-allocates the greedy
     (top-1) spine to full depth before spending budget on side branches,
     guaranteeing tree acceptance >= linear-chain acceptance. 'breadth_first'
@@ -177,13 +177,18 @@ class SpeculativeConfig:
     default Triton bias-based path; 'optimus' uses the fused SM90 paged
     tree-mask kernel from optimus_cutedsl (requires SM90 GPU and
     page_size == 128)."""
+    tree_kv_layout: Literal["physical", "logical"] = "physical"
+    """KV-cache layout for DFlash tree verification. 'physical' keeps the
+    current compact-after-accept path; 'logical' tracks accepted tree nodes via
+    slot indirection instead of moving KV entries."""
     num_cudagraph_tree_captures: int = Field(default=0, ge=0)
-    """Number of distinct tree sizes to capture as CUDAGraphs for DFlash
-    tree verification.  When > 0, evenly-spaced sizes from a minimum up
-    to dflash_tree_budget are computed; after each prune/regrow the tree
-    is adjusted to the nearest captured size so every forward is a
-    CUDAGraph hit.  0 disables multi-size capture (fallback to the
-    default heuristic around the budget centre)."""
+    """Enable DFlash tree CUDAGraph capture.
+
+    When > 0, tree verification captures only max-budget tree shapes
+    (dflash_tree_budget * num_reqs).  Trees are adjusted to dflash_tree_budget
+    before verification so every target forward is a CUDAGraph hit.  0 disables
+    DFlash tree CUDAGraph capture.
+    """
     parallel_drafting: bool = False
     """Enable parallel drafting, where all speculative tokens are generated
     in parallel rather than sequentially. This can improve performance but
@@ -282,6 +287,7 @@ class SpeculativeConfig:
                     self.tree_hybrid_alpha,
                     self.max_draft_passes,
                     self.tree_attn_kernel,
+                    self.tree_kv_layout,
                     self.num_cudagraph_tree_captures,
                 )
             )
@@ -946,22 +952,19 @@ class SpeculativeConfig:
 
     @property
     def cudagraph_tree_capture_sizes(self) -> list[int] | None:
-        """Evenly-spaced tree sizes for multi-size CUDAGraph capture.
+        """Per-request tree sizes for DFlash CUDAGraph capture.
 
         Returns ``None`` when the feature is disabled
         (``num_cudagraph_tree_captures == 0`` or non-tree mode).
+        When enabled, captures only the maximum tree budget.  Target
+        verification CUDA graphs then cover ``dflash_tree_budget * num_reqs``
+        for each request count.
         """
         if self.num_cudagraph_tree_captures <= 0:
             return None
         if self.method != "dflash" or self.tree_width <= 1:
             return None
-        budget = self.dflash_tree_budget
-        n = self.num_cudagraph_tree_captures
-        step = max(1, budget // n)
-        sizes = list(range(step, budget, step))
-        if not sizes or sizes[-1] != budget:
-            sizes.append(budget)
-        return sizes
+        return [self.dflash_tree_budget]
 
     @property
     def cudagraph_uniform_decode_query_len(self) -> int:

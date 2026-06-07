@@ -3,6 +3,8 @@
 """Attention layer with TreeAttention."""
 
 import ast
+import logging
+import os
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -94,6 +96,9 @@ class TreeAttentionMetadata:
 
     tree_attn_bias: torch.Tensor | None = None
     ancestor_masks: torch.Tensor | None = None
+    logical_kv_slots: torch.Tensor | None = None
+    logical_kv_slot_lens: torch.Tensor | None = None
+    logical_kv_starts: torch.Tensor | None = None
 
     # Cached Prefill/decode metadata.
     _cached_prefill_metadata: "TreeAttentionMetadata | None" = None
@@ -115,9 +120,11 @@ class TreeAttentionMetadata:
         # Construct & cache prefill-phase attention metadata structure
         self._cached_prefill_metadata = TreeAttentionMetadata(
             num_actual_tokens=self.num_prefill_tokens,
-            max_query_len=int(q_seqlens.max().item()),
+            # Avoid GPU scalar sync during CUDA graph capture. The parent
+            # metadata max is conservative and already available on CPU.
+            max_query_len=self.max_query_len,
             query_start_loc=q_start_loc - q_start_loc[0],
-            max_seq_len=int(kv_seqlens.max().item()),
+            max_seq_len=self.max_seq_len,
             seq_lens=kv_seqlens,
             block_table=self.block_table[self.num_decodes :],
             slot_mapping=self.slot_mapping[self.num_decode_tokens :],
@@ -140,14 +147,19 @@ class TreeAttentionMetadata:
         # Construct & cache decode-phase attention metadata structure
         self._cached_decode_metadata = TreeAttentionMetadata(
             num_actual_tokens=self.num_decode_tokens,
-            max_query_len=int(q_seqlens.max().item()),
+            # Avoid GPU scalar sync during CUDA graph capture. The parent
+            # metadata max is conservative and already available on CPU.
+            max_query_len=self.max_query_len,
             query_start_loc=q_start_loc,
-            max_seq_len=int(kv_seqlens.max().item()),
+            max_seq_len=self.max_seq_len,
             seq_lens=kv_seqlens,
             block_table=self.block_table[: self.num_decodes],
             slot_mapping=self.slot_mapping[: self.num_decode_tokens],
             tree_attn_bias=self.tree_attn_bias,
             ancestor_masks=self.ancestor_masks,
+            logical_kv_slots=self.logical_kv_slots,
+            logical_kv_slot_lens=self.logical_kv_slot_lens,
+            logical_kv_starts=self.logical_kv_starts,
         )
         return self._cached_decode_metadata
 
@@ -187,8 +199,16 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
         self.reorder_batch_threshold = self.tree_attn_bias.shape[0]
         self._cudagraph_tree_attn_bias: torch.Tensor | None = None
         self._cudagraph_ancestor_masks: torch.Tensor | None = None
+        self._cudagraph_logical_kv_slots: torch.Tensor | None = None
+        self._cudagraph_logical_kv_slot_lens: torch.Tensor | None = None
+        self._cudagraph_logical_kv_starts: torch.Tensor | None = None
         self._max_cudagraph_tree_query_len = self._init_max_cudagraph_tree_query_len()
+        self._max_cudagraph_tree_bias_len = self._init_max_cudagraph_tree_bias_len()
         self._max_cudagraph_batch_size = vllm_config.scheduler_config.max_num_seqs
+        self._max_cudagraph_logical_kv_slots = int(
+            getattr(vllm_config.model_config, "max_model_len", 0)
+            or self._max_cudagraph_tree_query_len
+        )
         self._dflash_tree_debug_records: list[dict[str, object]] = []
 
     def get_dflash_tree_debug_records(self) -> list[dict[str, object]]:
@@ -196,6 +216,13 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
 
     def clear_dflash_tree_debug_records(self) -> None:
         self._dflash_tree_debug_records.clear()
+
+    def _dflash_tree_debug_enabled(self) -> bool:
+        return logger.isEnabledFor(logging.DEBUG)
+
+    def _clear_dflash_tree_debug_context(self) -> None:
+        if hasattr(self, "_dflash_tree_debug_context"):
+            delattr(self, "_dflash_tree_debug_context")
 
     def _append_dflash_tree_debug_record(
         self,
@@ -205,9 +232,140 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
         output_metadata: TreeAttentionMetadata,
         tree_attn_bias: torch.Tensor | None,
         ancestor_masks: torch.Tensor | None,
+        logical_kv_slots: list[torch.Tensor | None] | torch.Tensor | None = None,
         debug_context: dict[str, object],
     ) -> None:
+        if not self._dflash_tree_debug_enabled():
+            return
+
         decode_meta = output_metadata.decode_metadata
+        logical_kv_indirection_shape = (
+            list(output_metadata.logical_kv_slots.shape)
+            if output_metadata.logical_kv_slots is not None
+            else None
+        )
+        logical_kv_indirection_lens = (
+            output_metadata.logical_kv_slot_lens.detach().cpu()
+            if output_metadata.logical_kv_slot_lens is not None
+            else None
+        )
+        logical_kv_starts = (
+            output_metadata.logical_kv_starts.detach().cpu()
+            if output_metadata.logical_kv_starts is not None
+            else None
+        )
+        if torch.is_tensor(output_metadata.logical_kv_slot_lens):
+            logical_kv_slot_lens = output_metadata.logical_kv_slot_lens.detach().cpu().tolist()
+        elif isinstance(logical_kv_slots, list):
+            logical_kv_slot_lens = [
+                int(slots.numel()) if slots is not None else 0
+                for slots in logical_kv_slots
+            ]
+        else:
+            logical_kv_slot_lens = None
+        # TODO(dflash-logical-kv-cleanup): remove these verbose diagnostics once
+        # the logical KV layout is stable.  They compare the logical slot
+        # indirection against the canonical block-table slots that attention
+        # would read without logical remapping.
+        logical_kv_slot_debug: list[dict[str, object]] | None = None
+        if (
+            output_metadata.logical_kv_slots is not None
+            and output_metadata.logical_kv_slot_lens is not None
+            and output_metadata.logical_kv_starts is not None
+        ):
+            slots_cpu = output_metadata.logical_kv_slots.detach().cpu()
+            lens_cpu = output_metadata.logical_kv_slot_lens.detach().cpu()
+            starts_cpu = output_metadata.logical_kv_starts.detach().cpu()
+            block_table_cpu = output_metadata.block_table.detach().cpu()
+            seq_lens_cpu = output_metadata.seq_lens.detach().cpu()
+            q_lens_cpu = torch.diff(output_metadata.query_start_loc.detach().cpu())
+            logical_kv_slot_debug = []
+            for req_idx in range(slots_cpu.shape[0]):
+                slot_len = int(lens_cpu[req_idx].item())
+                logical_start = int(starts_cpu[req_idx].item())
+                query_len = (
+                    int(q_lens_cpu[req_idx].item())
+                    if req_idx < q_lens_cpu.numel()
+                    else 0
+                )
+                seq_len = int(seq_lens_cpu[req_idx].item())
+                context_len = seq_len - query_len
+                if slot_len <= 0:
+                    logical_kv_slot_debug.append(
+                        {
+                            "req_idx": req_idx,
+                            "logical_start": logical_start,
+                            "logical_len": 0,
+                            "context_len": context_len,
+                            "query_len": query_len,
+                        }
+                    )
+                    continue
+
+                logical_slots = slots_cpu[req_idx, :slot_len].to(torch.int64)
+                logical_positions = torch.arange(
+                    logical_start,
+                    logical_start + slot_len,
+                    dtype=torch.int64,
+                )
+                block_indices = torch.div(
+                    logical_positions, self.block_size, rounding_mode="floor"
+                )
+                in_block_table = block_indices < block_table_cpu.shape[1]
+                canonical_slots = torch.full_like(logical_slots, -1)
+                if bool(in_block_table.any().item()):
+                    valid_positions = logical_positions[in_block_table]
+                    valid_block_indices = block_indices[in_block_table]
+                    valid_blocks = block_table_cpu[
+                        req_idx, valid_block_indices
+                    ].to(torch.int64)
+                    canonical_slots[in_block_table] = (
+                        valid_blocks * self.block_size
+                        + valid_positions % self.block_size
+                    )
+
+                mismatch = logical_slots != canonical_slots
+                sample_count = min(8, slot_len)
+                mismatch_indices = torch.nonzero(mismatch, as_tuple=False).flatten()
+                mismatch_sample_count = min(8, int(mismatch_indices.numel()))
+                mismatch_sample = [
+                    {
+                        "logical_pos": int(logical_positions[idx].item()),
+                        "logical_slot": int(logical_slots[idx].item()),
+                        "canonical_slot": int(canonical_slots[idx].item()),
+                    }
+                    for idx in mismatch_indices[:mismatch_sample_count]
+                ]
+
+                logical_kv_slot_debug.append(
+                    {
+                        "req_idx": req_idx,
+                        "logical_start": logical_start,
+                        "logical_end": logical_start + slot_len,
+                        "logical_len": slot_len,
+                        "context_len": context_len,
+                        "query_len": query_len,
+                        "mapped_past_context": logical_start + slot_len > context_len,
+                        "logical_slot_min": int(logical_slots.min().item()),
+                        "logical_slot_max": int(logical_slots.max().item()),
+                        "logical_slot_head": logical_slots[:sample_count].tolist(),
+                        "logical_slot_tail": logical_slots[-sample_count:].tolist(),
+                        "canonical_slot_head": canonical_slots[
+                            :sample_count
+                        ].tolist(),
+                        "canonical_slot_tail": canonical_slots[
+                            -sample_count:
+                        ].tolist(),
+                        "canonical_mismatch_count": int(mismatch.sum().item()),
+                        "duplicate_logical_slot_count": (
+                            slot_len - int(torch.unique(logical_slots).numel())
+                        ),
+                        "invalid_canonical_count": int(
+                            (~in_block_table).sum().item()
+                        ),
+                        "mismatch_sample": mismatch_sample,
+                    }
+                )
         self._dflash_tree_debug_records.append(
             {
                 "build_method": build_method,
@@ -238,6 +396,17 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
                     if ancestor_masks is not None
                     else None
                 ),
+                "logical_kv_layout": debug_context.get("logical_kv_layout"),
+                "logical_kv_slot_lens": logical_kv_slot_lens,
+                "logical_kv_indirection_shape": logical_kv_indirection_shape,
+                "logical_kv_indirection_lens": logical_kv_indirection_lens,
+                "logical_kv_starts": logical_kv_starts,
+                "logical_kv_slot_debug": logical_kv_slot_debug,
+                "logical_kv_num_mapped_reqs": (
+                    sum(1 for n in logical_kv_slot_lens if n > 0)
+                    if logical_kv_slot_lens is not None
+                    else None
+                ),
                 "output_max_query_len": int(output_metadata.max_query_len),
                 "output_max_seq_len": int(output_metadata.max_seq_len),
                 "output_query_start_loc": output_metadata.query_start_loc.detach().cpu(),
@@ -263,24 +432,50 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
 
     def _init_max_cudagraph_tree_query_len(self) -> int:
         capture_hints = self.vllm_config.compilation_config.cudagraph_capture_sizes
+        spec_config = self.vllm_config.speculative_config
+        dflash_tree_budget = 0
+        if spec_config is not None and getattr(spec_config, "method", None) == "dflash":
+            dflash_tree_budget = int(getattr(spec_config, "dflash_tree_budget", 0))
+            capture_hints = getattr(spec_config, "cudagraph_tree_capture_sizes", None)
+        static_tree_len = max(self.tree_attn_bias.shape[0], dflash_tree_budget)
         if capture_hints:
-            return max(capture_hints)
-        return self.tree_attn_bias.shape[0]
+            return max(max(capture_hints), static_tree_len)
+        return static_tree_len
+
+    def _init_max_cudagraph_tree_bias_len(self) -> int:
+        """Capacity for Triton's block-diagonal batched tree bias.
+
+        ``tree_attn_bias`` is shaped by total query tokens across the batch,
+        unlike Optimus ancestor masks which use per-request tree size.
+        """
+        capture_hints = self.vllm_config.compilation_config.cudagraph_capture_sizes
+        spec_config = self.vllm_config.speculative_config
+        max_tree_budget = 0
+        if spec_config is not None and getattr(spec_config, "method", None) == "dflash":
+            max_tree_budget = int(getattr(spec_config, "dflash_tree_budget", 0))
+        max_batch_tree_len = (
+            max_tree_budget * self.vllm_config.scheduler_config.max_num_seqs
+            if max_tree_budget > 0
+            else 0
+        )
+        static_tree_len = max(self.tree_attn_bias.shape[0], max_tree_budget)
+        hinted_tree_len = max(capture_hints) if capture_hints else 0
+        return max(static_tree_len, hinted_tree_len, max_batch_tree_len)
 
     def _copy_tree_attn_bias_for_cudagraph(
         self, tree_attn_bias: torch.Tensor
     ) -> torch.Tensor:
         query_len = tree_attn_bias.shape[0]
-        if query_len > self._max_cudagraph_tree_query_len:
+        if query_len > self._max_cudagraph_tree_bias_len:
             raise ValueError(
                 "Tree attention bias exceeds cudagraph capture capacity: "
-                f"{query_len} > {self._max_cudagraph_tree_query_len}"
+                f"{query_len} > {self._max_cudagraph_tree_bias_len}"
             )
         if self._cudagraph_tree_attn_bias is None:
             self._cudagraph_tree_attn_bias = torch.empty(
                 (
-                    self._max_cudagraph_tree_query_len,
-                    self._max_cudagraph_tree_query_len,
+                    self._max_cudagraph_tree_bias_len,
+                    self._max_cudagraph_tree_bias_len,
                 ),
                 dtype=tree_attn_bias.dtype,
                 device=self.device,
@@ -301,6 +496,96 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
         self._cudagraph_ancestor_masks[:B, :N, :N].copy_(ancestor_masks)
         return self._cudagraph_ancestor_masks[:B, :N, :N]
 
+    def _copy_logical_kv_for_cudagraph(
+        self,
+        logical_kv_slots: list[torch.Tensor | None] | torch.Tensor,
+        logical_kv_slot_lens: torch.Tensor | None,
+        logical_kv_starts: list[int] | torch.Tensor | None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if torch.is_tensor(logical_kv_slots):
+            assert logical_kv_slot_lens is not None
+            assert torch.is_tensor(logical_kv_starts)
+            num_reqs = logical_kv_slots.shape[0]
+            max_slots = logical_kv_slots.shape[1]
+        else:
+            num_reqs = len(logical_kv_slots)
+            lens_list = [
+                int(slots.numel()) if slots is not None else 0
+                for slots in logical_kv_slots
+            ]
+            max_slots = max(lens_list, default=0)
+
+        max_B = self._max_cudagraph_batch_size
+        capacity = self._max_cudagraph_logical_kv_slots
+        if num_reqs > max_B:
+            raise ValueError(
+                "Logical KV cudagraph batch exceeds capacity: "
+                f"{num_reqs} > {max_B}"
+            )
+        if max_slots > capacity:
+            raise ValueError(
+                "Logical KV slots exceed cudagraph capture capacity: "
+                f"{max_slots} > {capacity}"
+            )
+
+        if self._cudagraph_logical_kv_slots is None:
+            self._cudagraph_logical_kv_slots = torch.empty(
+                (max_B, capacity), dtype=torch.int64, device=self.device
+            )
+            self._cudagraph_logical_kv_slot_lens = torch.empty(
+                (max_B,), dtype=torch.int32, device=self.device
+            )
+            self._cudagraph_logical_kv_starts = torch.empty(
+                (max_B,), dtype=torch.int32, device=self.device
+            )
+
+        assert self._cudagraph_logical_kv_slots is not None
+        assert self._cudagraph_logical_kv_slot_lens is not None
+        assert self._cudagraph_logical_kv_starts is not None
+        self._cudagraph_logical_kv_slot_lens[:num_reqs].zero_()
+        self._cudagraph_logical_kv_starts[:num_reqs].zero_()
+
+        if torch.is_tensor(logical_kv_slots):
+            self._cudagraph_logical_kv_slots[
+                :num_reqs, :max_slots
+            ].copy_(logical_kv_slots[:, :max_slots])
+            self._cudagraph_logical_kv_slot_lens[
+                :num_reqs
+            ].copy_(logical_kv_slot_lens[:num_reqs].to(torch.int32))
+            assert torch.is_tensor(logical_kv_starts)
+            self._cudagraph_logical_kv_starts[:num_reqs].copy_(
+                logical_kv_starts[:num_reqs].to(torch.int32)
+            )
+        else:
+            starts_list = (
+                logical_kv_starts
+                if isinstance(logical_kv_starts, list)
+                else [0] * num_reqs
+            )
+            for req_idx, slots in enumerate(logical_kv_slots):
+                slot_len = int(slots.numel()) if slots is not None else 0
+                self._cudagraph_logical_kv_slot_lens[req_idx] = slot_len
+                self._cudagraph_logical_kv_starts[req_idx] = int(
+                    starts_list[req_idx]
+                )
+                if slot_len > 0:
+                    assert slots is not None
+                    self._cudagraph_logical_kv_slots[
+                        req_idx, :slot_len
+                    ].copy_(
+                        slots.to(
+                            device=self.device,
+                            dtype=torch.int64,
+                            non_blocking=True,
+                        )
+                    )
+
+        return (
+            self._cudagraph_logical_kv_slots[:num_reqs],
+            self._cudagraph_logical_kv_slot_lens[:num_reqs],
+            self._cudagraph_logical_kv_starts[:num_reqs],
+        )
+
     def build_for_dflash_tree(
         self,
         common_attn_metadata: CommonAttentionMetadata,
@@ -308,6 +593,9 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
         *,
         for_cudagraph_capture: bool = False,
         ancestor_masks: torch.Tensor | None = None,
+        logical_kv_slots: list[torch.Tensor | None] | torch.Tensor | None = None,
+        logical_kv_slot_lens: torch.Tensor | None = None,
+        logical_kv_starts: list[int] | torch.Tensor | None = None,
     ) -> TreeAttentionMetadata:
         debug_context = getattr(self, "_dflash_tree_debug_context", {}) or {}
         if tree_attn_bias is not None and for_cudagraph_capture:
@@ -319,6 +607,57 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
 
         num_actual_tokens = common_attn_metadata.num_actual_tokens
         num_reqs = common_attn_metadata.num_reqs
+        logical_kv_slots_t: torch.Tensor | None = None
+        logical_kv_slot_lens_t: torch.Tensor | None = None
+        logical_kv_starts_t: torch.Tensor | None = None
+        if logical_kv_slots is not None:
+            if for_cudagraph_capture:
+                (
+                    logical_kv_slots_t,
+                    logical_kv_slot_lens_t,
+                    logical_kv_starts_t,
+                ) = self._copy_logical_kv_for_cudagraph(
+                    logical_kv_slots,
+                    logical_kv_slot_lens,
+                    logical_kv_starts,
+                )
+            elif torch.is_tensor(logical_kv_slots):
+                assert logical_kv_slot_lens is not None
+                assert torch.is_tensor(logical_kv_starts)
+                logical_kv_slots_t = logical_kv_slots
+                logical_kv_slot_lens_t = logical_kv_slot_lens
+                logical_kv_starts_t = logical_kv_starts
+            else:
+                logical_kv_slot_lens_list = [
+                    int(slots.numel()) if slots is not None else 0
+                    for slots in logical_kv_slots
+                ]
+                max_logical_kv_slots = max(logical_kv_slot_lens_list, default=0)
+                if max_logical_kv_slots > 0:
+                    logical_kv_slots_t = torch.full(
+                        (len(logical_kv_slots), max_logical_kv_slots),
+                        -1,
+                        dtype=torch.int64,
+                        device=self.device,
+                    )
+                    for req_idx, slots in enumerate(logical_kv_slots):
+                        if slots is None or slots.numel() == 0:
+                            continue
+                        logical_kv_slots_t[req_idx, : slots.numel()] = slots.to(
+                            device=self.device, dtype=torch.int64, non_blocking=True
+                        )
+                    logical_kv_slot_lens_t = torch.tensor(
+                        logical_kv_slot_lens_list,
+                        dtype=torch.int32,
+                        device=self.device,
+                    )
+                    logical_kv_starts_t = torch.tensor(
+                        logical_kv_starts
+                        if logical_kv_starts is not None
+                        else [0] * len(logical_kv_slots),
+                        dtype=torch.int32,
+                        device=self.device,
+                    )
 
         decode_meta = TreeAttentionMetadata(
             num_actual_tokens=num_actual_tokens,
@@ -330,6 +669,9 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
             slot_mapping=common_attn_metadata.slot_mapping,
             tree_attn_bias=tree_attn_bias,
             ancestor_masks=ancestor_masks,
+            logical_kv_slots=logical_kv_slots_t,
+            logical_kv_slot_lens=logical_kv_slot_lens_t,
+            logical_kv_starts=logical_kv_starts_t,
         )
 
         meta = TreeAttentionMetadata(
@@ -346,6 +688,9 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
             num_decodes=num_reqs,
             tree_attn_bias=tree_attn_bias,
             ancestor_masks=ancestor_masks,
+            logical_kv_slots=logical_kv_slots_t,
+            logical_kv_slot_lens=logical_kv_slot_lens_t,
+            logical_kv_starts=logical_kv_starts_t,
             _cached_decode_metadata=decode_meta,
         )
         self._append_dflash_tree_debug_record(
@@ -354,6 +699,7 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
             output_metadata=meta,
             tree_attn_bias=tree_attn_bias,
             ancestor_masks=ancestor_masks,
+            logical_kv_slots=logical_kv_slots,
             debug_context={
                 **debug_context,
                 "for_cudagraph_capture": bool(
@@ -361,10 +707,7 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
                 ),
             },
         )
-        try:
-            delattr(self, "_dflash_tree_debug_context")
-        except Exception:
-            pass
+        self._clear_dflash_tree_debug_context()
         return meta
 
     def build(
@@ -437,10 +780,7 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
                 "draft_index": int(draft_index),
             },
         )
-        try:
-            delattr(self, "_dflash_tree_debug_context")
-        except Exception:
-            pass
+        self._clear_dflash_tree_debug_context()
         return attn_metadata
 
 
@@ -630,15 +970,30 @@ class TreeAttentionImpl(AttentionImpl):
                 try:
                     from optimus_cutedsl.flash_attn import (
                         flash_attn_varlen_tree_paged_sm90,
+                        flash_attn_varlen_tree_paged_sm100,
                     )
                 except ModuleNotFoundError as exc:
                     raise ModuleNotFoundError(
                         "tree_attn_kernel='optimus' requires the optimus_cutedsl "
                         "package. Set PYTHONPATH to include the optimus src dir, "
-                        "e.g. PYTHONPATH=/home/i-hulanxiang/workspace/"
-                        "optimus_jit_local/src:$PYTHONPATH"
+                        "e.g. PYTHONPATH=/path/to/optimus_jit_local/src:$PYTHONPATH"
                     ) from exc
-                flash_attn_varlen_tree_paged_sm90(
+                requested_optimus_arch = os.getenv(
+                    "OPTIMUS_TREE_KERNEL_ARCH", ""
+                ).lower()
+                compute_capability = torch.cuda.get_device_capability(query.device)[0]
+                device_name = torch.cuda.get_device_name(query.device).lower()
+                use_sm100 = (
+                    requested_optimus_arch in ("sm100", "blackwell", "b300")
+                    or compute_capability >= 10
+                    or "b300" in device_name
+                    or "blackwell" in device_name
+                )
+                if use_sm100:
+                    optimus_tree_kernel = flash_attn_varlen_tree_paged_sm100
+                else:
+                    optimus_tree_kernel = flash_attn_varlen_tree_paged_sm90
+                optimus_tree_kernel(
                     q=query[:num_decode_tokens],
                     k=key_cache,
                     v=value_cache,
@@ -646,6 +1001,9 @@ class TreeAttentionImpl(AttentionImpl):
                     cu_seqlens_q=decode_meta.query_start_loc.to(torch.int32),
                     seqused_k=decode_meta.seq_lens.to(torch.int32),
                     page_table=decode_meta.block_table.to(torch.int32),
+                    logical_kv_slots=decode_meta.logical_kv_slots,
+                    logical_kv_slot_lens=decode_meta.logical_kv_slot_lens,
+                    logical_kv_starts=decode_meta.logical_kv_starts,
                     softmax_scale=self.scale,
                     out=output[:num_decode_tokens],
                 )
@@ -663,6 +1021,9 @@ class TreeAttentionImpl(AttentionImpl):
                     causal=True,
                     alibi_slopes=self.alibi_slopes,
                     qq_bias=decode_meta.tree_attn_bias,
+                    logical_kv_slots=decode_meta.logical_kv_slots,
+                    logical_kv_slot_lens=decode_meta.logical_kv_slot_lens,
+                    logical_kv_starts=decode_meta.logical_kv_starts,
                     window_size=self.sliding_window,
                     block_table=decode_meta.block_table,
                     softcap=self.logits_soft_cap,

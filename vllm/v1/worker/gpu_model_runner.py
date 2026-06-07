@@ -827,6 +827,8 @@ class GPUModelRunner(
         self._draft_tree_specs = None
         self._dflash_tree_accept_paths: list[list[int]] | None = None
         self._dflash_tree_accept_paths_gpu: list[torch.Tensor | None] | None = None
+        self._dflash_logical_kv_slots: dict[str, torch.Tensor] = {}
+        self._dflash_logical_kv_starts: dict[str, int] = {}
         self.transfer_event = torch.Event()
         self.sampled_token_ids_pinned_cpu = torch.empty(
             (self.max_num_reqs, 1),
@@ -2360,6 +2362,8 @@ class GPUModelRunner(
                         )
                     ),
                     ancestor_masks=spec_decode_metadata.ancestor_masks,
+                    logical_kv_slots=spec_decode_metadata.logical_kv_slots,
+                    logical_kv_starts=spec_decode_metadata.logical_kv_starts,
                 )
             elif for_cudagraph_capture:
                 attn_metadata_i = builder.build_for_cudagraph_capture(
@@ -3049,6 +3053,19 @@ class GPUModelRunner(
             full_depths_np.shape[0],
         ])
 
+        logical_kv_slots: list[torch.Tensor | None] | None = None
+        logical_kv_starts: list[int] | None = None
+        if (
+            self.speculative_config is not None
+            and getattr(self.speculative_config, "tree_kv_layout", "physical")
+            == "logical"
+        ):
+            logical_kv_slots = [
+                torch.arange(query_len, dtype=torch.int64, device=self.device)
+                for query_len in query_lens
+            ]
+            logical_kv_starts = [0] * num_reqs
+
         return DFlashTreeSpecDecodeMetadata(
             draft_token_ids=torch.empty(0, dtype=torch.int32, device=self.device),
             num_draft_tokens=num_draft_tokens.tolist(),
@@ -3064,6 +3081,8 @@ class GPUModelRunner(
             cu_query_lens=cu_query_lens_t,
             is_tree_req=[False] * num_reqs,
             ancestor_masks=ancestor_masks_t,
+            logical_kv_slots=logical_kv_slots,
+            logical_kv_starts=logical_kv_starts,
         )
 
     def _prepare_kv_sharing_fast_prefill(
@@ -3810,109 +3829,136 @@ class GPUModelRunner(
                 )
 
         start = 0
-        for req_idx in range(num_reqs):
-            qlen = query_lens[req_idx]
-            end = start + qlen
-            draft_len = spec_decode_metadata.num_draft_tokens[req_idx]
+        with record_function_or_nullcontext("dflash_tree_sample_prepare"):
+            request_ranges = []
+            for req_idx in range(num_reqs):
+                qlen = query_lens[req_idx]
+                end = start + qlen
+                draft_len = spec_decode_metadata.num_draft_tokens[req_idx]
+                request_ranges.append((req_idx, start, end, qlen, draft_len))
+                start = end
 
-            if spec_decode_metadata.is_tree_req[req_idx]:
-                # ---- GPU fast-path for tree requests ----
-                req_tokens = query_token_ids[start:end]
-                req_greedy = greedy_all[start:end]
-                req_parents = parent_indices_gpu[start:end]
-                req_depths = depths_gpu[start:end]
+        with record_function_or_nullcontext("dflash_tree_accept"):
+            for req_idx, start, end, qlen, draft_len in request_ranges:
+                if spec_decode_metadata.is_tree_req[req_idx]:
+                    # ---- GPU fast-path for tree requests ----
+                    req_tokens = query_token_ids[start:end]
+                    req_greedy = greedy_all[start:end]
+                    req_parents = parent_indices_gpu[start:end]
+                    req_depths = depths_gpu[start:end]
 
-                accepted_path, accepted_len, correction = gpu_tree_accept(
-                    req_tokens,
-                    req_greedy,
-                    req_parents,
-                    req_depths,
-                    max_depth=max_tree_depth,
-                )
-
-                accepted_tokens = req_tokens[accepted_path[1:]]
-                out = torch.cat([
-                    accepted_tokens,
-                    correction.unsqueeze(0),
-                ]).to(torch.int32)
-                output_tensors.append(out)
-
-                if not self._dflash_runtime_verify_bundles:
-                    self._dflash_runtime_verify_bundles.append(
-                        {
-                            "tree_num_nodes": int(qlen),
-                            "tree_node_token_ids": req_tokens.detach().cpu(),
-                            "tree_parent_indices": req_parents.detach().cpu(),
-                            "tree_depths": req_depths.detach().cpu(),
-                            "verify_greedy_tokens": req_greedy.detach().cpu(),
-                            "accepted_path": accepted_path.detach().cpu(),
-                            "accepted_len": accepted_len,
-                            "correction_token": correction.unsqueeze(0).detach().cpu(),
-                            "accepted_tokens": accepted_tokens.detach().cpu(),
-                            "emitted_tokens": out.detach().cpu(),
-                        }
-                    )
-                if hasattr(self.drafter, "record_topk_verify_outcome"):
-                    self.drafter.record_topk_verify_outcome(
-                        verify_greedy_tokens=req_greedy,
-                        accepted_len=accepted_len,
-                        correction_token=correction,
-                        tree_num_nodes=int(qlen),
+                    accepted_path, accepted_len, correction = gpu_tree_accept(
+                        req_tokens,
+                        req_greedy,
+                        req_parents,
+                        req_depths,
+                        max_depth=max_tree_depth,
                     )
 
-                self._dflash_tree_accept_paths_gpu.append(accepted_path)
-                self._dflash_tree_accept_paths.append(
-                    accepted_path.tolist()
-                )
+                    accepted_tokens = req_tokens[accepted_path[1:]]
+                    out = torch.cat([
+                        accepted_tokens,
+                        correction.unsqueeze(0),
+                    ]).to(torch.int32)
+                    output_tensors.append(out)
 
-            elif draft_len == 0:
-                # No draft tokens — just emit the greedy bonus token.
-                _ensure_cpu()
-                tokens_cpu, greedy_cpu, _ = _cpu_data
-                self._dflash_tree_accept_paths_gpu.append(None)
-                self._dflash_tree_accept_paths.append([0])
-                out = torch.tensor(
-                    [greedy_cpu[start]], dtype=torch.int32, device=self.device
-                )
-                output_tensors.append(out)
-            else:
-                # ---- CPU fallback for chain (non-tree) requests ----
-                _ensure_cpu()
-                tokens_cpu, greedy_cpu, _ = _cpu_data
-                req_tokens_cpu = tokens_cpu[start:end]
-                req_greedy_cpu = greedy_cpu[start:end]
-                accepted = 0
-                for tok_idx in range(draft_len):
-                    if req_tokens_cpu[tok_idx + 1] == req_greedy_cpu[tok_idx]:
-                        accepted += 1
-                    else:
-                        break
-                correction_token = req_greedy_cpu[accepted]
-                if hasattr(self.drafter, "record_topk_verify_outcome"):
-                    self.drafter.record_topk_verify_outcome(
-                        verify_greedy_tokens=req_greedy_cpu[: draft_len + 1],
-                        accepted_len=accepted,
-                        correction_token=correction_token,
-                        tree_num_nodes=draft_len + 1,
+                    if len(self._dflash_runtime_verify_bundles) < 4:
+                        self._dflash_runtime_verify_bundles.append(
+                            {
+                                "verify_step_index": len(
+                                    self._dflash_runtime_verify_bundles
+                                ),
+                                "tree_num_nodes": int(qlen),
+                                "tree_node_token_ids": req_tokens.detach().cpu(),
+                                "tree_parent_indices": req_parents.detach().cpu(),
+                                "tree_depths": req_depths.detach().cpu(),
+                                "verify_greedy_tokens": req_greedy.detach().cpu(),
+                                "accepted_path": accepted_path.detach().cpu(),
+                                "accepted_len": accepted_len,
+                                "correction_token": (
+                                    correction.unsqueeze(0).detach().cpu()
+                                ),
+                                "accepted_tokens": accepted_tokens.detach().cpu(),
+                                "emitted_tokens": out.detach().cpu(),
+                                "query_positions": self.positions[
+                                    start:end
+                                ].detach().cpu(),
+                                "logical_kv_start": (
+                                    None
+                                    if spec_decode_metadata.logical_kv_starts is None
+                                    else spec_decode_metadata.logical_kv_starts[req_idx]
+                                ),
+                                "logical_kv_slots": (
+                                    None
+                                    if spec_decode_metadata.logical_kv_slots is None
+                                    or spec_decode_metadata.logical_kv_slots[req_idx]
+                                    is None
+                                    else spec_decode_metadata.logical_kv_slots[
+                                        req_idx
+                                    ].detach().cpu()
+                                ),
+                            }
+                        )
+                    if hasattr(self.drafter, "record_topk_verify_outcome"):
+                        self.drafter.record_topk_verify_outcome(
+                            verify_greedy_tokens=req_greedy,
+                            accepted_len=accepted_len,
+                            correction_token=correction,
+                            tree_num_nodes=int(qlen),
+                        )
+
+                    self._dflash_tree_accept_paths_gpu.append(accepted_path)
+                    self._dflash_tree_accept_paths.append(
+                        accepted_path.tolist()
                     )
-                path_list = list(range(accepted + 1))
-                self._dflash_tree_accept_paths_gpu.append(None)
-                self._dflash_tree_accept_paths.append(path_list)
-                out = torch.tensor(
-                    req_tokens_cpu[1:accepted + 1] + [correction_token],
-                    dtype=torch.int32,
-                    device=self.device,
-                )
-                output_tensors.append(out)
 
-            start = end
+                elif draft_len == 0:
+                    # No draft tokens — just emit the greedy bonus token.
+                    _ensure_cpu()
+                    tokens_cpu, greedy_cpu, _ = _cpu_data
+                    self._dflash_tree_accept_paths_gpu.append(None)
+                    self._dflash_tree_accept_paths.append([0])
+                    out = torch.tensor(
+                        [greedy_cpu[start]], dtype=torch.int32, device=self.device
+                    )
+                    output_tensors.append(out)
+                else:
+                    # ---- CPU fallback for chain (non-tree) requests ----
+                    _ensure_cpu()
+                    tokens_cpu, greedy_cpu, _ = _cpu_data
+                    req_tokens_cpu = tokens_cpu[start:end]
+                    req_greedy_cpu = greedy_cpu[start:end]
+                    accepted = 0
+                    for tok_idx in range(draft_len):
+                        if req_tokens_cpu[tok_idx + 1] == req_greedy_cpu[tok_idx]:
+                            accepted += 1
+                        else:
+                            break
+                    correction_token = req_greedy_cpu[accepted]
+                    if hasattr(self.drafter, "record_topk_verify_outcome"):
+                        self.drafter.record_topk_verify_outcome(
+                            verify_greedy_tokens=req_greedy_cpu[: draft_len + 1],
+                            accepted_len=accepted,
+                            correction_token=correction_token,
+                            tree_num_nodes=draft_len + 1,
+                        )
+                    path_list = list(range(accepted + 1))
+                    self._dflash_tree_accept_paths_gpu.append(None)
+                    self._dflash_tree_accept_paths.append(path_list)
+                    out = torch.tensor(
+                        req_tokens_cpu[1:accepted + 1] + [correction_token],
+                        dtype=torch.int32,
+                        device=self.device,
+                    )
+                    output_tensors.append(out)
 
-        max_len = max(t.shape[0] for t in output_tensors)
-        sampled_token_ids = torch.full(
-            (num_reqs, max_len), -1, dtype=torch.int32, device=self.device
-        )
-        for req_idx, out in enumerate(output_tensors):
-            sampled_token_ids[req_idx, : out.shape[0]] = out
+        with record_function_or_nullcontext("dflash_tree_sample_pack"):
+            max_len = max(t.shape[0] for t in output_tensors)
+            sampled_token_ids = torch.full(
+                (num_reqs, max_len), -1, dtype=torch.int32, device=self.device
+            )
+            for req_idx, out in enumerate(output_tensors):
+                sampled_token_ids[req_idx, : out.shape[0]] = out
         return SamplerOutput(
             sampled_token_ids=sampled_token_ids, logprobs_tensors=None
         )
@@ -3932,6 +3978,12 @@ class GPUModelRunner(
             self._compact_dflash_tree_kv_cache_legacy(
                 spec_decode_metadata, common_attn_metadata
             )
+            return
+
+        if self._commit_dflash_logical_kv_slots(
+            spec_decode_metadata,
+            common_attn_metadata,
+        ):
             return
 
         slot_mapping = common_attn_metadata.slot_mapping
@@ -3965,9 +4017,9 @@ class GPUModelRunner(
             all_dst_slots.append(dst_slots)
 
             verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
-            if verify_bundles and "compact_src_slots" not in verify_bundles[0]:
-                verify_bundles[0]["compact_src_slots"] = src_slots.detach().cpu()
-                verify_bundles[0]["compact_dst_slots"] = dst_slots.detach().cpu()
+            if verify_bundles and "compact_src_slots" not in verify_bundles[-1]:
+                verify_bundles[-1]["compact_src_slots"] = src_slots.detach().cpu()
+                verify_bundles[-1]["compact_dst_slots"] = dst_slots.detach().cpu()
 
             req_start += qlen
 
@@ -3975,29 +4027,30 @@ class GPUModelRunner(
             batch_src = torch.cat(all_src_slots)
             batch_dst = torch.cat(all_dst_slots)
 
-            seen_cache_ptrs: set[int] = set()
-            for kv_cache in self.kv_caches:
-                cache_ptr = kv_cache.data_ptr()
-                if cache_ptr in seen_cache_ptrs:
-                    continue
-                seen_cache_ptrs.add(cache_ptr)
-                if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
-                    continue
-                key_cache, value_cache = kv_cache.unbind(0)
-                block_size = key_cache.shape[1]
-                src_blocks = torch.div(
-                    batch_src, block_size, rounding_mode="floor"
-                )
-                src_offsets = batch_src % block_size
-                dst_blocks = torch.div(
-                    batch_dst, block_size, rounding_mode="floor"
-                )
-                dst_offsets = batch_dst % block_size
+            with record_function_or_nullcontext("dflash_tree_kv_commit_copy"):
+                seen_cache_ptrs: set[int] = set()
+                for kv_cache in self.kv_caches:
+                    cache_ptr = kv_cache.data_ptr()
+                    if cache_ptr in seen_cache_ptrs:
+                        continue
+                    seen_cache_ptrs.add(cache_ptr)
+                    if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
+                        continue
+                    key_cache, value_cache = kv_cache.unbind(0)
+                    block_size = key_cache.shape[1]
+                    src_blocks = torch.div(
+                        batch_src, block_size, rounding_mode="floor"
+                    )
+                    src_offsets = batch_src % block_size
+                    dst_blocks = torch.div(
+                        batch_dst, block_size, rounding_mode="floor"
+                    )
+                    dst_offsets = batch_dst % block_size
 
-                keys = key_cache[src_blocks, src_offsets].clone()
-                values = value_cache[src_blocks, src_offsets].clone()
-                key_cache[dst_blocks, dst_offsets] = keys
-                value_cache[dst_blocks, dst_offsets] = values
+                    keys = key_cache[src_blocks, src_offsets].clone()
+                    values = value_cache[src_blocks, src_offsets].clone()
+                    key_cache[dst_blocks, dst_offsets] = keys
+                    value_cache[dst_blocks, dst_offsets] = values
 
         self._dflash_tree_accept_paths_gpu = None
         self._dflash_tree_accept_paths = None
@@ -4068,8 +4121,8 @@ class GPUModelRunner(
             hidden_states[req_start : req_start + path_len] = src_hs
 
             verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
-            if verify_bundles and "post_compact_hidden_states" not in verify_bundles[0]:
-                verify_bundles[0]["post_compact_hidden_states"] = (
+            if verify_bundles and "post_compact_hidden_states" not in verify_bundles[-1]:
+                verify_bundles[-1]["post_compact_hidden_states"] = (
                     hidden_states[req_start : req_start + path_len].detach().cpu()
                 )
 
@@ -4077,8 +4130,8 @@ class GPUModelRunner(
                 for aux_hs in aux_hidden_states:
                     src_aux = aux_hs[req_start + src_indices].clone()
                     aux_hs[req_start : req_start + path_len] = src_aux
-                if verify_bundles and "post_compact_target_hidden_states" not in verify_bundles[0]:
-                    verify_bundles[0]["post_compact_target_hidden_states"] = (
+                if verify_bundles and "post_compact_target_hidden_states" not in verify_bundles[-1]:
+                    verify_bundles[-1]["post_compact_target_hidden_states"] = (
                         torch.cat(
                             [
                                 aux_hs[req_start : req_start + path_len]
@@ -4530,6 +4583,153 @@ class GPUModelRunner(
                 pyt_hooks.register_hooks(self.model, self.model.__class__.__name__)
                 self.layerwise_nvtx_hooks_registered = True
 
+    def _use_dflash_logical_kv_layout(
+        self,
+        spec_decode_metadata: SpecDecodeMetadata | None = None,
+    ) -> bool:
+        if self.speculative_config is None:
+            return False
+        if getattr(self.speculative_config, "tree_kv_layout", "physical") != "logical":
+            return False
+        if not isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata):
+            return False
+        if self.input_batch.num_reqs != 1:
+            return False
+        if len(self.kv_cache_config.kv_cache_groups) != 1:
+            return False
+        return True
+
+    def _prepare_dflash_logical_kv_step(
+        self,
+        slot_mappings_by_gid: dict[int, torch.Tensor] | None,
+        spec_decode_metadata: SpecDecodeMetadata | None,
+    ) -> None:
+        if not self._use_dflash_logical_kv_layout(spec_decode_metadata):
+            return
+        assert isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata)
+        if slot_mappings_by_gid is None or 0 not in slot_mappings_by_gid:
+            return
+        if not self.kv_caches:
+            return
+
+        kv_cache = self.kv_caches[0]
+        if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
+            return
+        block_size = int(kv_cache.shape[2])
+        block_table = self.input_batch.block_table[0].get_device_tensor(
+            self.input_batch.num_reqs
+        )
+        slot_mapping = slot_mappings_by_gid[0]
+
+        active_req_ids = set(self.input_batch.req_ids[: self.input_batch.num_reqs])
+        for req_id in list(self._dflash_logical_kv_slots):
+            if req_id not in active_req_ids:
+                self._dflash_logical_kv_slots.pop(req_id, None)
+                self._dflash_logical_kv_starts.pop(req_id, None)
+
+        logical_slots: list[torch.Tensor | None] = []
+        logical_starts: list[int] = []
+        req_start = 0
+        for req_idx, req_id in enumerate(
+            self.input_batch.req_ids[: self.input_batch.num_reqs]
+        ):
+            qlen = spec_decode_metadata.query_lens[req_idx]
+            old_len = int(self.input_batch.num_computed_tokens_cpu[req_idx])
+            total_len = old_len + qlen
+            positions = torch.arange(
+                total_len, device=self.device, dtype=torch.int64
+            )
+            block_indices = positions // block_size
+            block_offsets = positions % block_size
+            canonical_blocks = block_table[req_idx, block_indices].to(torch.int64)
+            canonical_slots = canonical_blocks * block_size + block_offsets
+
+            persisted_slots = self._dflash_logical_kv_slots.get(req_id)
+            persisted_start = self._dflash_logical_kv_starts.get(req_id, old_len)
+            if persisted_slots is None or persisted_slots.numel() == 0:
+                used_slots = canonical_slots[:old_len]
+                logical_start = old_len
+                prefix_slots = None
+            else:
+                canonical_prefix = canonical_slots[:persisted_start]
+                used_slots = torch.cat([canonical_prefix, persisted_slots])
+                logical_start = persisted_start
+                prefix_slots = persisted_slots
+
+            free_mask = ~torch.isin(canonical_slots, used_slots)
+            free_slots = canonical_slots[free_mask]
+            if free_slots.numel() < qlen:
+                spec_decode_metadata.logical_kv_slots = None
+                spec_decode_metadata.logical_kv_starts = None
+                return
+
+            step_slots = free_slots[:qlen].to(torch.int64)
+            slot_mapping[req_start : req_start + qlen] = step_slots
+            if prefix_slots is None:
+                logical_slots.append(step_slots)
+            else:
+                logical_slots.append(torch.cat([prefix_slots, step_slots]))
+            logical_starts.append(logical_start)
+            req_start += qlen
+
+        spec_decode_metadata.logical_kv_slots = logical_slots
+        spec_decode_metadata.logical_kv_starts = logical_starts
+
+    def _commit_dflash_logical_kv_slots(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        common_attn_metadata: CommonAttentionMetadata,
+    ) -> bool:
+        if not self._use_dflash_logical_kv_layout(spec_decode_metadata):
+            return False
+        accept_paths_gpu = getattr(
+            self, "_dflash_tree_accept_paths_gpu", None
+        )
+        if not accept_paths_gpu:
+            return False
+
+        slot_mapping = common_attn_metadata.slot_mapping
+        req_start = 0
+        for req_idx, path_gpu in enumerate(accept_paths_gpu):
+            qlen = spec_decode_metadata.query_lens[req_idx]
+            req_id = self.input_batch.req_ids[req_idx]
+            old_len = int(self.input_batch.num_computed_tokens_cpu[req_idx])
+            if (
+                path_gpu is None
+                or req_idx >= len(spec_decode_metadata.is_tree_req)
+                or not spec_decode_metadata.is_tree_req[req_idx]
+                or path_gpu.numel() == 0
+            ):
+                req_start += qlen
+                continue
+
+            req_slots = slot_mapping[req_start : req_start + qlen].to(torch.int64)
+            accepted_slots = req_slots[path_gpu].detach()
+            persisted_slots = self._dflash_logical_kv_slots.get(req_id)
+            if persisted_slots is None or persisted_slots.numel() == 0:
+                self._dflash_logical_kv_starts[req_id] = old_len
+                self._dflash_logical_kv_slots[req_id] = accepted_slots
+            else:
+                self._dflash_logical_kv_slots[req_id] = torch.cat(
+                    [persisted_slots, accepted_slots]
+                )
+            verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+            if verify_bundles:
+                verify_bundles[-1]["logical_commit_accepted_slots"] = (
+                    accepted_slots.detach().cpu()
+                )
+                verify_bundles[-1]["logical_commit_start"] = (
+                    self._dflash_logical_kv_starts[req_id]
+                )
+                verify_bundles[-1]["logical_commit_slots"] = (
+                    self._dflash_logical_kv_slots[req_id].detach().cpu()
+                )
+            req_start += qlen
+
+        self._dflash_tree_accept_paths_gpu = None
+        self._dflash_tree_accept_paths = None
+        return True
+
     def _get_slot_mappings(
         self,
         num_tokens_padded: int,
@@ -4823,6 +5023,10 @@ class GPUModelRunner(
                 num_tokens_unpadded=num_tokens_unpadded,
                 ubatch_slices=ubatch_slices_padded,
             )
+            self._prepare_dflash_logical_kv_step(
+                slot_mappings_by_group,
+                spec_decode_metadata,
+            )
 
             attn_metadata, spec_decode_common_attn_metadata = (
                 self._build_attention_metadata(
@@ -5029,15 +5233,19 @@ class GPUModelRunner(
             isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata)
             and spec_decode_common_attn_metadata is not None
         ):
-            self._compact_dflash_tree_hidden_states(
-                spec_decode_metadata,
-                hidden_states,
-                aux_hidden_states,
-            )
-            self._compact_dflash_tree_kv_cache(
-                spec_decode_metadata,
-                spec_decode_common_attn_metadata,
-            )
+            with record_function_or_nullcontext(
+                "dflash_tree_hidden_state_compaction"
+            ):
+                self._compact_dflash_tree_hidden_states(
+                    spec_decode_metadata,
+                    hidden_states,
+                    aux_hidden_states,
+                )
+            with record_function_or_nullcontext("dflash_tree_kv_commit"):
+                self._compact_dflash_tree_kv_cache(
+                    spec_decode_metadata,
+                    spec_decode_common_attn_metadata,
+                )
 
         self._update_states_after_model_execute(
             sampler_output.sampled_token_ids, scheduler_output

@@ -361,6 +361,24 @@ class SpecDecodeBaseProposer:
                 positions = positions[0]
             self.positions[:num_tokens] = positions
 
+    def _zero_padded_positions(self, num_tokens: int, num_input_tokens: int) -> None:
+        """Keep CUDA graph padding from indexing past the RoPE cache.
+
+        Real request positions are written in ``[:num_tokens]``. CUDAGraph
+        dispatch can pad the model input to a larger captured shape, and those
+        padded positions still flow through rotary embedding before attention
+        masks discard them. Use position 0 for that tail so capture/replay never
+        sees stale or out-of-range values.
+        """
+        if num_input_tokens <= num_tokens:
+            return
+        if self.uses_mrope:
+            self.mrope_positions[:, num_tokens:num_input_tokens].zero_()
+        elif self.uses_xdrope_dim > 0 and self.draft_uses_xdrope_dim > 0:
+            self.xdrope_positions[:, num_tokens:num_input_tokens].zero_()
+        else:
+            self.positions[num_tokens:num_input_tokens].zero_()
+
     def _get_slot_mapping(
         self,
         num_tokens: int,
@@ -613,6 +631,8 @@ class SpecDecodeBaseProposer:
                 input_ids = self.input_ids[:input_batch_size]
                 inputs_embeds = None
 
+            self._zero_padded_positions(batch_size, input_batch_size)
+
             # Run the model.
             model_kwargs = {
                 "input_ids": input_ids,
@@ -786,6 +806,8 @@ class SpecDecodeBaseProposer:
         num_input_tokens: int,
         mm_embed_inputs: tuple[list[torch.Tensor], torch.Tensor] | None,
     ) -> tuple[dict[str, Any], int]:
+        self._zero_padded_positions(num_tokens, num_input_tokens)
+
         if self.supports_mm_inputs:
             mm_embeds, is_mm_embed = mm_embed_inputs or (None, None)
 
@@ -1159,6 +1181,7 @@ class SpecDecodeBaseProposer:
                 num_tokens
             )
             num_input_tokens = batch_desc.num_tokens
+            self._zero_padded_positions(num_tokens, num_input_tokens)
             # Run the model.
             with set_forward_context(
                 per_layer_attn_metadata,
@@ -1171,7 +1194,7 @@ class SpecDecodeBaseProposer:
             ):
                 last_hidden_states, hidden_states = self.model(
                     input_ids=self.input_ids[:num_input_tokens],
-                    positions=self.positions[:num_input_tokens],
+                    positions=self._get_positions(num_input_tokens),
                     hidden_states=self.hidden_states[:num_input_tokens],
                     inputs_embeds=None,
                 )
@@ -1631,6 +1654,11 @@ class SpecDecodeBaseProposer:
                 else:
                     input_ids = self.input_ids[:num_input_tokens]
                     inputs_embeds = None
+
+                # Dummy capture/warmup does not populate real positions for
+                # this shape. Initialize the whole captured slice so stale
+                # values cannot index past the RoPE cache.
+                self._zero_padded_positions(0, num_input_tokens)
 
                 kwargs = dict(
                     input_ids=input_ids,

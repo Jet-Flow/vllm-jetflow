@@ -535,6 +535,47 @@ class TestSpeculativeConfigKernel:
         assert "triton" in args
         assert "optimus" in args
 
+    def test_tree_kv_layout_field(self):
+        """Verify DFlash tree KV layout defaults to physical compaction."""
+        import typing
+        from dataclasses import fields as dc_fields
+        from vllm.config.speculative import SpeculativeConfig
+
+        field_map = {f.name: f for f in dc_fields(SpeculativeConfig)}
+        assert "tree_kv_layout" in field_map
+        assert field_map["tree_kv_layout"].default == "physical"
+
+        hints = typing.get_type_hints(SpeculativeConfig)
+        args = typing.get_args(hints["tree_kv_layout"])
+        assert "physical" in args
+        assert "logical" in args
+
+    def test_num_cudagraph_tree_captures_uses_budget_only(self):
+        from vllm.config.speculative import SpeculativeConfig
+
+        config = SpeculativeConfig(
+            method="dflash",
+            num_speculative_tokens=15,
+            tree_width=7,
+            max_tree_budget=255,
+            num_cudagraph_tree_captures=4,
+        )
+
+        assert config.cudagraph_tree_capture_sizes == [255]
+
+    def test_single_cudagraph_tree_capture_uses_budget(self):
+        from vllm.config.speculative import SpeculativeConfig
+
+        config = SpeculativeConfig(
+            method="dflash",
+            num_speculative_tokens=15,
+            tree_width=7,
+            max_tree_budget=255,
+            num_cudagraph_tree_captures=1,
+        )
+
+        assert config.cudagraph_tree_capture_sizes == [255]
+
 
 # ── 6. dflash_profiling.py CLI argument parsing ─────────────────────────
 
@@ -554,6 +595,9 @@ class TestDflashProfilingCLI:
         assert "--tree-attn-kernel" in result.stdout
         assert "triton" in result.stdout
         assert "optimus" in result.stdout
+        assert "--tree-kv-layout" in result.stdout
+        assert "physical" in result.stdout
+        assert "logical" in result.stdout
 
 
 # ── 7. Ancestor matrix properties (fuzz-like) ───────────────────────────

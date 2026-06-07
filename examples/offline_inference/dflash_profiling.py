@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
 import argparse
+import gc
 import json
 import re
 import time
@@ -210,6 +211,515 @@ def collect_execute_context_cuda_seconds(run_output_dir: Path) -> dict[str, floa
     return totals
 
 
+def _parse_profiler_table_duration(value: str, unit: str) -> float:
+    return _duration_to_seconds(float(value), unit)
+
+
+def collect_profiler_named_ranges(
+    run_output_dir: Path,
+    names: set[str],
+) -> dict[str, dict[str, float]]:
+    """Collect CPU/CUDA totals for selected torch profiler table rows."""
+    rows = {
+        name: {
+            "self_cpu_s": 0.0,
+            "cpu_total_s": 0.0,
+            "self_cuda_s": 0.0,
+            "cuda_total_s": 0.0,
+            "calls": 0.0,
+        }
+        for name in names
+    }
+    files = sorted(run_output_dir.glob("profiler_out_*.txt"))
+    if not files:
+        return rows
+
+    row_pattern = re.compile(
+        r"^\s*(?P<name>.*?)\s+"
+        r"(?P<self_cpu_pct>[0-9.]+)%\s+"
+        r"(?P<self_cpu>[0-9.]+)(?P<self_cpu_unit>us|ms|s)\s+"
+        r"(?P<cpu_total_pct>[0-9.]+)%\s+"
+        r"(?P<cpu_total>[0-9.]+)(?P<cpu_total_unit>us|ms|s)\s+"
+        r"(?P<cpu_avg>[0-9.]+)(?P<cpu_avg_unit>us|ms|s)\s+"
+        r"(?P<self_cuda>[0-9.]+)(?P<self_cuda_unit>us|ms|s)\s+"
+        r"(?P<self_cuda_pct>[0-9.]+)%\s+"
+        r"(?P<cuda_total>[0-9.]+)(?P<cuda_total_unit>us|ms|s)\s+"
+        r"(?P<cuda_avg>[0-9.]+)(?P<cuda_avg_unit>us|ms|s)\s+"
+        r"(?P<calls>\d+)\s*$"
+    )
+
+    for path in files:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = row_pattern.match(line)
+            if not match:
+                continue
+            name = match.group("name").strip()
+            if name not in rows:
+                continue
+            row = rows[name]
+            row["self_cpu_s"] += _parse_profiler_table_duration(
+                match.group("self_cpu"), match.group("self_cpu_unit")
+            )
+            row["cpu_total_s"] += _parse_profiler_table_duration(
+                match.group("cpu_total"), match.group("cpu_total_unit")
+            )
+            row["self_cuda_s"] += _parse_profiler_table_duration(
+                match.group("self_cuda"), match.group("self_cuda_unit")
+            )
+            row["cuda_total_s"] += _parse_profiler_table_duration(
+                match.group("cuda_total"), match.group("cuda_total_unit")
+            )
+            row["calls"] += float(match.group("calls"))
+
+    return rows
+
+
+def write_dflash_breakdown_report(
+    run_output_dir: Path,
+    *,
+    elapsed_s: float,
+    phase_cuda: dict[str, float],
+    num_drafts: float,
+) -> dict[str, float]:
+    """Write a fine-grained DFlash timing report from torch profiler rows."""
+    names = {
+        "gpu_model_runner: draft",
+        "gpu_model_runner: sample",
+        "gpu_model_runner: forward",
+        "dflash_propose_setup",
+        "dflash_draft_forward",
+        "dflash_draft_logits",
+        "dflash_tree_build",
+        "dflash_tree_refine",
+        "dflash_tree_cg_adjust",
+        "dflash_tree_sample_prepare",
+        "dflash_tree_accept",
+        "dflash_tree_sample_pack",
+        "dflash_tree_hidden_state_compaction",
+        "dflash_tree_kv_commit",
+        "dflash_tree_kv_commit_filter_identity",
+        "dflash_tree_kv_commit_copy",
+    }
+    rows = collect_profiler_named_ranges(run_output_dir, names)
+
+    def cpu_total(*row_names: str) -> float:
+        return sum(rows[name]["cpu_total_s"] for name in row_names)
+
+    def cuda_total(*row_names: str) -> float:
+        return sum(rows[name]["cuda_total_s"] for name in row_names)
+
+    target_verify_cuda_s = phase_cuda["decode_cuda_s"]
+    if target_verify_cuda_s == 0.0:
+        target_verify_cuda_s = rows["gpu_model_runner: forward"]["cuda_total_s"]
+    draft_model_cuda_s = cuda_total("dflash_draft_forward", "dflash_draft_logits")
+    draft_model_cpu_s = cpu_total("dflash_draft_forward", "dflash_draft_logits")
+    tree_build_cpu_s = cpu_total("dflash_tree_build")
+    tree_build_cuda_s = cuda_total("dflash_tree_build")
+    cg_adjust_cpu_s = cpu_total("dflash_tree_cg_adjust")
+    cg_adjust_cuda_s = cuda_total("dflash_tree_cg_adjust")
+    sample_cpu_s = cpu_total(
+        "dflash_tree_sample_prepare",
+        "dflash_tree_accept",
+        "dflash_tree_sample_pack",
+    )
+    sample_cuda_s = cuda_total(
+        "dflash_tree_sample_prepare",
+        "dflash_tree_accept",
+        "dflash_tree_sample_pack",
+    )
+    kv_commit_cpu_s = cpu_total(
+        "dflash_tree_hidden_state_compaction",
+        "dflash_tree_kv_commit",
+        "dflash_tree_kv_commit_copy",
+    )
+    kv_commit_cuda_s = cuda_total(
+        "dflash_tree_hidden_state_compaction",
+        "dflash_tree_kv_commit",
+        "dflash_tree_kv_commit_copy",
+    )
+
+    known_wall_like_s = (
+        phase_cuda["prefill_cuda_s"]
+        + target_verify_cuda_s
+        + draft_model_cuda_s
+        + tree_build_cpu_s
+        + cg_adjust_cpu_s
+        + sample_cpu_s
+        + kv_commit_cpu_s
+    )
+    residual_s = max(0.0, elapsed_s - known_wall_like_s)
+    denom = num_drafts if num_drafts > 0 else 1.0
+
+    metrics = {
+        "elapsed_s": elapsed_s,
+        "num_drafts": num_drafts,
+        "prefill_cuda_s": phase_cuda["prefill_cuda_s"],
+        "target_verification_cuda_s": target_verify_cuda_s,
+        "draft_model_cpu_total_s": draft_model_cpu_s,
+        "draft_model_cuda_total_s": draft_model_cuda_s,
+        "tree_build_cpu_total_s": tree_build_cpu_s,
+        "tree_build_cuda_total_s": tree_build_cuda_s,
+        "cudagraph_adjust_cpu_total_s": cg_adjust_cpu_s,
+        "cudagraph_adjust_cuda_total_s": cg_adjust_cuda_s,
+        "sampling_cpu_total_s": sample_cpu_s,
+        "sampling_cuda_total_s": sample_cuda_s,
+        "kv_commit_cpu_total_s": kv_commit_cpu_s,
+        "kv_commit_cuda_total_s": kv_commit_cuda_s,
+        "residual_wall_estimate_s": residual_s,
+    }
+
+    def fmt_seconds(key: str) -> str:
+        val = metrics[key]
+        pct = (100.0 * val / elapsed_s) if elapsed_s > 0 else 0.0
+        per_step_ms = 1000.0 * val / denom
+        return f"{key}={val:.6f} pct_wall={pct:.2f} per_tree_step_ms={per_step_ms:.3f}"
+
+    lines = [
+        "# DFlash fine-grained breakdown",
+        "# CPU totals can overlap asynchronous CUDA work; residual is a wall-time estimate.",
+        f"elapsed_s={elapsed_s:.6f}",
+        f"num_drafts={num_drafts:.0f}",
+        fmt_seconds("prefill_cuda_s"),
+        fmt_seconds("target_verification_cuda_s"),
+        fmt_seconds("draft_model_cpu_total_s"),
+        fmt_seconds("draft_model_cuda_total_s"),
+        fmt_seconds("tree_build_cpu_total_s"),
+        fmt_seconds("tree_build_cuda_total_s"),
+        fmt_seconds("cudagraph_adjust_cpu_total_s"),
+        fmt_seconds("cudagraph_adjust_cuda_total_s"),
+        fmt_seconds("sampling_cpu_total_s"),
+        fmt_seconds("sampling_cuda_total_s"),
+        fmt_seconds("kv_commit_cpu_total_s"),
+        fmt_seconds("kv_commit_cuda_total_s"),
+        fmt_seconds("residual_wall_estimate_s"),
+        "",
+        "# Raw profiler rows",
+    ]
+    for name in sorted(rows):
+        row = rows[name]
+        lines.append(
+            f"{name}: calls={row['calls']:.0f} "
+            f"cpu_total_s={row['cpu_total_s']:.6f} "
+            f"cuda_total_s={row['cuda_total_s']:.6f} "
+            f"self_cpu_s={row['self_cpu_s']:.6f} "
+            f"self_cuda_s={row['self_cuda_s']:.6f}"
+        )
+    report_path = run_output_dir / "dflash_breakdown_report.txt"
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Wrote DFlash breakdown report to: {report_path}")
+    return metrics
+
+
+def collect_dflash_tree_debug_records(llm: LLM) -> list[dict[str, Any]]:
+    """Collect JSON-safe DFlash tree attention debug records from workers."""
+
+    def _extract_tree_debug_records(worker):
+        import torch  # noqa: PLC0415
+
+        def _jsonify(val):
+            if isinstance(val, torch.Tensor):
+                t = val.detach().cpu()
+                if t.ndim == 0:
+                    return t.item()
+                return t.tolist()
+            if isinstance(val, dict):
+                return {str(k): _jsonify(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [_jsonify(v) for v in val]
+            if isinstance(val, (str, int, float, bool)) or val is None:
+                return val
+            return str(val)
+
+        worker_obj = getattr(worker, "worker", worker)
+        model_runner = getattr(worker_obj, "model_runner", None)
+        if model_runner is None:
+            return [{"error": "missing_model_runner"}]
+
+        out_records: list[dict[str, Any]] = []
+        sources = [
+            ("target_model_runner", getattr(model_runner, "attn_groups", None), True),
+            (
+                "drafter",
+                getattr(getattr(model_runner, "drafter", None), "draft_attn_groups", None),
+                False,
+            ),
+        ]
+        for owner_name, groups_root, indexed_builder in sources:
+            if not isinstance(groups_root, list):
+                continue
+            for outer_idx, groups in enumerate(groups_root):
+                iter_groups = (
+                    groups if indexed_builder and isinstance(groups, list) else [groups]
+                )
+                if not isinstance(iter_groups, list):
+                    continue
+                for inner_idx, attn_group in enumerate(iter_groups):
+                    try:
+                        builder = (
+                            attn_group.get_metadata_builder(0)
+                            if indexed_builder
+                            else attn_group.get_metadata_builder()
+                        )
+                    except Exception:
+                        builder = None
+                    if builder is None or not hasattr(
+                        builder, "get_dflash_tree_debug_records"
+                    ):
+                        continue
+                    try:
+                        raw_records = list(
+                            builder.get_dflash_tree_debug_records() or []
+                        )
+                    except Exception as e:
+                        out_records.append(
+                            {
+                                "owner_name": owner_name,
+                                "kv_cache_group_id": (
+                                    int(outer_idx) if indexed_builder else None
+                                ),
+                                "attn_group_id": int(inner_idx),
+                                "error": f"get_dflash_tree_debug_records_failed: {e}",
+                            }
+                        )
+                        continue
+                    for record in raw_records:
+                        if not isinstance(record, dict):
+                            continue
+                        out_records.append(
+                            {
+                                "owner_name": owner_name,
+                                "kv_cache_group_id": (
+                                    int(outer_idx) if indexed_builder else None
+                                ),
+                                "attn_group_id": int(inner_idx),
+                                **_jsonify(record),
+                            }
+                        )
+                    clear_fn = getattr(builder, "clear_dflash_tree_debug_records", None)
+                    if clear_fn is not None:
+                        try:
+                            clear_fn()
+                        except Exception:
+                            pass
+        return out_records
+
+    records: list[dict[str, Any]] = []
+    try:
+        worker_records = llm.collective_rpc(_extract_tree_debug_records)
+    except Exception as e:
+        print(f"WARNING: collective tree debug record extraction failed: {e}")
+        worker_records = []
+    for worker_record_set in worker_records or []:
+        if isinstance(worker_record_set, list):
+            records.extend(worker_record_set)
+
+    if records:
+        return records
+
+    try:
+        worker = llm.llm_engine.model_executor.driver_worker.worker
+        direct_records = _extract_tree_debug_records(worker)
+        if isinstance(direct_records, list):
+            records.extend(direct_records)
+    except Exception as e:
+        print(f"WARNING: direct tree debug record extraction failed: {e}")
+    return records
+
+
+def write_dflash_tree_debug_records(llm: LLM, run_output_dir: Path) -> None:
+    records = collect_dflash_tree_debug_records(llm)
+    if not records:
+        print("WARNING: DFlash tree debug records are empty")
+        return
+
+    debug_path = run_output_dir / "dflash_tree_debug_records.json"
+    debug_path.write_text(json.dumps(records, indent=2))
+
+    mapped_records = [
+        record
+        for record in records
+        if record.get("logical_kv_num_mapped_reqs") not in (None, 0)
+    ]
+    layouts = sorted(
+        {
+            str(record.get("logical_kv_layout"))
+            for record in records
+            if record.get("logical_kv_layout") is not None
+        }
+    )
+    sample_lens = [
+        record.get("logical_kv_slot_lens")
+        for record in mapped_records[:5]
+    ]
+    print(
+        "[TREE_DEBUG] "
+        f"records={len(records)} mapped_records={len(mapped_records)} "
+        f"layouts={layouts} sample_logical_kv_slot_lens={sample_lens}"
+    )
+    print(f"Wrote DFlash tree debug records to {debug_path}")
+
+
+def collect_dflash_runtime_verify_bundles(llm: LLM) -> list[dict[str, Any]]:
+    """Collect JSON-safe target verification bundles from model runners."""
+
+    def _extract_verify_bundles(worker):
+        import torch  # noqa: PLC0415
+
+        def _jsonify(val):
+            if isinstance(val, torch.Tensor):
+                t = val.detach().cpu()
+                if t.ndim == 0:
+                    return t.item()
+                return t.tolist()
+            if isinstance(val, dict):
+                return {str(k): _jsonify(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [_jsonify(v) for v in val]
+            if isinstance(val, (str, int, float, bool)) or val is None:
+                return val
+            return str(val)
+
+        worker_obj = getattr(worker, "worker", worker)
+        model_runner = getattr(worker_obj, "model_runner", None)
+        if model_runner is None:
+            return [{"error": "missing_model_runner"}]
+        bundles = getattr(model_runner, "_dflash_runtime_verify_bundles", [])
+        return [_jsonify(bundle) for bundle in bundles]
+
+    records: list[dict[str, Any]] = []
+    try:
+        worker_records = llm.collective_rpc(_extract_verify_bundles)
+    except Exception as e:
+        print(f"WARNING: collective verify bundle extraction failed: {e}")
+        worker_records = []
+    for worker_record_set in worker_records or []:
+        if isinstance(worker_record_set, list):
+            records.extend(worker_record_set)
+
+    if records:
+        return records
+
+    try:
+        worker = llm.llm_engine.model_executor.driver_worker.worker
+        direct_records = _extract_verify_bundles(worker)
+        if isinstance(direct_records, list):
+            records.extend(direct_records)
+    except Exception as e:
+        print(f"WARNING: direct verify bundle extraction failed: {e}")
+    return records
+
+
+def write_dflash_runtime_verify_bundles(llm: LLM, run_output_dir: Path) -> None:
+    records = collect_dflash_runtime_verify_bundles(llm)
+    if not records:
+        print("WARNING: DFlash runtime verify bundles are empty")
+        return
+    debug_path = run_output_dir / "dflash_runtime_verify_bundles.json"
+    debug_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    print(f"Wrote {len(records)} DFlash runtime verify bundles to {debug_path}")
+
+
+def collect_dflash_tree_commit_debug_records(llm: LLM) -> list[dict[str, Any]]:
+    """Collect JSON-safe DFlash KV commit counters from workers."""
+
+    def _extract_commit_debug_records(worker):
+        import torch  # noqa: PLC0415
+
+        def _jsonify(val):
+            if isinstance(val, torch.Tensor):
+                t = val.detach().cpu()
+                if t.ndim == 0:
+                    return t.item()
+                return t.tolist()
+            if isinstance(val, dict):
+                return {str(k): _jsonify(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [_jsonify(v) for v in val]
+            if isinstance(val, (str, int, float, bool)) or val is None:
+                return val
+            return str(val)
+
+        worker_obj = getattr(worker, "worker", worker)
+        model_runner = getattr(worker_obj, "model_runner", None)
+        if model_runner is None:
+            return [{"error": "missing_model_runner"}]
+
+        get_records = getattr(
+            model_runner, "get_dflash_tree_commit_debug_records", None
+        )
+        if get_records is None:
+            return [{"error": "missing_commit_debug_records_accessor"}]
+
+        try:
+            records = [_jsonify(record) for record in get_records() or []]
+        except Exception as e:
+            return [{"error": f"get_commit_debug_records_failed: {e}"}]
+
+        clear_records = getattr(
+            model_runner, "clear_dflash_tree_commit_debug_records", None
+        )
+        if clear_records is not None:
+            try:
+                clear_records()
+            except Exception:
+                pass
+        return records
+
+    records: list[dict[str, Any]] = []
+    try:
+        worker_records = llm.collective_rpc(_extract_commit_debug_records)
+    except Exception as e:
+        print(f"WARNING: collective commit debug extraction failed: {e}")
+        worker_records = []
+    for worker_record_set in worker_records or []:
+        if isinstance(worker_record_set, list):
+            records.extend(worker_record_set)
+
+    if records:
+        return records
+
+    try:
+        worker = llm.llm_engine.model_executor.driver_worker.worker
+        direct_records = _extract_commit_debug_records(worker)
+        if isinstance(direct_records, list):
+            records.extend(direct_records)
+    except Exception as e:
+        print(f"WARNING: direct commit debug extraction failed: {e}")
+    return records
+
+
+def write_dflash_tree_commit_debug_records(llm: LLM, run_output_dir: Path) -> None:
+    records = collect_dflash_tree_commit_debug_records(llm)
+    if not records:
+        print("WARNING: DFlash tree commit debug records are empty")
+        return
+
+    debug_path = run_output_dir / "dflash_tree_commit_debug_records.json"
+    debug_path.write_text(json.dumps(records, indent=2))
+
+    total_entries = sum(int(r.get("accepted_entries_total", 0)) for r in records)
+    copied_entries = sum(int(r.get("accepted_entries_copied", 0)) for r in records)
+    skipped_entries = sum(
+        int(r.get("accepted_entries_skipped_identity", 0)) for r in records
+    )
+    copied_across_caches = sum(
+        int(r.get("kv_entries_copied_across_caches", 0)) for r in records
+    )
+    skipped_across_caches = sum(
+        int(r.get("kv_entries_skipped_across_caches", 0)) for r in records
+    )
+    avoidance_rate = skipped_entries / total_entries if total_entries else 0.0
+    print(
+        "[TREE_COMMIT_DEBUG] "
+        f"records={len(records)} accepted_entries_total={total_entries} "
+        f"copied={copied_entries} skipped_identity={skipped_entries} "
+        f"copy_avoidance_rate={avoidance_rate:.6f} "
+        f"kv_entries_copied_across_caches={copied_across_caches} "
+        f"kv_entries_skipped_across_caches={skipped_across_caches}"
+    )
+    print(f"Wrote DFlash tree commit debug records to {debug_path}")
+
+
 def resolve_effective_block_size(args) -> int | None:
     if args.block_size is None:
         return None
@@ -230,13 +740,42 @@ def mean_or_zero(values: list[float]) -> float:
 
 
 def validate_native_only_settings(args) -> None:
-    invalid_tp = [tp for tp in args.tp_sizes if tp != 1]
-    invalid_bs = [bs for bs in args.batch_sizes if bs != 1]
-    if invalid_tp or invalid_bs:
-        raise ValueError(
-            "This native-only parity benchmark currently supports only "
-            "--tp-sizes 1 and --batch-sizes 1."
-        )
+    return None
+
+
+def log_cuda_memory(prefix: str) -> None:
+    if not torch.cuda.is_available():
+        return
+
+    free_bytes, total_bytes = torch.cuda.mem_get_info()
+    print(
+        f"[CLEANUP] {prefix}: "
+        f"free={free_bytes / 1024**3:.2f} GiB "
+        f"total={total_bytes / 1024**3:.2f} GiB"
+    )
+
+
+def cleanup_llm(llm: LLM | None) -> None:
+    """Release vLLM engine resources before constructing the next engine."""
+    log_cuda_memory("before")
+
+    if llm is not None:
+        # Level 2 discards weights and KV cache from GPU before tearing down
+        # the in-process engine.
+        llm.sleep(level=2, mode="abort")
+        llm.llm_engine.engine_core.shutdown()
+        llm.llm_engine = None  # type: ignore[assignment]
+
+    from vllm.distributed.parallel_state import cleanup_dist_env_and_memory
+
+    cleanup_dist_env_and_memory()
+
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+    log_cuda_memory("after")
 
 
 def run_native_profile(
@@ -266,6 +805,8 @@ def run_native_profile(
         profiler_config=profiler_config,
         disable_log_stats=False,
     )
+    if args.cudagraph_mode == "none":
+        llm_kwargs["compilation_config"] = {"cudagraph_mode": "NONE"}
     if args.attention_backend is not None:
         llm_kwargs["attention_backend"] = args.attention_backend
     if mode == "dflash":
@@ -283,6 +824,7 @@ def run_native_profile(
             "tree_prune_ratio": args.tree_prune_ratio,
             "tree_construction": args.tree_construction,
             "tree_attn_kernel": args.tree_attn_kernel,
+            "tree_kv_layout": args.tree_kv_layout,
             "num_cudagraph_tree_captures": args.num_cudagraph_tree_captures,
         }
         if args.tree_attn_kernel == "optimus":
@@ -302,7 +844,8 @@ def run_native_profile(
         llm.generate(batch_prompts, sampling_params=sampling_params)
 
     metrics_before = collect_spec_decode_counters(llm.get_metrics())
-    llm.start_profile()
+    if args.profiler != "none":
+        llm.start_profile()
     t0 = time.perf_counter()
     total_output_tokens = 0
     total_prompt_tokens = 0
@@ -333,7 +876,8 @@ def run_native_profile(
                     (output.prompt, output.outputs[0].text) for output in outputs
                 )
     elapsed = time.perf_counter() - t0
-    llm.stop_profile()
+    if args.profiler != "none":
+        llm.stop_profile()
     metrics_after = collect_spec_decode_counters(llm.get_metrics())
     metrics_delta = diff_counters(metrics_after, metrics_before)
 
@@ -370,6 +914,11 @@ def run_native_profile(
     else:
         print(f"WARNING: topk_log is empty — no entries collected from drafter")
 
+    if mode == "dflash":
+        write_dflash_tree_debug_records(llm, run_output_dir)
+        write_dflash_runtime_verify_bundles(llm, run_output_dir)
+        write_dflash_tree_commit_debug_records(llm, run_output_dir)
+
     if post_generation_hook is not None:
         try:
             post_generation_hook(llm)
@@ -379,8 +928,15 @@ def run_native_profile(
             print(f"WARNING: post_generation_hook failed: {hook_exc}")
             traceback.print_exc()
 
-    del llm
-    time.sleep(args.sleep_after_stop)
+    if args.skip_engine_cleanup:
+        print(
+            "Skipping explicit engine cleanup; process teardown will release "
+            "resources."
+        )
+    else:
+        cleanup_llm(llm)
+        del llm
+        time.sleep(args.sleep_after_stop)
     phase_cuda = collect_execute_context_cuda_seconds(run_output_dir)
 
     num_drafts = float(metrics_delta["num_drafts"])
@@ -428,11 +984,23 @@ def run_native_profile(
     gpu_active_s = prefill_cuda_s + decode_cuda_s + phase_cuda["mixed_cuda_s"]
     gpu_utilization = gpu_active_s / elapsed if elapsed > 0 else 0.0
 
+    dflash_breakdown: dict[str, float] = {}
+    if mode == "dflash" and args.profiler == "torch":
+        dflash_breakdown = write_dflash_breakdown_report(
+            run_output_dir,
+            elapsed_s=elapsed,
+            phase_cuda=phase_cuda,
+            num_drafts=num_drafts,
+        )
+
+    total_tokens = total_prompt_tokens + total_output_tokens
     return {
         "elapsed": elapsed,
         "total_output_tokens": total_output_tokens,
         "total_prompt_tokens": total_prompt_tokens,
+        "total_tokens": total_tokens,
         "throughput": total_output_tokens / elapsed if elapsed > 0 else 0.0,
+        "total_throughput": total_tokens / elapsed if elapsed > 0 else 0.0,
         "prefill_throughput": prefill_throughput,
         "decode_throughput": decode_throughput,
         "gpu_utilization": gpu_utilization,
@@ -455,6 +1023,7 @@ def run_native_profile(
             else []
         ),
         "phase_cuda": phase_cuda,
+        "dflash_breakdown": dflash_breakdown,
         "outputs": sampled_outputs,
         "engine_label": "vllm_native",
         "mean_time_per_output_token_s": mean_or_zero(time_per_output_token_samples),
@@ -514,8 +1083,8 @@ def parse_args():
         "--profiler",
         type=str,
         default="torch",
-        choices=["torch", "cuda"],
-        help="Profiler backend.",
+        choices=["none", "torch", "cuda"],
+        help="Profiler backend. Use 'none' for throughput-only runs.",
     )
     parser.add_argument(
         "--torch-profiler-dir",
@@ -627,6 +1196,15 @@ def parse_args():
         help="Seconds to wait after stop_profile to allow trace flush.",
     )
     parser.add_argument(
+        "--skip-engine-cleanup",
+        action="store_true",
+        help=(
+            "Skip explicit llm.sleep()/engine shutdown at the end of a run. "
+            "Useful when each mode runs in its own subprocess and TP worker "
+            "shutdown would otherwise block metrics reporting."
+        ),
+    )
+    parser.add_argument(
         "--trust-remote-code",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -702,12 +1280,13 @@ def parse_args():
     parser.add_argument(
         "--tree-construction",
         type=str,
-        default="depth_first",
+        default="breadth_first",
         choices=["depth_first", "breadth_first"],
         help=(
             "Tree node allocation strategy. 'depth_first' pre-allocates "
             "the greedy spine to full depth before side branches. "
-            "'breadth_first' uses best-cumulative-logprob heap in a breath-first manner (legacy)."
+            "'breadth_first' uses best-cumulative-logprob heap in a "
+            "breadth-first manner (legacy)."
         ),
     )
     parser.add_argument(
@@ -722,14 +1301,35 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--tree-kv-layout",
+        type=str,
+        default="physical",
+        choices=["physical", "logical"],
+        help=(
+            "DFlash tree KV-cache layout. 'physical' uses the current "
+            "compact-after-accept path; 'logical' enables the experimental "
+            "accepted-slot indirection path."
+        ),
+    )
+    parser.add_argument(
         "--num-cudagraph-tree-captures",
         type=int,
         default=0,
         help=(
-            "Number of distinct tree sizes to capture as CUDAGraphs. "
-            "E.g. 16 produces evenly-spaced sizes up to max-tree-budget. "
-            "After pruning the tree is adjusted to the nearest captured "
-            "size for a guaranteed CUDAGraph hit. 0 disables."
+            "Enable DFlash tree CUDAGraph capture when > 0. "
+            "Tree verification captures max-tree-budget * num_reqs shapes, "
+            "and trees are adjusted to max-tree-budget for guaranteed "
+            "CUDAGraph hits. 0 disables."
+        ),
+    )
+    parser.add_argument(
+        "--cudagraph-mode",
+        type=str,
+        default="default",
+        choices=["default", "none"],
+        help=(
+            "Override global vLLM CUDA graph mode. Use 'none' to test "
+            "non-eager execution without CUDA graph capture."
         ),
     )
     return parser.parse_args()
@@ -784,8 +1384,14 @@ def main():
                     f"Profiling mode={mode}, tensor_parallel_size={tp_size}, "
                     f"batch_size={batch_size}"
                 )
+                cleanup_llm(None)
 
-                if args.profiler == "torch":
+                if args.profiler == "none":
+                    run_output_dir = Path(
+                        f"{args.torch_profiler_dir}/{mode}/tp{tp_size}/bs{batch_size}"
+                    )
+                    profiler_config = {"profiler": None}
+                elif args.profiler == "torch":
                     run_output_dir = Path(
                         f"{args.torch_profiler_dir}/{mode}/tp{tp_size}/bs{batch_size}"
                     )
@@ -815,7 +1421,9 @@ def main():
                 elapsed = float(result["elapsed"])
                 total_output_tokens = int(result["total_output_tokens"])
                 total_prompt_tokens = int(result["total_prompt_tokens"])
+                total_tokens = int(result["total_tokens"])
                 throughput = float(result["throughput"])
+                total_throughput = float(result["total_throughput"])
                 prefill_throughput = float(result["prefill_throughput"])
                 decode_throughput = float(result["decode_throughput"])
                 gpu_utilization = float(result["gpu_utilization"])
@@ -836,14 +1444,16 @@ def main():
                 print(
                     f"[RESULT] mode={mode} tp={tp_size} bs={batch_size} "
                     f"prompt_tokens={total_prompt_tokens} "
-                    f"output_tokens={total_output_tokens} elapsed_s={elapsed:.3f} "
+                    f"output_tokens={total_output_tokens} total_tokens={total_tokens} "
+                    f"elapsed_s={elapsed:.3f} "
                     f"throughput_tok_s={throughput:.2f}"
                 )
                 print(
                     f"[THROUGHPUT] mode={mode} tp={tp_size} bs={batch_size} "
                     f"prefill_tok_s={prefill_throughput:.2f} "
                     f"decode_tok_s={decode_throughput:.2f} "
-                    f"e2e_tok_s={throughput:.2f} "
+                    f"e2e_output_tok_s={throughput:.2f} "
+                    f"e2e_total_tok_s={total_throughput:.2f} "
                     f"gpu_utilization={gpu_utilization:.2%}"
                 )
                 print(
@@ -913,8 +1523,10 @@ def main():
                     f"batch_size={batch_size}",
                     f"prompt_tokens={total_prompt_tokens}",
                     f"output_tokens={total_output_tokens}",
+                    f"total_tokens={total_tokens}",
                     f"elapsed_s={elapsed:.6f}",
                     f"e2e_throughput_tok_s={throughput:.6f}",
+                    f"e2e_total_throughput_tok_s={total_throughput:.6f}",
                     f"prefill_throughput_tok_s={prefill_throughput:.6f}",
                     f"decode_throughput_tok_s={decode_throughput:.6f}",
                     f"gpu_utilization={gpu_utilization:.6f}",
@@ -969,7 +1581,9 @@ def main():
                             f"bs={batch_size}",
                             f"prompt_tokens={total_prompt_tokens}",
                             f"output_tokens={total_output_tokens}",
+                            f"total_tokens={total_tokens}",
                             f"e2e_throughput_tok_s={throughput:.6f}",
+                            f"e2e_total_throughput_tok_s={total_throughput:.6f}",
                             f"prefill_throughput_tok_s={prefill_throughput:.6f}",
                             f"decode_throughput_tok_s={decode_throughput:.6f}",
                             f"gpu_utilization={gpu_utilization:.6f}",

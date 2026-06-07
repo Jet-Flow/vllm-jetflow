@@ -45,9 +45,7 @@ class CudagraphDispatcher:
             and self.speculative_config.method == "dflash"
             and self.speculative_config.tree_width > 1
         )
-        self.dflash_tree_single_req_cudagraph = (
-            self.is_dflash_tree_mode and self.vllm_config.scheduler_config.max_num_seqs == 1
-        )
+        self.dflash_tree_cudagraph = self.is_dflash_tree_mode
 
         # Dict to store valid cudagraph dispatching keys.
         self.cudagraph_keys: dict[CUDAGraphMode, set[BatchDescriptor]] = {
@@ -143,14 +141,18 @@ class CudagraphDispatcher:
         uniform_decode: bool,
         has_lora: bool,
         num_active_loras: int = 0,
+        num_reqs: int | None = None,
     ) -> BatchDescriptor:
         max_num_seqs = self.vllm_config.scheduler_config.max_num_seqs
         uniform_decode_query_len = self.uniform_decode_query_len
         num_tokens_padded = self._bs_to_padded_graph_size[num_tokens]
 
         if uniform_decode and self.cudagraph_mode.has_mode(CUDAGraphMode.FULL):
-            if self.dflash_tree_single_req_cudagraph:
-                num_reqs = 1
+            if self.dflash_tree_cudagraph:
+                if num_reqs is None:
+                    num_reqs = 1
+                assert 1 <= num_reqs <= max_num_seqs
+                assert num_tokens_padded % num_reqs == 0
             else:
                 num_reqs = min(num_tokens_padded // uniform_decode_query_len, max_num_seqs)
                 assert num_tokens_padded % uniform_decode_query_len == 0
@@ -227,27 +229,42 @@ class CudagraphDispatcher:
             assert self.compilation_config.cudagraph_capture_sizes is not None, (
                 "Cudagraph capture sizes must be set when full mode is enabled."
             )
-            if self.dflash_tree_single_req_cudagraph:
-                cudagraph_capture_sizes_for_decode = (
-                    self.compilation_config.cudagraph_capture_sizes
+            if self.dflash_tree_cudagraph:
+                assert self.speculative_config is not None
+                tree_capture_sizes = (
+                    self.speculative_config.cudagraph_tree_capture_sizes or []
                 )
+                cudagraph_capture_sizes_for_decode = []
+                for tree_size, num_reqs in product(
+                    tree_capture_sizes,
+                    range(1, self.vllm_config.scheduler_config.max_num_seqs + 1),
+                ):
+                    total_tokens = tree_size * num_reqs
+                    if total_tokens in self.compilation_config.cudagraph_capture_sizes:
+                        cudagraph_capture_sizes_for_decode.append(
+                            (total_tokens, num_reqs)
+                        )
             else:
                 max_num_tokens = (
                     uniform_decode_query_len
                     * self.vllm_config.scheduler_config.max_num_seqs
                 )
                 cudagraph_capture_sizes_for_decode = [
-                    x
+                    (x, None)
                     for x in self.compilation_config.cudagraph_capture_sizes
                     if x <= max_num_tokens and x >= uniform_decode_query_len
                 ]
-            for bs, num_active_loras in product(
+            for (bs, num_reqs), num_active_loras in product(
                 cudagraph_capture_sizes_for_decode, lora_cases
             ):
                 self.add_cudagraph_key(
                     CUDAGraphMode.FULL,
                     self._create_padded_batch_descriptor(
-                        bs, True, num_active_loras > 0, num_active_loras
+                        bs,
+                        True,
+                        num_active_loras > 0,
+                        num_active_loras,
+                        num_reqs=num_reqs,
                     ),
                 )
 
@@ -259,6 +276,7 @@ class CudagraphDispatcher:
         uniform_decode: bool = False,
         has_lora: bool = False,
         num_active_loras: int = 0,
+        num_reqs: int | None = None,
         valid_modes: AbstractSet[CUDAGraphMode] | None = None,
         invalid_modes: AbstractSet[CUDAGraphMode] | None = None,
     ) -> tuple[CUDAGraphMode, BatchDescriptor]:
@@ -322,7 +340,11 @@ class CudagraphDispatcher:
 
         normalized_uniform = uniform_decode and self.cudagraph_mode.separate_routine()
         batch_desc = self._create_padded_batch_descriptor(
-            num_tokens, normalized_uniform, has_lora, effective_num_active_loras
+            num_tokens,
+            normalized_uniform,
+            has_lora,
+            effective_num_active_loras,
+            num_reqs=num_reqs,
         )
 
         if CUDAGraphMode.FULL in allowed_modes:

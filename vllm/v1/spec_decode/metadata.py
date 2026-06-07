@@ -112,6 +112,13 @@ class DFlashTreeSpecDecodeMetadata(SpecDecodeMetadata):
     # Per-request ancestor matrices for optimus SM90 kernel path.
     # Shape: (B, N_padded, N_padded) int32.  None when using the triton bias path.
     ancestor_masks: torch.Tensor | None = None
+    # Experimental DFlash logical KV layout. One entry per request; each tensor
+    # maps a contiguous logical context suffix to physical KV slots.
+    logical_kv_slots: list[torch.Tensor | None] | None = None
+    logical_kv_starts: list[int] | None = None
+    # Root-inclusive preferred tree path used by logical KV layout to place
+    # likely accepted nodes directly into canonical future sequence slots.
+    canonical_lane_indices: list[list[int]] | None = None
 
     def __post_init__(self):
         super().__post_init__()

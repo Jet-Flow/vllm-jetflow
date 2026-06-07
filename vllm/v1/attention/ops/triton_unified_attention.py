@@ -63,6 +63,9 @@ def kernel_unified_attention_2d(
     value_cache_ptr,  # [num_blks, blk_size, num_kv_heads, head_size]
     sink_ptr,  # [num_query_heads]
     block_tables_ptr,  # [num_seqs, max_num_blocks_per_seq]
+    logical_kv_slots_ptr,  # [num_seqs, max_logical_slots]
+    logical_kv_slot_lens_ptr,  # [num_seqs]
+    logical_kv_starts_ptr,  # [num_seqs]
     seq_lens_ptr,  # [num_seqs]
     alibi_slopes_ptr,  # [num_query_heads]
     qq_bias_ptr,  # [num_query_tokens, num_query_tokens]
@@ -74,6 +77,7 @@ def kernel_unified_attention_2d(
     num_query_heads: tl.constexpr,  # int
     num_queries_per_kv: tl.constexpr,  # int
     block_table_stride: tl.int64,  # int
+    logical_kv_slots_stride: tl.int64,  # int
     query_stride_0: tl.int64,  # int
     query_stride_1: tl.int64,  # int, should be equal to head_size
     output_stride_0: tl.int64,  # int
@@ -86,6 +90,7 @@ def kernel_unified_attention_2d(
     USE_ALIBI_SLOPES: tl.constexpr,  # bool
     USE_ALIBI_SQRT: tl.constexpr,  # bool
     USE_QQ_BIAS: tl.constexpr,  # bool
+    USE_LOGICAL_KV_SLOTS: tl.constexpr,  # bool
     USE_SOFTCAP: tl.constexpr,  # bool
     USE_SINKS: tl.constexpr,  # bool
     SLIDING_WINDOW: tl.constexpr,  # int
@@ -152,6 +157,7 @@ def kernel_unified_attention_2d(
     )
 
     block_table_offset = seq_idx * block_table_stride
+    logical_kv_slots_offset = seq_idx * logical_kv_slots_stride
 
     if not USE_SINKS:
         M = tl.full([BLOCK_M], float("-inf"), dtype=tl.float32)
@@ -179,8 +185,9 @@ def kernel_unified_attention_2d(
 
     # query-query attention bias
     if USE_QQ_BIAS:
+        query_bias_pos = cur_batch_in_all_start_index + query_pos
         qq_bias_row_ptrs = (
-            qq_bias_ptr + query_pos[:, None] * qq_bias_stride_0
+            qq_bias_ptr + query_bias_pos[:, None] * qq_bias_stride_0
         )  # shape: [BLOCK_M]
 
     # compute the length of the longest sequence prefix spanned by any
@@ -233,23 +240,50 @@ def kernel_unified_attention_2d(
     for j in range(tile_start, tile_end):
         seq_offset = j * TILE_SIZE + offs_t
         tile_mask = seq_offset < max_seq_prefix_len
+        physical_offset = seq_offset % BLOCK_SIZE
 
-        physical_block_idx = tl.load(
+        if USE_LOGICAL_KV_SLOTS:
+            logical_kv_slot_len = tl.load(logical_kv_slot_lens_ptr + seq_idx)
+            logical_kv_start = tl.load(logical_kv_starts_ptr + seq_idx)
+            logical_kv_end = logical_kv_start + logical_kv_slot_len
+            use_logical_kv = (seq_offset >= logical_kv_start) & (
+                seq_offset < logical_kv_end
+            )
+            logical_kv_idx = seq_offset - logical_kv_start
+            logical_kv_slot = tl.load(
+                logical_kv_slots_ptr + logical_kv_slots_offset + logical_kv_idx,
+                mask=tile_mask & use_logical_kv,
+                other=0,
+            ).to(tl.int64)
+            physical_offset = tl.where(
+                use_logical_kv,
+                logical_kv_slot % BLOCK_SIZE,
+                physical_offset,
+            )
+
+        block_table_block_idx = tl.load(
             block_tables_ptr + block_table_offset + seq_offset // BLOCK_SIZE
         ).to(tl.int64)
+        physical_block_idx = block_table_block_idx
+        if USE_LOGICAL_KV_SLOTS:
+            physical_block_idx = tl.where(
+                use_logical_kv,
+                logical_kv_slot // BLOCK_SIZE,
+                block_table_block_idx,
+            )
 
         v_offset = (
             physical_block_idx[:, None] * stride_v_cache_0
             + kv_head_idx * stride_v_cache_2
             + offs_d[None, :] * stride_v_cache_3
-            + (seq_offset % BLOCK_SIZE)[:, None] * stride_v_cache_1
+            + physical_offset[:, None] * stride_v_cache_1
         )
 
         k_offset = (
             physical_block_idx[None, :] * stride_k_cache_0
             + kv_head_idx * stride_k_cache_2
             + offs_d[:, None] * stride_k_cache_3
-            + (seq_offset % BLOCK_SIZE)[None, :] * stride_k_cache_1
+            + physical_offset[None, :] * stride_k_cache_1
         )
 
         # K : (HEAD_SIZE, TILE_SIZE)
@@ -342,11 +376,12 @@ def kernel_unified_attention_2d(
         if USE_QQ_BIAS:
             # compute key positions relative to query section
             key_rel_pos = seq_offset - context_len  # shape: [BLOCK_SIZE]
+            key_bias_pos = cur_batch_in_all_start_index + key_rel_pos
             # load bias only for keys that correspond to queries
-            is_query_key = key_rel_pos >= 0 and key_rel_pos < qq_bias_stride_0
+            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_stride_0)
             qq_bias = tl.load(
-                qq_bias_row_ptrs + key_rel_pos[None, :],
-                mask=is_query_key[None, :],  # avoid OOB for context keys
+                qq_bias_row_ptrs + key_bias_pos[None, :],
+                mask=query_mask_0[:, None] & is_query_key[None, :],
                 other=0.0,
             )
             S += qq_bias
@@ -414,6 +449,9 @@ def kernel_unified_attention_3d(
     value_cache_ptr,  # [num_blks, num_kv_heads, head_size, blk_size]
     sink_ptr,  # [num_query_heads]
     block_tables_ptr,  # [num_seqs, max_num_blocks_per_seq]
+    logical_kv_slots_ptr,  # [num_seqs, max_logical_slots]
+    logical_kv_slot_lens_ptr,  # [num_seqs]
+    logical_kv_starts_ptr,  # [num_seqs]
     seq_lens_ptr,  # [num_seqs]
     alibi_slopes_ptr,  # [num_query_heads]
     qq_bias_ptr,  # [num_query_tokens, num_query_tokens]
@@ -424,6 +462,7 @@ def kernel_unified_attention_3d(
     num_query_heads: tl.constexpr,  # int
     num_queries_per_kv: tl.constexpr,  # int
     block_table_stride: tl.int64,  # int
+    logical_kv_slots_stride: tl.int64,  # int
     query_stride_0: tl.int64,  # int
     query_stride_1: tl.int64,  # int, should be equal to head_size
     qq_bias_stride_0: tl.int64,  # int
@@ -434,6 +473,7 @@ def kernel_unified_attention_3d(
     USE_ALIBI_SLOPES: tl.constexpr,  # bool
     USE_ALIBI_SQRT: tl.constexpr,  # bool
     USE_QQ_BIAS: tl.constexpr,  # bool
+    USE_LOGICAL_KV_SLOTS: tl.constexpr,  # bool
     USE_SOFTCAP: tl.constexpr,  # bool
     USE_SINKS: tl.constexpr,  # bool
     SLIDING_WINDOW: tl.constexpr,  # int
@@ -509,6 +549,7 @@ def kernel_unified_attention_3d(
     )
 
     block_table_offset = seq_idx * block_table_stride
+    logical_kv_slots_offset = seq_idx * logical_kv_slots_stride
 
     if USE_SINKS:
         if segm_idx == 0:
@@ -536,8 +577,9 @@ def kernel_unified_attention_3d(
 
     # query-query attention bias
     if USE_QQ_BIAS:
+        query_bias_pos = cur_batch_in_all_start_index + query_pos
         qq_bias_row_ptrs = (
-            qq_bias_ptr + query_pos[:, None] * qq_bias_stride_0
+            qq_bias_ptr + query_bias_pos[:, None] * qq_bias_stride_0
         )  # shape: [BLOCK_M]
 
     # compute the length of the longest sequence prefix spanned by any
@@ -588,23 +630,50 @@ def kernel_unified_attention_3d(
     ):
         seq_offset = j * TILE_SIZE + offs_t
         tile_mask = seq_offset < max_seq_prefix_len
+        physical_offset = seq_offset % BLOCK_SIZE
 
-        physical_block_idx = tl.load(
+        if USE_LOGICAL_KV_SLOTS:
+            logical_kv_slot_len = tl.load(logical_kv_slot_lens_ptr + seq_idx)
+            logical_kv_start = tl.load(logical_kv_starts_ptr + seq_idx)
+            logical_kv_end = logical_kv_start + logical_kv_slot_len
+            use_logical_kv = (seq_offset >= logical_kv_start) & (
+                seq_offset < logical_kv_end
+            )
+            logical_kv_idx = seq_offset - logical_kv_start
+            logical_kv_slot = tl.load(
+                logical_kv_slots_ptr + logical_kv_slots_offset + logical_kv_idx,
+                mask=tile_mask & use_logical_kv,
+                other=0,
+            ).to(tl.int64)
+            physical_offset = tl.where(
+                use_logical_kv,
+                logical_kv_slot % BLOCK_SIZE,
+                physical_offset,
+            )
+
+        block_table_block_idx = tl.load(
             block_tables_ptr + block_table_offset + seq_offset // BLOCK_SIZE
         ).to(tl.int64)
+        physical_block_idx = block_table_block_idx
+        if USE_LOGICAL_KV_SLOTS:
+            physical_block_idx = tl.where(
+                use_logical_kv,
+                logical_kv_slot // BLOCK_SIZE,
+                block_table_block_idx,
+            )
 
         v_offset = (
             physical_block_idx[:, None] * stride_v_cache_0
             + kv_head_idx * stride_v_cache_2
             + offs_d[None, :] * stride_v_cache_3
-            + (seq_offset % BLOCK_SIZE)[:, None] * stride_v_cache_1
+            + physical_offset[:, None] * stride_v_cache_1
         )
 
         k_offset = (
             physical_block_idx[None, :] * stride_k_cache_0
             + kv_head_idx * stride_k_cache_2
             + offs_d[:, None] * stride_k_cache_3
-            + (seq_offset % BLOCK_SIZE)[None, :] * stride_k_cache_1
+            + physical_offset[None, :] * stride_k_cache_1
         )
 
         # K : (HEAD_SIZE, TILE_SIZE)
@@ -696,11 +765,12 @@ def kernel_unified_attention_3d(
         if USE_QQ_BIAS:
             # compute key positions relative to query section
             key_rel_pos = seq_offset - context_len  # shape: [BLOCK_SIZE]
+            key_bias_pos = cur_batch_in_all_start_index + key_rel_pos
             # load bias only for keys that correspond to queries
-            is_query_key = key_rel_pos >= 0 and key_rel_pos < qq_bias_stride_0
+            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_stride_0)
             qq_bias = tl.load(
-                qq_bias_row_ptrs + key_rel_pos[None, :],
-                mask=is_query_key[None, :],  # avoid OOB for context keys
+                qq_bias_row_ptrs + key_bias_pos[None, :],
+                mask=query_mask_0[:, None] & is_query_key[None, :],
                 other=0.0,
             )
             S += qq_bias
@@ -906,6 +976,9 @@ def unified_attention(
     alibi_slopes=None,
     output_scale=None,
     qq_bias=None,
+    logical_kv_slots=None,
+    logical_kv_slot_lens=None,
+    logical_kv_starts=None,
     # Optional tensor for sinks
     sinks=None,
     # Optional tensor for prefix lengths (PrefixLM support)
@@ -931,6 +1004,19 @@ def unified_attention(
 
     use_alibi_slopes = alibi_slopes is not None
     use_qq_bias = qq_bias is not None
+    use_logical_kv_slots = logical_kv_slots is not None
+    if use_logical_kv_slots:
+        assert logical_kv_slot_lens is not None
+        assert logical_kv_starts is not None
+        assert logical_kv_slots.ndim == 2
+        assert logical_kv_slot_lens.ndim == 1
+        assert logical_kv_starts.ndim == 1
+        assert logical_kv_slots.shape[0] == seqused_k.shape[0]
+        assert logical_kv_slot_lens.shape[0] == seqused_k.shape[0]
+        assert logical_kv_starts.shape[0] == seqused_k.shape[0]
+        assert logical_kv_slots.is_cuda
+        assert logical_kv_slot_lens.is_cuda
+        assert logical_kv_starts.is_cuda
 
     block_size = v.shape[1]
     num_seqs = len(seqused_k)
@@ -998,6 +1084,9 @@ def unified_attention(
             value_cache_ptr=v,
             sink_ptr=sinks,
             block_tables_ptr=block_table,
+            logical_kv_slots_ptr=logical_kv_slots,
+            logical_kv_slot_lens_ptr=logical_kv_slot_lens,
+            logical_kv_starts_ptr=logical_kv_starts,
             seq_lens_ptr=seqused_k,
             alibi_slopes_ptr=alibi_slopes,
             qq_bias_ptr=qq_bias,
@@ -1009,6 +1098,9 @@ def unified_attention(
             num_query_heads=num_query_heads,
             num_queries_per_kv=num_queries_per_kv,
             block_table_stride=block_table.stride(0),
+            logical_kv_slots_stride=(
+                logical_kv_slots.stride(0) if use_logical_kv_slots else 0
+            ),
             query_stride_0=q.stride(0),
             query_stride_1=q.stride(1),
             output_stride_0=out.stride(0),
@@ -1021,6 +1113,7 @@ def unified_attention(
             USE_ALIBI_SLOPES=use_alibi_slopes,
             USE_ALIBI_SQRT=use_alibi_sqrt,
             USE_QQ_BIAS=use_qq_bias,
+            USE_LOGICAL_KV_SLOTS=use_logical_kv_slots,
             USE_SOFTCAP=(softcap > 0),
             USE_SINKS=(sinks is not None),
             USE_MM_PREFIX=use_mm_prefix,
@@ -1053,6 +1146,9 @@ def unified_attention(
             value_cache_ptr=v,
             sink_ptr=sinks,
             block_tables_ptr=block_table,
+            logical_kv_slots_ptr=logical_kv_slots,
+            logical_kv_slot_lens_ptr=logical_kv_slot_lens,
+            logical_kv_starts_ptr=logical_kv_starts,
             seq_lens_ptr=seqused_k,
             alibi_slopes_ptr=alibi_slopes,
             qq_bias_ptr=qq_bias,
@@ -1063,6 +1159,9 @@ def unified_attention(
             num_query_heads=num_query_heads,
             num_queries_per_kv=num_queries_per_kv,
             block_table_stride=block_table.stride(0),
+            logical_kv_slots_stride=(
+                logical_kv_slots.stride(0) if use_logical_kv_slots else 0
+            ),
             query_stride_0=q.stride(0),
             query_stride_1=q.stride(1),
             qq_bias_stride_0=qq_bias.stride(0) if use_qq_bias else 0,
@@ -1073,6 +1172,7 @@ def unified_attention(
             USE_ALIBI_SLOPES=use_alibi_slopes,
             USE_ALIBI_SQRT=use_alibi_sqrt,
             USE_QQ_BIAS=use_qq_bias,
+            USE_LOGICAL_KV_SLOTS=use_logical_kv_slots,
             USE_SOFTCAP=(softcap > 0),
             USE_SINKS=(sinks is not None),
             USE_MM_PREFIX=use_mm_prefix,

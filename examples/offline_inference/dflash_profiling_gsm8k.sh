@@ -15,4 +15,4 @@ python examples/offline_inference/dflash_profiling.py \
   --num-runs 2 \
   --num-warmup-runs 1 \
   "${ATTN_ARGS[@]}" \
-  --torch-profiler-dir /data/midas/vllm_profile_dflash_0409_gsm8k_qwen3_template_${ATTENTION_BACKEND}
+  --torch-profiler-dir /data/vllm-ptd/vllm_profile_dflash_0409_gsm8k_qwen3_template_${ATTENTION_BACKEND}

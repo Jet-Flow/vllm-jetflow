@@ -380,6 +380,13 @@ class CommonAttentionMetadata:
     dcp_local_seq_lens_cpu: torch.Tensor | None = None
     """Sequence lengths of the local rank in decode context parallelism world"""
 
+    dflash_canonical_slot_mapping: torch.Tensor | None = None
+    dflash_current_tree_logical_kv_slots: (
+        torch.Tensor | list[torch.Tensor | None] | None
+    ) = None
+    dflash_current_tree_logical_kv_slot_lens: torch.Tensor | None = None
+    dflash_current_tree_logical_kv_starts: torch.Tensor | list[int] | None = None
+
     is_prefilling: torch.Tensor | None = None
     """(batch_size,) bool tensor: True if request is still in prefill phase
     (num_computed_tokens < num_prompt_tokens). Used by some backends to
