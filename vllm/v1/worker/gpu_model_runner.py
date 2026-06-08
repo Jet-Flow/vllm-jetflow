@@ -828,7 +828,12 @@ class GPUModelRunner(
         self._dflash_tree_accept_paths: list[list[int]] | None = None
         self._dflash_tree_accept_paths_gpu: list[torch.Tensor | None] | None = None
         self._dflash_logical_kv_slots: dict[str, torch.Tensor] = {}
+        self._dflash_logical_kv_slot_lens: dict[str, int] = {}
         self._dflash_logical_kv_starts: dict[str, int] = {}
+        self._dflash_logical_kv_output_slots: torch.Tensor | None = None
+        self._dflash_logical_kv_output_lens: torch.Tensor | None = None
+        self._dflash_logical_kv_output_starts: torch.Tensor | None = None
+        self._dflash_logical_kv_positions: torch.Tensor | None = None
         self.transfer_event = torch.Event()
         self.sampled_token_ids_pinned_cpu = torch.empty(
             (self.max_num_reqs, 1),
@@ -2363,6 +2368,7 @@ class GPUModelRunner(
                     ),
                     ancestor_masks=spec_decode_metadata.ancestor_masks,
                     logical_kv_slots=spec_decode_metadata.logical_kv_slots,
+                    logical_kv_slot_lens=spec_decode_metadata.logical_kv_slot_lens,
                     logical_kv_starts=spec_decode_metadata.logical_kv_starts,
                 )
             elif for_cudagraph_capture:
@@ -3053,18 +3059,33 @@ class GPUModelRunner(
             full_depths_np.shape[0],
         ])
 
-        logical_kv_slots: list[torch.Tensor | None] | None = None
-        logical_kv_starts: list[int] | None = None
+        logical_kv_slots: torch.Tensor | None = None
+        logical_kv_slot_lens: torch.Tensor | None = None
+        logical_kv_starts: torch.Tensor | None = None
         if (
             self.speculative_config is not None
             and getattr(self.speculative_config, "tree_kv_layout", "physical")
             == "logical"
         ):
-            logical_kv_slots = [
-                torch.arange(query_len, dtype=torch.int64, device=self.device)
-                for query_len in query_lens
-            ]
-            logical_kv_starts = [0] * num_reqs
+            logical_kv_slots, logical_kv_slot_lens, logical_kv_starts = (
+                self._ensure_dflash_logical_kv_output_buffers(
+                    num_reqs,
+                    self.max_model_len,
+                )
+            )
+            max_query_len = max(query_lens, default=0)
+            if max_query_len > 0:
+                positions = self._get_dflash_logical_kv_positions(max_query_len)
+                for req_idx, query_len in enumerate(query_lens):
+                    logical_kv_slots[req_idx, :query_len].copy_(
+                        positions[:query_len]
+                    )
+            for req_idx, query_len in enumerate(query_lens):
+                logical_kv_slot_lens[req_idx] = query_len
+                logical_kv_starts[req_idx] = 0
+            logical_kv_slots = logical_kv_slots[:num_reqs]
+            logical_kv_slot_lens = logical_kv_slot_lens[:num_reqs]
+            logical_kv_starts = logical_kv_starts[:num_reqs]
 
         return DFlashTreeSpecDecodeMetadata(
             draft_token_ids=torch.empty(0, dtype=torch.int32, device=self.device),
@@ -3082,6 +3103,7 @@ class GPUModelRunner(
             is_tree_req=[False] * num_reqs,
             ancestor_masks=ancestor_masks_t,
             logical_kv_slots=logical_kv_slots,
+            logical_kv_slot_lens=logical_kv_slot_lens,
             logical_kv_starts=logical_kv_starts,
         )
 
@@ -3813,8 +3835,9 @@ class GPUModelRunner(
         self._dflash_tree_accept_paths_gpu: list[torch.Tensor | None] = []
         # Legacy list kept for any downstream code that still reads it.
         self._dflash_tree_accept_paths: list[list[int]] = []
-        if not hasattr(self, "_dflash_runtime_verify_bundles"):
-            self._dflash_runtime_verify_bundles: list[dict[str, torch.Tensor | int]] = []
+        runtime_verify_bundles = getattr(
+            self, "_dflash_runtime_verify_bundles", None
+        )
 
         output_tensors: list[torch.Tensor] = []
         _cpu_data: tuple | None = None
@@ -3862,12 +3885,13 @@ class GPUModelRunner(
                     ]).to(torch.int32)
                     output_tensors.append(out)
 
-                    if len(self._dflash_runtime_verify_bundles) < 4:
-                        self._dflash_runtime_verify_bundles.append(
+                    if (
+                        runtime_verify_bundles is not None
+                        and len(runtime_verify_bundles) < 4
+                    ):
+                        runtime_verify_bundles.append(
                             {
-                                "verify_step_index": len(
-                                    self._dflash_runtime_verify_bundles
-                                ),
+                                "verify_step_index": len(runtime_verify_bundles),
                                 "tree_num_nodes": int(qlen),
                                 "tree_node_token_ids": req_tokens.detach().cpu(),
                                 "tree_parent_indices": req_parents.detach().cpu(),
@@ -4398,8 +4422,7 @@ class GPUModelRunner(
             and not self.model_config.enforce_eager
             and self.speculative_config is not None
             and self.speculative_config.cudagraph_tree_capture_sizes is not None
-            and self.scheduler_config.max_num_seqs == 1
-            and num_reqs == 1
+            and 1 <= num_reqs <= self.scheduler_config.max_num_seqs
         )
 
     @staticmethod
@@ -4483,6 +4506,7 @@ class GPUModelRunner(
                 has_lora=has_lora,
                 uniform_decode=uniform_decode,
                 num_active_loras=num_active_loras,
+                num_reqs=num_reqs,
                 valid_modes={CUDAGraphMode.NONE} if force_eager else valid_modes,
                 invalid_modes={CUDAGraphMode.FULL} if disable_full else None,
             )
@@ -4593,11 +4617,79 @@ class GPUModelRunner(
             return False
         if not isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata):
             return False
-        if self.input_batch.num_reqs != 1:
-            return False
         if len(self.kv_cache_config.kv_cache_groups) != 1:
             return False
         return True
+
+    def _ensure_dflash_logical_kv_output_buffers(
+        self,
+        num_reqs: int,
+        capacity: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if (
+            self._dflash_logical_kv_output_slots is None
+            or self._dflash_logical_kv_output_slots.shape[0] < num_reqs
+            or self._dflash_logical_kv_output_slots.shape[1] < capacity
+        ):
+            self._dflash_logical_kv_output_slots = torch.empty(
+                (max(num_reqs, self.max_num_reqs), capacity),
+                dtype=torch.int64,
+                device=self.device,
+            )
+        if (
+            self._dflash_logical_kv_output_lens is None
+            or self._dflash_logical_kv_output_lens.shape[0] < num_reqs
+        ):
+            self._dflash_logical_kv_output_lens = torch.empty(
+                max(num_reqs, self.max_num_reqs),
+                dtype=torch.int32,
+                device=self.device,
+            )
+        if (
+            self._dflash_logical_kv_output_starts is None
+            or self._dflash_logical_kv_output_starts.shape[0] < num_reqs
+        ):
+            self._dflash_logical_kv_output_starts = torch.empty(
+                max(num_reqs, self.max_num_reqs),
+                dtype=torch.int32,
+                device=self.device,
+            )
+        return (
+            self._dflash_logical_kv_output_slots,
+            self._dflash_logical_kv_output_lens,
+            self._dflash_logical_kv_output_starts,
+        )
+
+    def _ensure_dflash_logical_kv_persisted_slots(
+        self,
+        req_id: str,
+        capacity: int,
+    ) -> torch.Tensor:
+        slots = self._dflash_logical_kv_slots.get(req_id)
+        if slots is None or slots.numel() < capacity:
+            new_slots = torch.empty(capacity, dtype=torch.int64, device=self.device)
+            old_len = self._dflash_logical_kv_slot_lens.get(req_id, 0)
+            if slots is not None and old_len > 0:
+                new_slots[:old_len].copy_(slots[:old_len])
+            slots = new_slots
+            self._dflash_logical_kv_slots[req_id] = slots
+        return slots
+
+    def _get_dflash_logical_kv_positions(self, capacity: int) -> torch.Tensor:
+        if (
+            self._dflash_logical_kv_positions is None
+            or self._dflash_logical_kv_positions.numel() < capacity
+        ):
+            self._dflash_logical_kv_positions = torch.arange(
+                capacity,
+                dtype=torch.int64,
+                device=self.device,
+            )
+        return self._dflash_logical_kv_positions[:capacity]
+
+    @staticmethod
+    def _dflash_as_int64(tensor: torch.Tensor) -> torch.Tensor:
+        return tensor if tensor.dtype == torch.int64 else tensor.to(torch.int64)
 
     def _prepare_dflash_logical_kv_step(
         self,
@@ -4625,10 +4717,19 @@ class GPUModelRunner(
         for req_id in list(self._dflash_logical_kv_slots):
             if req_id not in active_req_ids:
                 self._dflash_logical_kv_slots.pop(req_id, None)
+                self._dflash_logical_kv_slot_lens.pop(req_id, None)
                 self._dflash_logical_kv_starts.pop(req_id, None)
 
-        logical_slots: list[torch.Tensor | None] = []
-        logical_starts: list[int] = []
+        num_reqs = self.input_batch.num_reqs
+        logical_slots_out, logical_lens_out, logical_starts_out = (
+            self._ensure_dflash_logical_kv_output_buffers(
+                num_reqs,
+                self.max_model_len,
+            )
+        )
+        prepared_reqs: list[
+            tuple[int, int, int, torch.Tensor, torch.Tensor | None, int, int, int]
+        ] = []
         req_start = 0
         for req_idx, req_id in enumerate(
             self.input_batch.req_ids[: self.input_batch.num_reqs]
@@ -4636,44 +4737,80 @@ class GPUModelRunner(
             qlen = spec_decode_metadata.query_lens[req_idx]
             old_len = int(self.input_batch.num_computed_tokens_cpu[req_idx])
             total_len = old_len + qlen
-            positions = torch.arange(
-                total_len, device=self.device, dtype=torch.int64
-            )
-            block_indices = positions // block_size
-            block_offsets = positions % block_size
-            canonical_blocks = block_table[req_idx, block_indices].to(torch.int64)
-            canonical_slots = canonical_blocks * block_size + block_offsets
 
             persisted_slots = self._dflash_logical_kv_slots.get(req_id)
+            persisted_len = self._dflash_logical_kv_slot_lens.get(req_id, 0)
             persisted_start = self._dflash_logical_kv_starts.get(req_id, old_len)
-            if persisted_slots is None or persisted_slots.numel() == 0:
-                used_slots = canonical_slots[:old_len]
+            if persisted_slots is None or persisted_len == 0:
                 logical_start = old_len
-                prefix_slots = None
+                candidate_start = old_len
             else:
-                canonical_prefix = canonical_slots[:persisted_start]
-                used_slots = torch.cat([canonical_prefix, persisted_slots])
                 logical_start = persisted_start
-                prefix_slots = persisted_slots
+                candidate_start = persisted_start
 
-            free_mask = ~torch.isin(canonical_slots, used_slots)
-            free_slots = canonical_slots[free_mask]
+            candidate_positions = self._get_dflash_logical_kv_positions(total_len)[
+                candidate_start:total_len
+            ]
+            block_indices = candidate_positions // block_size
+            block_offsets = candidate_positions % block_size
+            canonical_blocks = self._dflash_as_int64(
+                block_table[req_idx, block_indices]
+            )
+            candidate_slots = canonical_blocks * block_size + block_offsets
+            if persisted_slots is None or persisted_len == 0:
+                free_slots = candidate_slots
+            else:
+                free_mask = ~torch.isin(
+                    candidate_slots, persisted_slots[:persisted_len]
+                )
+                free_slots = candidate_slots[free_mask]
             if free_slots.numel() < qlen:
                 spec_decode_metadata.logical_kv_slots = None
+                spec_decode_metadata.logical_kv_slot_lens = None
                 spec_decode_metadata.logical_kv_starts = None
                 return
 
-            step_slots = free_slots[:qlen].to(torch.int64)
-            slot_mapping[req_start : req_start + qlen] = step_slots
-            if prefix_slots is None:
-                logical_slots.append(step_slots)
-            else:
-                logical_slots.append(torch.cat([prefix_slots, step_slots]))
-            logical_starts.append(logical_start)
+            step_slots = self._dflash_as_int64(free_slots[:qlen])
+            logical_len = persisted_len + qlen
+            prepared_reqs.append(
+                (
+                    req_idx,
+                    req_start,
+                    qlen,
+                    step_slots,
+                    persisted_slots,
+                    persisted_len,
+                    logical_len,
+                    logical_start,
+                )
+            )
             req_start += qlen
 
-        spec_decode_metadata.logical_kv_slots = logical_slots
-        spec_decode_metadata.logical_kv_starts = logical_starts
+        for (
+            req_idx,
+            req_start,
+            qlen,
+            step_slots,
+            persisted_slots,
+            persisted_len,
+            logical_len,
+            logical_start,
+        ) in prepared_reqs:
+            slot_mapping[req_start : req_start + qlen] = step_slots
+            if persisted_len > 0:
+                assert persisted_slots is not None
+                logical_slots_out[req_idx, :persisted_len].copy_(
+                    persisted_slots[:persisted_len]
+                )
+            logical_slots_out[
+                req_idx, persisted_len:logical_len
+            ].copy_(step_slots)
+            logical_lens_out[req_idx] = logical_len
+            logical_starts_out[req_idx] = logical_start
+
+        spec_decode_metadata.logical_kv_slots = logical_slots_out[:num_reqs]
+        spec_decode_metadata.logical_kv_slot_lens = logical_lens_out[:num_reqs]
+        spec_decode_metadata.logical_kv_starts = logical_starts_out[:num_reqs]
 
     def _commit_dflash_logical_kv_slots(
         self,
@@ -4681,6 +4818,12 @@ class GPUModelRunner(
         common_attn_metadata: CommonAttentionMetadata,
     ) -> bool:
         if not self._use_dflash_logical_kv_layout(spec_decode_metadata):
+            return False
+        if (
+            spec_decode_metadata.logical_kv_slots is None
+            or spec_decode_metadata.logical_kv_slot_lens is None
+            or spec_decode_metadata.logical_kv_starts is None
+        ):
             return False
         accept_paths_gpu = getattr(
             self, "_dflash_tree_accept_paths_gpu", None
@@ -4703,16 +4846,23 @@ class GPUModelRunner(
                 req_start += qlen
                 continue
 
-            req_slots = slot_mapping[req_start : req_start + qlen].to(torch.int64)
+            req_slots = self._dflash_as_int64(
+                slot_mapping[req_start : req_start + qlen]
+            )
             accepted_slots = req_slots[path_gpu].detach()
             persisted_slots = self._dflash_logical_kv_slots.get(req_id)
-            if persisted_slots is None or persisted_slots.numel() == 0:
+            persisted_len = self._dflash_logical_kv_slot_lens.get(req_id, 0)
+            num_accepted = accepted_slots.numel()
+            if persisted_slots is None or persisted_len == 0:
                 self._dflash_logical_kv_starts[req_id] = old_len
-                self._dflash_logical_kv_slots[req_id] = accepted_slots
-            else:
-                self._dflash_logical_kv_slots[req_id] = torch.cat(
-                    [persisted_slots, accepted_slots]
-                )
+            new_len = persisted_len + num_accepted
+            persisted_slots = self._ensure_dflash_logical_kv_persisted_slots(
+                req_id,
+                max(self.max_model_len, new_len),
+            )
+            if num_accepted > 0:
+                persisted_slots[persisted_len:new_len].copy_(accepted_slots)
+            self._dflash_logical_kv_slot_lens[req_id] = new_len
             verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
             if verify_bundles:
                 verify_bundles[-1]["logical_commit_accepted_slots"] = (
@@ -4722,7 +4872,7 @@ class GPUModelRunner(
                     self._dflash_logical_kv_starts[req_id]
                 )
                 verify_bundles[-1]["logical_commit_slots"] = (
-                    self._dflash_logical_kv_slots[req_id].detach().cpu()
+                    persisted_slots[:new_len].detach().cpu()
                 )
             req_start += qlen
 
@@ -6361,18 +6511,19 @@ class GPUModelRunner(
         # max_query_len == 1, or speculative decode, where
         # max_query_len == 1 + num_spec_decode_tokens.
 
-        tree_single_req_cudagraph = (
+        tree_dflash_cudagraph = (
             uniform_decode
             and self._is_dflash_tree_mode()
-            and self.scheduler_config.max_num_seqs == 1
+            and self.speculative_config is not None
+            and self.speculative_config.cudagraph_tree_capture_sizes is not None
         )
 
         # When setting max_query_len = 1, we switch to and capture the optimized
         # routine of FA2 for pure decode, i.e., Flashdecode + an optimization
         # for GQA/MQA.
         max_query_len = (
-            num_tokens
-            if tree_single_req_cudagraph
+            self.uniform_decode_query_len
+            if tree_dflash_cudagraph
             else (self.uniform_decode_query_len if uniform_decode else num_tokens)
         )
 
@@ -6395,14 +6546,10 @@ class GPUModelRunner(
             max_query_len = num_prefill_tokens
         elif uniform_decode:
             assert not create_mixed_batch
-            if tree_single_req_cudagraph:
-                num_reqs = 1
-                num_scheduled_tokens_list = [num_tokens]
-            else:
-                num_reqs = min(max_num_reqs, cdiv(num_tokens, max_query_len))
-                num_scheduled_tokens_list = [max_query_len] * num_reqs
-                if num_tokens % max_query_len != 0:
-                    num_scheduled_tokens_list[-1] = num_tokens % max_query_len
+            num_reqs = min(max_num_reqs, cdiv(num_tokens, max_query_len))
+            num_scheduled_tokens_list = [max_query_len] * num_reqs
+            if num_tokens % max_query_len != 0:
+                num_scheduled_tokens_list[-1] = num_tokens % max_query_len
         else:
             num_reqs = min(num_tokens, max_num_reqs)
             min_tokens_per_req = num_tokens // num_reqs
@@ -7488,7 +7635,10 @@ class GPUModelRunner(
 
         is_dflash_tree = self._is_dflash_tree_mode()
         supports_dflash_tree_cudagraph = (
-            is_dflash_tree and self.scheduler_config.max_num_seqs == 1
+            is_dflash_tree
+            and self.speculative_config is not None
+            and self.speculative_config.cudagraph_tree_capture_sizes is not None
+            and self.scheduler_config.max_num_seqs >= 1
         )
 
         if is_dflash_tree and supports_dflash_tree_cudagraph:
@@ -7505,7 +7655,7 @@ class GPUModelRunner(
             if cudagraph_mode != CUDAGraphMode.NONE:
                 logger.warning(
                     "Disabling CUDA graphs for DFlash tree mode because "
-                    "current support requires max_num_seqs=1."
+                    "DFlash tree CUDAGraph capture sizes are not configured."
                 )
                 cudagraph_mode = self.compilation_config.cudagraph_mode = (
                     CUDAGraphMode.NONE

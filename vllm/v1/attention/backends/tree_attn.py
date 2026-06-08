@@ -527,6 +527,24 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
                 "Logical KV slots exceed cudagraph capture capacity: "
                 f"{max_slots} > {capacity}"
             )
+        if (
+            torch.is_tensor(logical_kv_slots)
+            and max_slots == capacity
+            and logical_kv_slots.dtype == torch.int64
+            and logical_kv_slots.device == self.device
+            and logical_kv_slots.is_contiguous()
+            and logical_kv_slot_lens is not None
+            and logical_kv_slot_lens.dtype == torch.int32
+            and logical_kv_slot_lens.device == self.device
+            and torch.is_tensor(logical_kv_starts)
+            and logical_kv_starts.dtype == torch.int32
+            and logical_kv_starts.device == self.device
+        ):
+            return (
+                logical_kv_slots[:num_reqs],
+                logical_kv_slot_lens[:num_reqs],
+                logical_kv_starts[:num_reqs],
+            )
 
         if self._cudagraph_logical_kv_slots is None:
             self._cudagraph_logical_kv_slots = torch.empty(

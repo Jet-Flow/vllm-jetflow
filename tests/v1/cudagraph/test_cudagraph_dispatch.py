@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 from dataclasses import replace
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -263,6 +264,42 @@ class TestCudagraphDispatcher:
         # Don't initialize keys
 
         assert dispatcher.get_capture_descs() == []
+
+    def test_dflash_tree_full_dispatch_uses_exact_num_reqs(self):
+        tree_size = 127
+        num_reqs = 4
+        comp_config = CompilationConfig(
+            cudagraph_mode="FULL_DECODE_ONLY",
+            mode=CompilationMode.NONE,
+            cudagraph_capture_sizes=[tree_size * i for i in range(1, num_reqs + 1)],
+        )
+        config = _create_vllm_config(comp_config, max_num_seqs=num_reqs)
+        config.speculative_config = SimpleNamespace(
+            method="dflash",
+            tree_width=7,
+            cudagraph_tree_capture_sizes=[tree_size],
+            cudagraph_uniform_decode_query_len=tree_size,
+        )
+
+        dispatcher = CudagraphDispatcher(config)
+        dispatcher.initialize_cudagraph_keys(
+            cudagraph_mode=comp_config.cudagraph_mode,
+            uniform_decode_query_len=tree_size,
+        )
+
+        rt_mode, key = dispatcher.dispatch(
+            num_tokens=tree_size * num_reqs,
+            uniform_decode=True,
+            has_lora=False,
+            num_reqs=num_reqs,
+        )
+
+        assert rt_mode == CUDAGraphMode.FULL
+        assert key == BatchDescriptor(
+            num_tokens=tree_size * num_reqs,
+            num_reqs=num_reqs,
+            uniform=True,
+        )
 
 
 @pytest.mark.skipif(not current_platform.is_cuda(), reason="Skip if not cuda")

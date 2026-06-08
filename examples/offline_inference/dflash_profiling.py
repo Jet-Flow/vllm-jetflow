@@ -215,21 +215,28 @@ def _parse_profiler_table_duration(value: str, unit: str) -> float:
     return _duration_to_seconds(float(value), unit)
 
 
-def collect_profiler_named_ranges(
+def collect_profiler_table_rows(
     run_output_dir: Path,
-    names: set[str],
+    names: set[str] | None = None,
 ) -> dict[str, dict[str, float]]:
-    """Collect CPU/CUDA totals for selected torch profiler table rows."""
-    rows = {
-        name: {
-            "self_cpu_s": 0.0,
-            "cpu_total_s": 0.0,
-            "self_cuda_s": 0.0,
-            "cuda_total_s": 0.0,
-            "calls": 0.0,
+    """Collect CPU/CUDA totals from torch profiler table rows.
+
+    If names is provided, only those rows are returned. Otherwise every parsed
+    row is returned. Self totals are useful for grouping without double-counting
+    nested ranges; total columns are useful for named high-level ranges.
+    """
+    rows: dict[str, dict[str, float]] = {}
+    if names is not None:
+        rows = {
+            name: {
+                "self_cpu_s": 0.0,
+                "cpu_total_s": 0.0,
+                "self_cuda_s": 0.0,
+                "cuda_total_s": 0.0,
+                "calls": 0.0,
+            }
+            for name in names
         }
-        for name in names
-    }
     files = sorted(run_output_dir.glob("profiler_out_*.txt"))
     if not files:
         return rows
@@ -254,8 +261,16 @@ def collect_profiler_named_ranges(
             if not match:
                 continue
             name = match.group("name").strip()
-            if name not in rows:
+            if names is not None and name not in rows:
                 continue
+            if name not in rows:
+                rows[name] = {
+                    "self_cpu_s": 0.0,
+                    "cpu_total_s": 0.0,
+                    "self_cuda_s": 0.0,
+                    "cuda_total_s": 0.0,
+                    "calls": 0.0,
+                }
             row = rows[name]
             row["self_cpu_s"] += _parse_profiler_table_duration(
                 match.group("self_cpu"), match.group("self_cpu_unit")
@@ -272,6 +287,173 @@ def collect_profiler_named_ranges(
             row["calls"] += float(match.group("calls"))
 
     return rows
+
+
+def collect_profiler_named_ranges(
+    run_output_dir: Path,
+    names: set[str],
+) -> dict[str, dict[str, float]]:
+    """Collect CPU/CUDA totals for selected torch profiler table rows."""
+    return collect_profiler_table_rows(run_output_dir, names)
+
+
+def write_dflash_residual_grouped_report(
+    run_output_dir: Path,
+    *,
+    elapsed_s: float,
+    num_drafts: float,
+    residual_s: float,
+) -> dict[str, dict[str, float]]:
+    """Group non-DFlash profiler rows to explain residual wall time.
+
+    This report uses profiler self time so categories are less prone to
+    double-counting than high-level total ranges. The percentages are relative
+    to wall time for readability, but CUDA self time and CPU self time can
+    overlap asynchronously.
+    """
+    rows = collect_profiler_table_rows(run_output_dir)
+    denom = num_drafts if num_drafts > 0 else 1.0
+
+    groups: dict[str, dict[str, object]] = {
+        "cuda_graph_replay": {
+            "patterns": ("cudaGraph", "cudaStreamIsCapturing"),
+            "rows": [],
+        },
+        "host_device_transfers": {
+            "patterns": ("Memcpy", "memcpy", "copy_"),
+            "rows": [],
+        },
+        "small_tensor_metadata_ops": {
+            "patterns": (
+                "aten::index",
+                "aten::_index_put_impl_",
+                "aten::cat",
+                "aten::_unique",
+                "aten::nonzero",
+                "aten::sort",
+                "aten::fill_",
+                "aten::add",
+                "aten::sub",
+                "aten::div",
+                "aten::remainder",
+                "aten::bitwise_and",
+                "_compute_slot_mapping_kernel",
+            ),
+            "rows": [],
+        },
+        "host_sync_scalar_ops": {
+            "patterns": ("aten::_local_scalar_dense", "DtoH"),
+            "rows": [],
+        },
+        "sampling_topk_softmax": {
+            "patterns": (
+                "aten::topk",
+                "aten::_log_softmax",
+                "SoftMax",
+                "mbtopk",
+                "radixSort",
+                "bitonicSort",
+            ),
+            "rows": [],
+        },
+        "attention_and_model_kernels": {
+            "patterns": (
+                "kernel_unified_attention",
+                "unified_attention",
+                "_vllm_fa3_C::fwd",
+                "FlashAttn",
+                "nvjet_tst",
+                "aten::mm",
+                "cublas",
+                "rms_norm",
+                "rotary_embedding",
+                "triton_",
+            ),
+            "rows": [],
+        },
+        "kv_cache_ops": {
+            "patterns": ("reshape_and_cache", "_C_cache_ops"),
+            "rows": [],
+        },
+        "dflash_named_ranges": {
+            "patterns": ("dflash_", "gpu_model_runner:"),
+            "rows": [],
+        },
+        "uncategorized": {
+            "patterns": (),
+            "rows": [],
+        },
+    }
+
+    def add_to_group(group_name: str, row_name: str, row: dict[str, float]) -> None:
+        group_rows = groups[group_name]["rows"]
+        assert isinstance(group_rows, list)
+        group_rows.append((row_name, row))
+
+    for row_name, row in rows.items():
+        assigned = False
+        for group_name, config in groups.items():
+            if group_name == "uncategorized":
+                continue
+            patterns = config["patterns"]
+            assert isinstance(patterns, tuple)
+            if any(pattern in row_name for pattern in patterns):
+                add_to_group(group_name, row_name, row)
+                assigned = True
+                break
+        if not assigned:
+            add_to_group("uncategorized", row_name, row)
+
+    grouped_metrics: dict[str, dict[str, float]] = {}
+    lines = [
+        "# DFlash grouped residual report",
+        "# Uses torch profiler self time for grouping; CPU and CUDA work may overlap.",
+        f"elapsed_s={elapsed_s:.6f}",
+        f"num_drafts={num_drafts:.0f}",
+        f"residual_wall_estimate_s={residual_s:.6f}",
+        "",
+        "# Groups",
+    ]
+
+    for group_name, config in groups.items():
+        group_rows = config["rows"]
+        assert isinstance(group_rows, list)
+        self_cpu_s = sum(row["self_cpu_s"] for _, row in group_rows)
+        self_cuda_s = sum(row["self_cuda_s"] for _, row in group_rows)
+        calls = sum(row["calls"] for _, row in group_rows)
+        grouped_metrics[group_name] = {
+            "self_cpu_s": self_cpu_s,
+            "self_cuda_s": self_cuda_s,
+            "calls": calls,
+        }
+        cpu_pct = 100.0 * self_cpu_s / elapsed_s if elapsed_s > 0 else 0.0
+        cuda_pct = 100.0 * self_cuda_s / elapsed_s if elapsed_s > 0 else 0.0
+        lines.append(
+            f"{group_name}: self_cpu_s={self_cpu_s:.6f} "
+            f"cpu_pct_wall={cpu_pct:.2f} "
+            f"cpu_per_step_ms={1000.0 * self_cpu_s / denom:.3f} "
+            f"self_cuda_s={self_cuda_s:.6f} "
+            f"cuda_pct_wall={cuda_pct:.2f} "
+            f"cuda_per_step_ms={1000.0 * self_cuda_s / denom:.3f} "
+            f"calls={calls:.0f}"
+        )
+        top_rows = sorted(
+            group_rows,
+            key=lambda item: item[1]["self_cpu_s"] + item[1]["self_cuda_s"],
+            reverse=True,
+        )[:8]
+        for row_name, row in top_rows:
+            lines.append(
+                f"  - {row_name}: calls={row['calls']:.0f} "
+                f"self_cpu_s={row['self_cpu_s']:.6f} "
+                f"self_cuda_s={row['self_cuda_s']:.6f} "
+                f"cpu_total_s={row['cpu_total_s']:.6f} "
+                f"cuda_total_s={row['cuda_total_s']:.6f}"
+            )
+    report_path = run_output_dir / "dflash_residual_grouped_report.txt"
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Wrote DFlash grouped residual report to: {report_path}")
+    return grouped_metrics
 
 
 def write_dflash_breakdown_report(
@@ -407,6 +589,12 @@ def write_dflash_breakdown_report(
     report_path = run_output_dir / "dflash_breakdown_report.txt"
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote DFlash breakdown report to: {report_path}")
+    write_dflash_residual_grouped_report(
+        run_output_dir,
+        elapsed_s=elapsed_s,
+        num_drafts=num_drafts,
+        residual_s=residual_s,
+    )
     return metrics
 
 
@@ -743,6 +931,21 @@ def validate_native_only_settings(args) -> None:
     return None
 
 
+def get_compilation_config_for_cudagraph_mode(
+    cudagraph_mode: str,
+) -> dict[str, str] | None:
+    if cudagraph_mode == "default":
+        return None
+    mode_map = {
+        "none": "NONE",
+        "full": "FULL",
+        "full_decode_only": "FULL_DECODE_ONLY",
+        "full_and_piecewise": "FULL_AND_PIECEWISE",
+        "piecewise": "PIECEWISE",
+    }
+    return {"cudagraph_mode": mode_map[cudagraph_mode]}
+
+
 def log_cuda_memory(prefix: str) -> None:
     if not torch.cuda.is_available():
         return
@@ -805,8 +1008,11 @@ def run_native_profile(
         profiler_config=profiler_config,
         disable_log_stats=False,
     )
-    if args.cudagraph_mode == "none":
-        llm_kwargs["compilation_config"] = {"cudagraph_mode": "NONE"}
+    compilation_config = get_compilation_config_for_cudagraph_mode(
+        args.cudagraph_mode
+    )
+    if compilation_config is not None:
+        llm_kwargs["compilation_config"] = compilation_config
     if args.attention_backend is not None:
         llm_kwargs["attention_backend"] = args.attention_backend
     if mode == "dflash":
@@ -914,7 +1120,7 @@ def run_native_profile(
     else:
         print(f"WARNING: topk_log is empty — no entries collected from drafter")
 
-    if mode == "dflash":
+    if mode == "dflash" and args.write_dflash_debug_artifacts:
         write_dflash_tree_debug_records(llm, run_output_dir)
         write_dflash_runtime_verify_bundles(llm, run_output_dir)
         write_dflash_tree_commit_debug_records(llm, run_output_dir)
@@ -1205,6 +1411,15 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--write-dflash-debug-artifacts",
+        action="store_true",
+        help=(
+            "Collect and write DFlash tree/debug/commit JSON artifacts after "
+            "generation. Disabled by default to keep profiling runs focused on "
+            "throughput and profiler reports."
+        ),
+    )
+    parser.add_argument(
         "--trust-remote-code",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -1326,10 +1541,18 @@ def parse_args():
         "--cudagraph-mode",
         type=str,
         default="default",
-        choices=["default", "none"],
+        choices=[
+            "default",
+            "none",
+            "full",
+            "full_decode_only",
+            "full_and_piecewise",
+            "piecewise",
+        ],
         help=(
-            "Override global vLLM CUDA graph mode. Use 'none' to test "
-            "non-eager execution without CUDA graph capture."
+            "Override global vLLM CUDA graph mode. Use 'full_decode_only' "
+            "to test DFlash target-model full CUDA graph replay, or 'none' "
+            "to test non-eager execution without CUDA graph capture."
         ),
     )
     return parser.parse_args()

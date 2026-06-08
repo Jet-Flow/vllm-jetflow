@@ -65,8 +65,109 @@ def _make_dummy_metadata(
     query_lens = [n + 1 for n in num_draft_tokens]
 
     draft_token_ids_t = torch.tensor(flat_draft, dtype=torch.int32, device=device)
-    cu_num_draft = torch.tensor(
-        np.cumsum(num_draft_tokens).tolist(), dtype=torch.int32, device=device
+    cu_num_draft_np = np.cumsum(num_draft_tokens, dtype=np.int32)
+    cu_num_sampled_np = np.cumsum(num_sampled_tokens, dtype=np.int32)
+    cu_query_lens_np = np.cumsum(query_lens, dtype=np.int32)
+
+    logits_indices_np = np.repeat(
+        cu_num_sampled_np - np.array(num_sampled_tokens, dtype=np.int32),
+        num_sampled_tokens,
+    )
+    if logits_indices_np.size:
+        logits_indices_np += np.arange(logits_indices_np.size, dtype=np.int32)
+
+    target_logits_indices_np = np.repeat(
+        cu_num_sampled_np - np.array(num_sampled_tokens, dtype=np.int32),
+        num_draft_tokens,
+    )
+    if target_logits_indices_np.size:
+        target_logits_indices_np += np.arange(
+            target_logits_indices_np.size, dtype=np.int32
+        )
+    bonus_logits_indices_np = cu_num_sampled_np - 1
+
+    full_parent_lists: list[list[int]] = []
+    full_depth_lists: list[list[int]] = []
+    for req_idx, query_len in enumerate(query_lens):
+        draft_len = num_draft_tokens[req_idx]
+        if parent_lists is None:
+            parents = [-1, *range(query_len - 1)]
+        else:
+            parents = parent_lists[req_idx]
+            if len(parents) == draft_len:
+                parents = [-1, *parents]
+        if depth_lists is None:
+            depths = [0] * len(parents)
+            for idx in range(1, len(parents)):
+                depths[idx] = depths[parents[idx]] + 1
+        else:
+            depths = depth_lists[req_idx]
+            if len(depths) == draft_len:
+                depths = [0, *depths]
+        assert len(parents) == query_len
+        assert len(depths) == query_len
+        full_parent_lists.append(list(parents))
+        full_depth_lists.append(list(depths))
+
+    flat_parents = [parent for parents in full_parent_lists for parent in parents]
+    flat_depths = [depth for depths in full_depth_lists for depth in depths]
+
+    tree_attn_bias = None
+    ancestor_masks = None
+    if use_optimus:
+        max_qlen = max(query_lens, default=0)
+        ancestor_masks = torch.zeros(
+            (batch_size, max_qlen, max_qlen), dtype=torch.int32, device=device
+        )
+        for req_idx, parents in enumerate(full_parent_lists):
+            ancestor = torch.from_numpy(build_ancestor_matrix_np(parents)).to(
+                device=device, dtype=torch.int32
+            )
+            qlen = len(parents)
+            ancestor_masks[req_idx, :qlen, :qlen] = ancestor
+    else:
+        total_query_len = sum(query_lens)
+        neg_inf = float(torch.finfo(torch.float32).min)
+        tree_attn_bias = torch.full(
+            (total_query_len, total_query_len),
+            neg_inf,
+            dtype=torch.float32,
+            device=device,
+        )
+        cursor = 0
+        for parents in full_parent_lists:
+            qlen = len(parents)
+            bias = torch.from_numpy(_build_attention_bias_np(parents, neg_inf)).to(
+                device=device, dtype=torch.float32
+            )
+            tree_attn_bias[cursor:cursor + qlen, cursor:cursor + qlen] = bias
+            cursor += qlen
+
+    return DFlashTreeSpecDecodeMetadata(
+        draft_token_ids=draft_token_ids_t,
+        num_draft_tokens=num_draft_tokens,
+        cu_num_draft_tokens=torch.tensor(
+            cu_num_draft_np, dtype=torch.int32, device=device
+        ),
+        cu_num_sampled_tokens=torch.tensor(
+            cu_num_sampled_np, dtype=torch.int32, device=device
+        ),
+        target_logits_indices=torch.tensor(
+            target_logits_indices_np, dtype=torch.int32, device=device
+        ),
+        bonus_logits_indices=torch.tensor(
+            bonus_logits_indices_np, dtype=torch.int32, device=device
+        ),
+        logits_indices=torch.tensor(
+            logits_indices_np, dtype=torch.int32, device=device
+        ),
+        query_lens=query_lens,
+        parent_indices=torch.tensor(flat_parents, dtype=torch.int64, device=device),
+        depths=torch.tensor(flat_depths, dtype=torch.int64, device=device),
+        tree_attn_bias=tree_attn_bias,
+        cu_query_lens=torch.tensor(cu_query_lens_np, dtype=torch.int32, device=device),
+        is_tree_req=[n > 0 for n in num_draft_tokens],
+        ancestor_masks=ancestor_masks,
     )
 
 
@@ -553,26 +654,24 @@ class TestSpeculativeConfigKernel:
     def test_num_cudagraph_tree_captures_uses_budget_only(self):
         from vllm.config.speculative import SpeculativeConfig
 
-        config = SpeculativeConfig(
-            method="dflash",
-            num_speculative_tokens=15,
-            tree_width=7,
-            max_tree_budget=255,
-            num_cudagraph_tree_captures=4,
-        )
+        config = object.__new__(SpeculativeConfig)
+        config.method = "dflash"
+        config.num_speculative_tokens = 15
+        config.tree_width = 7
+        config.max_tree_budget = 255
+        config.num_cudagraph_tree_captures = 4
 
         assert config.cudagraph_tree_capture_sizes == [255]
 
     def test_single_cudagraph_tree_capture_uses_budget(self):
         from vllm.config.speculative import SpeculativeConfig
 
-        config = SpeculativeConfig(
-            method="dflash",
-            num_speculative_tokens=15,
-            tree_width=7,
-            max_tree_budget=255,
-            num_cudagraph_tree_captures=1,
-        )
+        config = object.__new__(SpeculativeConfig)
+        config.method = "dflash"
+        config.num_speculative_tokens = 15
+        config.tree_width = 7
+        config.max_tree_budget = 255
+        config.num_cudagraph_tree_captures = 1
 
         assert config.cudagraph_tree_capture_sizes == [255]
 
@@ -590,7 +689,7 @@ class TestDflashProfilingCLI:
             ],
             capture_output=True,
             text=True,
-            cwd="/home/i-hulanxiang/workspace/vllm-parallel-drafting",
+            cwd=Path(__file__).resolve().parents[3],
         )
         assert "--tree-attn-kernel" in result.stdout
         assert "triton" in result.stdout

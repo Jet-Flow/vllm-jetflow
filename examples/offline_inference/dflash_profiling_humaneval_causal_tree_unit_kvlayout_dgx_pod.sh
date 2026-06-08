@@ -41,6 +41,7 @@ TREE_ATTN_KERNEL="${TREE_ATTN_KERNEL:-optimus}"
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-FLASH_ATTN}"
 PROFILER_DIR="${PROFILER_DIR:-}"
 MAX_TREE_BUDGET="${MAX_TREE_BUDGET:-255}"
+CUDAGRAPH_MODE="${CUDAGRAPH_MODE:-default}"
 EXTRA_ARGS=()
 REPORT_BATCH_SIZE=1
 REPORT_TP_SIZE=1
@@ -59,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --batch-size)         REPORT_BATCH_SIZE="$2";  shift 2 ;;
     --max-num-seqs)       MAX_NUM_SEQS="$2";       shift 2 ;;
     --max-tree-budget)    MAX_TREE_BUDGET="$2";    shift 2 ;;
+    --cudagraph-mode)     CUDAGRAPH_MODE="$2";     shift 2 ;;
     --tree-kv-layout)     echo "ERROR: this comparison wrapper runs both physical and logical; do not pass --tree-kv-layout"; exit 1 ;;
     *)                    EXTRA_ARGS+=("$1");      shift   ;;
   esac
@@ -134,6 +136,7 @@ echo "Profiler dir:       $PROFILER_DIR"
 echo "Tree attn kernel:   $TREE_ATTN_KERNEL"
 echo "Max tree budget:    $MAX_TREE_BUDGET"
 echo "Max num seqs:       $MAX_NUM_SEQS"
+echo "CUDAGraph mode:     $CUDAGRAPH_MODE"
 echo "GPU memory util:    $GPU_MEMORY_UTILIZATION"
 if [[ -n "${OPTIMUS_SRC}" ]]; then
   echo "Optimus source:     $OPTIMUS_SRC"
@@ -205,6 +208,7 @@ run_profile() {
     --tree-attn-kernel "${TREE_ATTN_KERNEL}" \
     "${layout_args[@]}" \
     --num-cudagraph-tree-captures ${NUM_CUDAGRAPH_TREE_CAPTURES} \
+    --cudagraph-mode "${CUDAGRAPH_MODE}" \
     --attention-backend "${ATTENTION_BACKEND}" \
     --tp-sizes "${REPORT_TP_SIZE}" \
     --batch-sizes "${REPORT_BATCH_SIZE}" \
