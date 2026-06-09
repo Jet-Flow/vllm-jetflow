@@ -5,6 +5,7 @@
 import argparse
 import gc
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -456,6 +457,218 @@ def write_dflash_residual_grouped_report(
     return grouped_metrics
 
 
+def build_dflash_pipeline_buckets(
+    rows: dict[str, dict[str, float]],
+    *,
+    elapsed_s: float,
+    phase_cuda: dict[str, float],
+) -> list[dict[str, float | str]]:
+    """Build wall-like DFlash pipeline buckets from named profiler ranges.
+
+    Torch profiler CPU and CUDA totals are not a strict wall-time decomposition,
+    so each named range contributes the larger of its CPU/CUDA totals. The
+    buckets below avoid obvious parent/child double-counting and leave any
+    remaining elapsed time as an explicit unassigned gap.
+    """
+
+    def row_wall_like(name: str) -> float:
+        row = rows[name]
+        return max(row["cpu_total_s"], row["cuda_total_s"])
+
+    def row_calls(*names: str) -> float:
+        return max((rows[name]["calls"] for name in names), default=0.0)
+
+    def total(*names: str) -> float:
+        return sum(row_wall_like(name) for name in names)
+
+    target_verify_s = phase_cuda["decode_cuda_s"]
+    if target_verify_s == 0.0:
+        target_verify_s = row_wall_like("gpu_model_runner: forward")
+
+    bucket_specs = [
+        (
+            "prefill",
+            phase_cuda["prefill_cuda_s"],
+            row_calls("gpu_model_runner: forward"),
+        ),
+        (
+            "target_preprocess",
+            row_wall_like("gpu_model_runner: preprocess"),
+            row_calls("gpu_model_runner: preprocess"),
+        ),
+        (
+            "target_verification_forward",
+            target_verify_s,
+            row_calls("gpu_model_runner: forward"),
+        ),
+        (
+            "target_postprocess_sample",
+            total("gpu_model_runner: postprocess", "gpu_model_runner: sample"),
+            row_calls("gpu_model_runner: postprocess", "gpu_model_runner: sample"),
+        ),
+        (
+            "draft_model_forward_logits",
+            total("dflash_draft_forward", "dflash_draft_logits"),
+            row_calls("dflash_draft_forward", "dflash_draft_logits"),
+        ),
+        (
+            "draft_input_setup",
+            total(
+                "dflash_combine_hidden_states",
+                "dflash_set_inputs_first_pass",
+                "dflash_build_attn_metadata",
+                "dflash_draft_cg_dispatch",
+                "dflash_zero_padded_positions",
+                "dflash_build_model_inputs",
+                "dflash_context_kv_pair_metadata_sync",
+            ),
+            row_calls(
+                "dflash_combine_hidden_states",
+                "dflash_set_inputs_first_pass",
+                "dflash_build_attn_metadata",
+                "dflash_draft_cg_dispatch",
+                "dflash_zero_padded_positions",
+                "dflash_build_model_inputs",
+                "dflash_context_kv_pair_metadata_sync",
+            ),
+        ),
+        (
+            "draft_context_kv_precompute",
+            total(
+                "dflash_context_kv_precompute",
+                "dflash_context_kv_precompute_full",
+                "dflash_context_kv_precompute_suffix",
+            ),
+            row_calls(
+                "dflash_context_kv_precompute",
+                "dflash_context_kv_precompute_full",
+                "dflash_context_kv_precompute_suffix",
+            ),
+        ),
+        (
+            "tree_build_pack",
+            total(
+                "dflash_tree_prebuild_setup",
+                "dflash_tree_entropy_setup",
+                "dflash_tree_build",
+                "dflash_tree_topk",
+                "dflash_tree_root_token_sync",
+                "dflash_tree_cpu_build",
+                "dflash_tree_refine",
+                "dflash_tree_cg_adjust",
+                "dflash_tree_cg_log_detail",
+                "dflash_tree_spec_pack",
+            ),
+            row_calls(
+                "dflash_tree_prebuild_setup",
+                "dflash_tree_entropy_setup",
+                "dflash_tree_build",
+                "dflash_tree_topk",
+                "dflash_tree_root_token_sync",
+                "dflash_tree_cpu_build",
+                "dflash_tree_refine",
+                "dflash_tree_cg_adjust",
+                "dflash_tree_cg_log_detail",
+                "dflash_tree_spec_pack",
+            ),
+        ),
+        (
+            "tree_accept_sampling",
+            total(
+                "dflash_tree_sample_prepare",
+                "dflash_tree_accept",
+                "dflash_tree_sample_pack",
+            ),
+            row_calls(
+                "dflash_tree_sample_prepare",
+                "dflash_tree_accept",
+                "dflash_tree_sample_pack",
+            ),
+        ),
+        (
+            "commit_compaction",
+            total(
+                "dflash_tree_hidden_state_compaction",
+                "dflash_tree_kv_commit",
+                "dflash_tree_kv_commit_filter_identity",
+                "dflash_tree_kv_commit_copy",
+            ),
+            row_calls(
+                "dflash_tree_hidden_state_compaction",
+                "dflash_tree_kv_commit",
+                "dflash_tree_kv_commit_filter_identity",
+                "dflash_tree_kv_commit_copy",
+            ),
+        ),
+        (
+            "debug_capture",
+            total("dflash_runtime_debug_capture", "dflash_tree_builder_debug_capture"),
+            row_calls("dflash_runtime_debug_capture", "dflash_tree_builder_debug_capture"),
+        ),
+        (
+            "draft_runner_orchestration",
+            row_wall_like("gpu_model_runner: draft"),
+            row_calls("gpu_model_runner: draft"),
+        ),
+    ]
+
+    buckets: list[dict[str, float | str]] = []
+    visible_total_s = 0.0
+    for name, seconds, calls in bucket_specs:
+        visible_total_s += seconds
+        buckets.append({"name": name, "seconds": seconds, "calls": calls})
+
+    unassigned_s = elapsed_s - visible_total_s
+    buckets.append(
+        {
+            "name": "unassigned_wall_gap",
+            "seconds": max(0.0, unassigned_s),
+            "calls": 0.0,
+        }
+    )
+    if unassigned_s < 0.0:
+        buckets.append(
+            {
+                "name": "overlap_overage",
+                "seconds": -unassigned_s,
+                "calls": 0.0,
+            }
+        )
+    return buckets
+
+
+def write_dflash_pipeline_bucket_report(
+    run_output_dir: Path,
+    *,
+    elapsed_s: float,
+    num_drafts: float,
+    buckets: list[dict[str, float | str]],
+) -> None:
+    denom = num_drafts if num_drafts > 0 else 1.0
+    lines = [
+        "# DFlash pipeline bucket report",
+        "# Bucket seconds use max(cpu_total_s, cuda_total_s) per named range.",
+        "# Buckets are wall-like estimates; CPU/CUDA work may overlap.",
+        f"elapsed_s={elapsed_s:.6f}",
+        f"num_drafts={num_drafts:.0f}",
+        "",
+        "# Pipeline buckets",
+    ]
+    for bucket in buckets:
+        name = str(bucket["name"])
+        seconds = float(bucket["seconds"])
+        calls = float(bucket["calls"])
+        pct = 100.0 * seconds / elapsed_s if elapsed_s > 0 else 0.0
+        per_step_ms = 1000.0 * seconds / denom
+        lines.append(
+            f"{name}: seconds={seconds:.6f} pct_wall={pct:.2f} "
+            f"per_tree_step_ms={per_step_ms:.3f} calls={calls:.0f}"
+        )
+    report_path = run_output_dir / "dflash_pipeline_bucket_report.txt"
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Wrote DFlash pipeline bucket report to: {report_path}")
+
+
 def write_dflash_breakdown_report(
     run_output_dir: Path,
     *,
@@ -468,12 +681,33 @@ def write_dflash_breakdown_report(
         "gpu_model_runner: draft",
         "gpu_model_runner: sample",
         "gpu_model_runner: forward",
+        "gpu_model_runner: preprocess",
+        "gpu_model_runner: postprocess",
+        "dflash_combine_hidden_states",
         "dflash_propose_setup",
+        "dflash_set_inputs_first_pass",
+        "dflash_build_attn_metadata",
+        "dflash_draft_cg_dispatch",
+        "dflash_zero_padded_positions",
+        "dflash_build_model_inputs",
+        "dflash_context_kv_precompute",
+        "dflash_context_kv_precompute_full",
+        "dflash_context_kv_precompute_suffix",
+        "dflash_context_kv_pair_metadata_sync",
         "dflash_draft_forward",
         "dflash_draft_logits",
+        "dflash_runtime_debug_capture",
+        "dflash_tree_prebuild_setup",
+        "dflash_tree_entropy_setup",
         "dflash_tree_build",
+        "dflash_tree_topk",
+        "dflash_tree_root_token_sync",
+        "dflash_tree_cpu_build",
+        "dflash_tree_builder_debug_capture",
         "dflash_tree_refine",
         "dflash_tree_cg_adjust",
+        "dflash_tree_cg_log_detail",
+        "dflash_tree_spec_pack",
         "dflash_tree_sample_prepare",
         "dflash_tree_accept",
         "dflash_tree_sample_pack",
@@ -530,6 +764,16 @@ def write_dflash_breakdown_report(
         + kv_commit_cpu_s
     )
     residual_s = max(0.0, elapsed_s - known_wall_like_s)
+    pipeline_buckets = build_dflash_pipeline_buckets(
+        rows,
+        elapsed_s=elapsed_s,
+        phase_cuda=phase_cuda,
+    )
+    pipeline_unassigned_s = next(
+        float(bucket["seconds"])
+        for bucket in pipeline_buckets
+        if bucket["name"] == "unassigned_wall_gap"
+    )
     denom = num_drafts if num_drafts > 0 else 1.0
 
     metrics = {
@@ -548,6 +792,7 @@ def write_dflash_breakdown_report(
         "kv_commit_cpu_total_s": kv_commit_cpu_s,
         "kv_commit_cuda_total_s": kv_commit_cuda_s,
         "residual_wall_estimate_s": residual_s,
+        "pipeline_unassigned_wall_gap_s": pipeline_unassigned_s,
     }
 
     def fmt_seconds(key: str) -> str:
@@ -574,9 +819,24 @@ def write_dflash_breakdown_report(
         fmt_seconds("kv_commit_cpu_total_s"),
         fmt_seconds("kv_commit_cuda_total_s"),
         fmt_seconds("residual_wall_estimate_s"),
+        fmt_seconds("pipeline_unassigned_wall_gap_s"),
+        "",
+        "# Pipeline buckets",
+    ]
+    for bucket in pipeline_buckets:
+        name = str(bucket["name"])
+        seconds = float(bucket["seconds"])
+        calls = float(bucket["calls"])
+        pct = (100.0 * seconds / elapsed_s) if elapsed_s > 0 else 0.0
+        per_step_ms = 1000.0 * seconds / denom
+        lines.append(
+            f"{name}: seconds={seconds:.6f} pct_wall={pct:.2f} "
+            f"per_tree_step_ms={per_step_ms:.3f} calls={calls:.0f}"
+        )
+    lines.extend([
         "",
         "# Raw profiler rows",
-    ]
+    ])
     for name in sorted(rows):
         row = rows[name]
         lines.append(
@@ -594,6 +854,12 @@ def write_dflash_breakdown_report(
         elapsed_s=elapsed_s,
         num_drafts=num_drafts,
         residual_s=residual_s,
+    )
+    write_dflash_pipeline_bucket_report(
+        run_output_dir,
+        elapsed_s=elapsed_s,
+        num_drafts=num_drafts,
+        buckets=pipeline_buckets,
     )
     return metrics
 
@@ -908,6 +1174,38 @@ def write_dflash_tree_commit_debug_records(llm: LLM, run_output_dir: Path) -> No
     print(f"Wrote DFlash tree commit debug records to {debug_path}")
 
 
+def enable_dflash_debug_artifacts(llm: LLM, max_records: int = 512) -> None:
+    """Enable runner-side DFlash debug buffers before measured generation."""
+
+    def _enable(worker):
+        worker_obj = getattr(worker, "worker", worker)
+        model_runner = getattr(worker_obj, "model_runner", None)
+        if model_runner is None:
+            return "missing_model_runner"
+        enable_fn = getattr(model_runner, "enable_dflash_debug_artifacts", None)
+        if enable_fn is None:
+            return "missing_enable_dflash_debug_artifacts"
+        enable_fn(max_records=max_records)
+        return "ok"
+
+    results: list[Any] = []
+    try:
+        rpc_results = llm.collective_rpc(_enable)
+        if isinstance(rpc_results, list):
+            results.extend(rpc_results)
+    except Exception as e:
+        print(f"WARNING: collective debug artifact enable failed: {e}")
+
+    if not results:
+        try:
+            worker = llm.llm_engine.model_executor.driver_worker.worker
+            results.append(_enable(worker))
+        except Exception as e:
+            print(f"WARNING: direct debug artifact enable failed: {e}")
+
+    print(f"[DFLASH_DEBUG] enabled runner debug artifacts: {results}")
+
+
 def resolve_effective_block_size(args) -> int | None:
     if args.block_size is None:
         return None
@@ -1049,6 +1347,9 @@ def run_native_profile(
     for batch_prompts in warmup_batches:
         llm.generate(batch_prompts, sampling_params=sampling_params)
 
+    if mode == "dflash" and args.write_dflash_debug_artifacts:
+        enable_dflash_debug_artifacts(llm)
+
     metrics_before = collect_spec_decode_counters(llm.get_metrics())
     if args.profiler != "none":
         llm.start_profile()
@@ -1087,40 +1388,40 @@ def run_native_profile(
     metrics_after = collect_spec_decode_counters(llm.get_metrics())
     metrics_delta = diff_counters(metrics_after, metrics_before)
 
-    def _extract_topk_log(worker):
-        worker_obj = getattr(worker, "worker", worker)
-        model_runner = getattr(worker_obj, "model_runner", None)
-        drafter = getattr(model_runner, "drafter", None)
-        if drafter is not None and hasattr(drafter, "get_topk_log"):
-            return drafter.get_topk_log()
-        return []
-
-    try:
-        topk_logs = llm.collective_rpc(_extract_topk_log)
-        topk_entries = topk_logs[0] if topk_logs else []
-    except Exception as e:
-        import traceback
-        print(f"\n{'='*60}")
-        print(f"ERROR extracting topk_log via collective_rpc: {e}")
-        traceback.print_exc()
-        print(f"{'='*60}\n")
-        topk_entries = []
-    if not topk_entries:
-        try:
-            worker = llm.llm_engine.model_executor.driver_worker.worker
-            drafter = getattr(worker.model_runner, "drafter", None)
-            if drafter is not None and hasattr(drafter, "get_topk_log"):
-                topk_entries = drafter.get_topk_log()
-        except Exception as e:
-            print(f"WARNING: direct topk_log extraction failed: {e}")
-    if topk_entries:
-        topk_path = run_output_dir / "topk_log.json"
-        topk_path.write_text(json.dumps(topk_entries, indent=2))
-        print(f"Wrote {len(topk_entries)} topk log entries to {topk_path}")
-    else:
-        print(f"WARNING: topk_log is empty — no entries collected from drafter")
-
     if mode == "dflash" and args.write_dflash_debug_artifacts:
+        def _extract_topk_log(worker):
+            worker_obj = getattr(worker, "worker", worker)
+            model_runner = getattr(worker_obj, "model_runner", None)
+            drafter = getattr(model_runner, "drafter", None)
+            if drafter is not None and hasattr(drafter, "get_topk_log"):
+                return drafter.get_topk_log()
+            return []
+
+        try:
+            topk_logs = llm.collective_rpc(_extract_topk_log)
+            topk_entries = topk_logs[0] if topk_logs else []
+        except Exception as e:
+            import traceback
+            print(f"\n{'='*60}")
+            print(f"ERROR extracting topk_log via collective_rpc: {e}")
+            traceback.print_exc()
+            print(f"{'='*60}\n")
+            topk_entries = []
+        if not topk_entries:
+            try:
+                worker = llm.llm_engine.model_executor.driver_worker.worker
+                drafter = getattr(worker.model_runner, "drafter", None)
+                if drafter is not None and hasattr(drafter, "get_topk_log"):
+                    topk_entries = drafter.get_topk_log()
+            except Exception as e:
+                print(f"WARNING: direct topk_log extraction failed: {e}")
+        if topk_entries:
+            topk_path = run_output_dir / "topk_log.json"
+            topk_path.write_text(json.dumps(topk_entries, indent=2))
+            print(f"Wrote {len(topk_entries)} topk log entries to {topk_path}")
+        else:
+            print("WARNING: topk_log is empty — no entries collected from drafter")
+
         write_dflash_tree_debug_records(llm, run_output_dir)
         write_dflash_runtime_verify_bundles(llm, run_output_dir)
         write_dflash_tree_commit_debug_records(llm, run_output_dir)
@@ -1560,6 +1861,11 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.profiler == "torch":
+        os.environ["VLLM_CUSTOM_SCOPES_FOR_PROFILING"] = "1"
+    else:
+        os.environ["VLLM_CUSTOM_SCOPES_FOR_PROFILING"] = "0"
+        os.environ["VLLM_NVTX_SCOPES_FOR_PROFILING"] = "0"
     if args.num_runs < 1:
         raise ValueError("--num-runs must be >= 1")
     if args.num_warmup_runs < 0:

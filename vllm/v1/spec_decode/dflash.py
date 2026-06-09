@@ -97,8 +97,10 @@ class DFlashProposer(SpecDecodeBaseProposer):
         self._cg_hit_count = 0
         self._cg_miss_count = 0
         self._logged_capture_sizes = False
+        self._logged_draft_cg_status = False
         self._topk_log: list[dict] = []
         self._pending_topk_log_indices: list[int] = []
+        self._dflash_debug_artifacts_enabled = False
         self._runtime_bundles: list[dict[str, Any]] = []
         self._runtime_capture_steps: set[int] = {0}
         self._latest_first_pass_debug: dict[str, Any] | None = None
@@ -120,20 +122,23 @@ class DFlashProposer(SpecDecodeBaseProposer):
             discard_request_mask=discard_request_mask,
         )
         batch_size = sampled_token_ids.shape[0]
-        backup_gpu = getattr(self.backup_next_token_ids, "gpu", None)
-        self._latest_prepare_next_debug = {
-            "prepare_next_sampled_token_ids": sampled_token_ids.detach().cpu(),
-            "prepare_next_valid_sampled_tokens_count": (
-                valid_sampled_tokens_count.detach().cpu()
-            ),
-            "prepare_next_next_token_ids": next_token_ids.detach().cpu(),
-            "prepare_next_discard_request_mask": discard_request_mask.detach().cpu(),
-            "prepare_next_backup_token_ids": (
-                backup_gpu[:batch_size].detach().cpu()
-                if backup_gpu is not None
-                else None
-            ),
-        }
+        if self._dflash_debug_artifacts_enabled:
+            backup_gpu = getattr(self.backup_next_token_ids, "gpu", None)
+            self._latest_prepare_next_debug = {
+                "prepare_next_sampled_token_ids": sampled_token_ids.detach().cpu(),
+                "prepare_next_valid_sampled_tokens_count": (
+                    valid_sampled_tokens_count.detach().cpu()
+                ),
+                "prepare_next_next_token_ids": next_token_ids.detach().cpu(),
+                "prepare_next_discard_request_mask": discard_request_mask.detach().cpu(),
+                "prepare_next_backup_token_ids": (
+                    backup_gpu[:batch_size].detach().cpu()
+                    if backup_gpu is not None
+                    else None
+                ),
+            }
+        else:
+            self._latest_prepare_next_debug = None
         return next_token_ids, valid_sampled_tokens_count
 
     @override
@@ -152,30 +157,35 @@ class DFlashProposer(SpecDecodeBaseProposer):
             spec_decode_metadata=spec_decode_metadata,
             valid_sampled_tokens_count=valid_sampled_tokens_count,
         )
-        self._latest_prepare_inputs_debug = {
-            "prepare_inputs_query_start_loc": (
-                common_attn_metadata.query_start_loc.detach().cpu()
-            ),
-            "prepare_inputs_seq_lens": common_attn_metadata.seq_lens.detach().cpu(),
-            "prepare_inputs_valid_sampled_tokens_count": (
-                valid_sampled_tokens_count.detach().cpu()
-            ),
-            "prepare_inputs_cu_num_draft_tokens": (
-                spec_decode_metadata.cu_num_draft_tokens.detach().cpu()
-            ),
-            "prepare_inputs_token_indices_to_sample": (
-                token_indices_to_sample.detach().cpu()
-            ),
-            "prepare_inputs_num_rejected_tokens": (
-                num_rejected_tokens_gpu.detach().cpu()
-            ),
-            "prepare_inputs_output_query_start_loc": (
-                spec_common_attn_metadata.query_start_loc.detach().cpu()
-            ),
-            "prepare_inputs_output_seq_lens": (
-                spec_common_attn_metadata.seq_lens.detach().cpu()
-            ),
-        }
+        if self._dflash_debug_artifacts_enabled:
+            self._latest_prepare_inputs_debug = {
+                "prepare_inputs_query_start_loc": (
+                    common_attn_metadata.query_start_loc.detach().cpu()
+                ),
+                "prepare_inputs_seq_lens": (
+                    common_attn_metadata.seq_lens.detach().cpu()
+                ),
+                "prepare_inputs_valid_sampled_tokens_count": (
+                    valid_sampled_tokens_count.detach().cpu()
+                ),
+                "prepare_inputs_cu_num_draft_tokens": (
+                    spec_decode_metadata.cu_num_draft_tokens.detach().cpu()
+                ),
+                "prepare_inputs_token_indices_to_sample": (
+                    token_indices_to_sample.detach().cpu()
+                ),
+                "prepare_inputs_num_rejected_tokens": (
+                    num_rejected_tokens_gpu.detach().cpu()
+                ),
+                "prepare_inputs_output_query_start_loc": (
+                    spec_common_attn_metadata.query_start_loc.detach().cpu()
+                ),
+                "prepare_inputs_output_seq_lens": (
+                    spec_common_attn_metadata.seq_lens.detach().cpu()
+                ),
+            }
+        else:
+            self._latest_prepare_inputs_debug = None
         return (
             spec_common_attn_metadata,
             token_indices_to_sample,
@@ -205,6 +215,13 @@ class DFlashProposer(SpecDecodeBaseProposer):
         """Return accumulated per-step topk diagnostic entries."""
         return self._topk_log
 
+    def clear_topk_log(self) -> None:
+        self._topk_log.clear()
+        self._pending_topk_log_indices.clear()
+
+    def enable_dflash_debug_artifacts(self) -> None:
+        self._dflash_debug_artifacts_enabled = True
+
     def record_topk_verify_outcome(
         self,
         *,
@@ -213,6 +230,8 @@ class DFlashProposer(SpecDecodeBaseProposer):
         correction_token: torch.Tensor | int | None = None,
         tree_num_nodes: int | None = None,
     ) -> None:
+        if not self._dflash_debug_artifacts_enabled:
+            return
         if not self._pending_topk_log_indices:
             return
 
@@ -292,6 +311,8 @@ class DFlashProposer(SpecDecodeBaseProposer):
         draft_logits: torch.Tensor,
         num_rejected_tokens_gpu: torch.Tensor | None = None,
     ) -> None:
+        if not self._dflash_debug_artifacts_enabled:
+            return
         current_step = int(self._tree_propose_step)
         if current_step not in self._runtime_capture_steps:
             return
@@ -372,6 +393,8 @@ class DFlashProposer(SpecDecodeBaseProposer):
         topk_lp: torch.Tensor,
         tree: DraftTree,
     ) -> None:
+        if not self._dflash_debug_artifacts_enabled:
+            return
         current_step = int(self._tree_propose_step)
         if current_step not in self._runtime_capture_steps or not self._runtime_bundles:
             return
@@ -544,23 +567,26 @@ class DFlashProposer(SpecDecodeBaseProposer):
         output_seq_lens = effective_seq_lens + num_query_per_req
         output_max_seq_len = cad.max_seq_len + num_query_per_req
 
-        self._latest_first_pass_debug = {
-            "input_cad_query_start_loc": cad.query_start_loc.detach().cpu(),
-            "input_cad_seq_lens": cad.seq_lens.detach().cpu(),
-            "input_context_lens_from_query_start_loc": (
-                input_context_lens.detach().cpu()
-            ),
-            "input_seq_lens_minus_rejected": effective_seq_lens.detach().cpu(),
-            "input_compacted_context_lens": compacted_context_lens.detach().cpu(),
-            "output_visible_context_lens": visible_context_lens.detach().cpu(),
-            "output_query_start_loc": new_query_start_loc.detach().cpu(),
-            "output_seq_lens": output_seq_lens.detach().cpu(),
-            "output_max_seq_len": output_max_seq_len,
-            "output_query_slot_mapping_head": query_slot_mapping[
-                : min(16, query_slot_mapping.shape[0])
-            ].detach().cpu(),
-            "input_cad_max_query_len": int(cad.max_query_len),
-        }
+        if self._dflash_debug_artifacts_enabled:
+            self._latest_first_pass_debug = {
+                "input_cad_query_start_loc": cad.query_start_loc.detach().cpu(),
+                "input_cad_seq_lens": cad.seq_lens.detach().cpu(),
+                "input_context_lens_from_query_start_loc": (
+                    input_context_lens.detach().cpu()
+                ),
+                "input_seq_lens_minus_rejected": effective_seq_lens.detach().cpu(),
+                "input_compacted_context_lens": compacted_context_lens.detach().cpu(),
+                "output_visible_context_lens": visible_context_lens.detach().cpu(),
+                "output_query_start_loc": new_query_start_loc.detach().cpu(),
+                "output_seq_lens": output_seq_lens.detach().cpu(),
+                "output_max_seq_len": output_max_seq_len,
+                "output_query_slot_mapping_head": query_slot_mapping[
+                    : min(16, query_slot_mapping.shape[0])
+                ].detach().cpu(),
+                "input_cad_max_query_len": int(cad.max_query_len),
+            }
+        else:
+            self._latest_first_pass_debug = None
 
         new_cad = CommonAttentionMetadata(
             query_start_loc=new_query_start_loc,
@@ -661,12 +687,13 @@ class DFlashProposer(SpecDecodeBaseProposer):
                 num_tokens:num_input_tokens
             ].fill_(self.parallel_drafting_token_id)
 
-        # Pre-insert context KVs directly into cache
-        self.model.precompute_and_store_context_kv(
-            self._dflash_hidden_states,  # Shape is already [num_context, hidden_size]
-            self._context_positions_buffer[:num_context],
-            self._context_slot_mapping_buffer[:num_context],
-        )
+        # Pre-insert context KVs directly into cache.
+        with record_function_or_nullcontext("dflash_context_kv_precompute"):
+            self.model.precompute_and_store_context_kv(
+                self._dflash_hidden_states,  # Shape is already [num_context, hidden_size]
+                self._context_positions_buffer[:num_context],
+                self._context_slot_mapping_buffer[:num_context],
+            )
         return (
             dict(
                 input_ids=self.input_ids[:num_input_tokens],
@@ -737,7 +764,10 @@ class DFlashProposer(SpecDecodeBaseProposer):
             )
 
         batch_size = common_attn_metadata.batch_size()
-        _diag = self._tree_propose_step < 3
+        _diag = (
+            self._dflash_debug_artifacts_enabled
+            and self._tree_propose_step < 3
+        )
         if _diag:
             _raw_hs = target_hidden_states
             logger.info(
@@ -747,7 +777,10 @@ class DFlashProposer(SpecDecodeBaseProposer):
                 _raw_hs.float().norm().item(),
                 _raw_hs[0, :5].tolist(), _raw_hs[0, -5:].tolist(),
             )
-        target_hidden_states = self.model.combine_hidden_states(target_hidden_states)
+        with record_function_or_nullcontext("dflash_combine_hidden_states"):
+            target_hidden_states = self.model.combine_hidden_states(
+                target_hidden_states
+            )
         assert target_hidden_states.shape[-1] == self.hidden_size
         if _diag:
             logger.info(
@@ -771,28 +804,46 @@ class DFlashProposer(SpecDecodeBaseProposer):
             )
 
         with record_function_or_nullcontext("dflash_propose_setup"):
-            num_tokens, token_indices_to_sample, common_attn_metadata = (
-                self.set_inputs_first_pass(
-                    target_token_ids=target_token_ids,
-                    next_token_ids=next_token_ids,
-                    target_positions=target_positions,
-                    target_hidden_states=target_hidden_states,
-                    token_indices_to_sample=token_indices_to_sample,
-                    cad=common_attn_metadata,
-                    num_rejected_tokens_gpu=num_rejected_tokens_gpu,
+            with record_function_or_nullcontext("dflash_set_inputs_first_pass"):
+                num_tokens, token_indices_to_sample, common_attn_metadata = (
+                    self.set_inputs_first_pass(
+                        target_token_ids=target_token_ids,
+                        next_token_ids=next_token_ids,
+                        target_positions=target_positions,
+                        target_hidden_states=target_hidden_states,
+                        token_indices_to_sample=token_indices_to_sample,
+                        cad=common_attn_metadata,
+                        num_rejected_tokens_gpu=num_rejected_tokens_gpu,
+                    )
                 )
-            )
 
-            per_group_attn_metadata, per_layer_attn_metadata = (
-                self.build_per_group_and_layer_attn_metadata(common_attn_metadata)
-            )
-            cudagraph_runtime_mode, num_input_tokens, num_tokens_across_dp = (
-                self._determine_batch_execution_and_padding(num_tokens)
-            )
-            self._zero_padded_positions(num_tokens, num_input_tokens)
-            model_kwargs, slot_mapping_size = self.build_model_inputs_first_pass(
-                num_tokens, num_input_tokens, mm_embed_inputs
-            )
+            with record_function_or_nullcontext("dflash_build_attn_metadata"):
+                per_group_attn_metadata, per_layer_attn_metadata = (
+                    self.build_per_group_and_layer_attn_metadata(common_attn_metadata)
+                )
+            with record_function_or_nullcontext("dflash_draft_cg_dispatch"):
+                cudagraph_runtime_mode, num_input_tokens, num_tokens_across_dp = (
+                    self._determine_batch_execution_and_padding(num_tokens)
+                )
+            if not self._logged_draft_cg_status:
+                self._logged_draft_cg_status = True
+                draft_cg_hit = cudagraph_runtime_mode != CUDAGraphMode.NONE
+                logger.info(
+                    "[draft step=%d] DRAFT-CG-%s mode=%s orig=%d target=%d "
+                    "batch=%d",
+                    self._tree_propose_step,
+                    "HIT" if draft_cg_hit else "MISS",
+                    cudagraph_runtime_mode.name,
+                    int(num_tokens),
+                    int(num_input_tokens),
+                    int(batch_size),
+                )
+            with record_function_or_nullcontext("dflash_zero_padded_positions"):
+                self._zero_padded_positions(num_tokens, num_input_tokens)
+            with record_function_or_nullcontext("dflash_build_model_inputs"):
+                model_kwargs, slot_mapping_size = self.build_model_inputs_first_pass(
+                    num_tokens, num_input_tokens, mm_embed_inputs
+                )
 
         if _diag:
             _ids = model_kwargs.get("input_ids")
@@ -828,20 +879,21 @@ class DFlashProposer(SpecDecodeBaseProposer):
             draft_logits = self.model.compute_logits(sample_hidden_states).view(
                 batch_size, self.num_speculative_tokens, -1
             )
-        self._capture_runtime_bundle(
-            raw_target_hidden_states=_raw_hs if _diag else target_hidden_states,
-            combined_target_hidden_states=target_hidden_states,
-            target_token_ids=target_token_ids,
-            target_positions=target_positions,
-            next_token_ids=next_token_ids,
-            token_indices_to_sample=token_indices_to_sample,
-            common_attn_metadata=common_attn_metadata,
-            model_input_ids=cast(torch.Tensor, model_kwargs["input_ids"]),
-            query_positions=self.positions,
-            sample_hidden_states=sample_hidden_states,
-            draft_logits=draft_logits,
-            num_rejected_tokens_gpu=num_rejected_tokens_gpu,
-        )
+        with record_function_or_nullcontext("dflash_runtime_debug_capture"):
+            self._capture_runtime_bundle(
+                raw_target_hidden_states=_raw_hs if _diag else target_hidden_states,
+                combined_target_hidden_states=target_hidden_states,
+                target_token_ids=target_token_ids,
+                target_positions=target_positions,
+                next_token_ids=next_token_ids,
+                token_indices_to_sample=token_indices_to_sample,
+                common_attn_metadata=common_attn_metadata,
+                model_input_ids=cast(torch.Tensor, model_kwargs["input_ids"]),
+                query_positions=self.positions,
+                sample_hidden_states=sample_hidden_states,
+                draft_logits=draft_logits,
+                num_rejected_tokens_gpu=num_rejected_tokens_gpu,
+            )
         if _diag:
             _lp0 = torch.log_softmax(draft_logits[0, 0], dim=-1)
             _top5_lp, _top5_tok = _lp0.topk(5)
@@ -853,89 +905,101 @@ class DFlashProposer(SpecDecodeBaseProposer):
                 _lp0.argmax().item(),
             )
 
-        tree_budget = compute_tree_budget(
-            self.num_speculative_tokens + 1,
-            self.speculative_config.tree_width,
-            self.speculative_config.max_tree_budget,
-        )
-        tree_width = self.speculative_config.tree_width
-        block_size = self.num_speculative_tokens + 1
-        query_len = 1 + self.num_speculative_tokens
-        base_query_input_ids = self.input_ids[:num_tokens].view(
-            batch_size, query_len
-        ).clone()
+        with record_function_or_nullcontext("dflash_tree_prebuild_setup"):
+            tree_budget = compute_tree_budget(
+                self.num_speculative_tokens + 1,
+                self.speculative_config.tree_width,
+                self.speculative_config.max_tree_budget,
+            )
+            tree_width = self.speculative_config.tree_width
+            block_size = self.num_speculative_tokens + 1
+            query_len = 1 + self.num_speculative_tokens
+            base_query_input_ids = self.input_ids[:num_tokens].view(
+                batch_size, query_len
+            ).clone()
 
-        if not self._logged_capture_sizes:
-            self._logged_capture_sizes = True
-            cs = self.speculative_config.cudagraph_tree_capture_sizes
-            if cs is not None:
-                logger.info(
-                    "DFlash tree CUDAGraph capture sizes (%d): %s",
-                    len(cs), cs,
-                )
+            if not self._logged_capture_sizes:
+                self._logged_capture_sizes = True
+                cs = self.speculative_config.cudagraph_tree_capture_sizes
+                if cs is not None:
+                    logger.info(
+                        "DFlash tree CUDAGraph capture sizes (%d): %s",
+                        len(cs), cs,
+                    )
+                else:
+                    logger.info("DFlash tree CUDAGraph multi-size capture: disabled")
+
+            device = draft_logits.device
+
+            depth_first = (
+                self.speculative_config.tree_construction == "depth_first"
+            )
+            score_mode = self.speculative_config.tree_draft
+            hybrid_alpha = self.speculative_config.tree_hybrid_alpha
+
+            per_depth_entropies: list[list[float] | None]
+            if score_mode in ("entropy", "hybrid"):
+                with record_function_or_nullcontext("dflash_tree_entropy_setup"):
+                    per_depth_entropies = [
+                        compute_per_depth_entropy(draft_logits[req_idx])
+                        for req_idx in range(batch_size)
+                    ]
             else:
-                logger.info("DFlash tree CUDAGraph multi-size capture: disabled")
-
-        device = draft_logits.device
-
-        depth_first = (
-            self.speculative_config.tree_construction == "depth_first"
-        )
-        score_mode = self.speculative_config.tree_draft
-        hybrid_alpha = self.speculative_config.tree_hybrid_alpha
-
-        per_depth_entropies: list[list[float] | None]
-        if score_mode in ("entropy", "hybrid"):
-            per_depth_entropies = [
-                compute_per_depth_entropy(draft_logits[req_idx])
-                for req_idx in range(batch_size)
-            ]
-        else:
-            per_depth_entropies = [None] * batch_size
+                per_depth_entropies = [None] * batch_size
 
         trees: list[DraftTree] = []
         with record_function_or_nullcontext("dflash_tree_build"):
             for req_idx in range(batch_size):
-                topk_lp, topk_tok = sample_topk_from_logits(
-                    draft_logits[req_idx], tree_width,
-                )
-                root_token = next_token_ids[req_idx].item()
-                topk_tok_0 = topk_tok[0].tolist()
-                topk_lp_0 = topk_lp[0].tolist()
-                self._pending_topk_log_indices.append(len(self._topk_log))
-                self._topk_log.append({
-                    "step": self._tree_propose_step,
-                    "req": req_idx,
-                    "root_token": root_token,
-                    "topk_tok_0": topk_tok_0,
-                    "topk_lp_0": topk_lp_0,
-                })
-                if self._tree_propose_step < 8 or self._tree_propose_step % 50 == 0:
-                    logger.info(
-                        "[tree-propose step=%d req=%d] root_token=%d  "
-                        "topk_tok[0]=%s  topk_lp[0]=%s",
-                        self._tree_propose_step, req_idx, root_token,
-                        topk_tok_0, topk_lp_0,
+                with record_function_or_nullcontext("dflash_tree_topk"):
+                    topk_lp, topk_tok = sample_topk_from_logits(
+                        draft_logits[req_idx], tree_width,
                     )
-                tree = build_tree_from_topk(
-                    root_token, topk_tok, topk_lp, tree_budget, device,
-                    depth_first=depth_first,
-                    score_mode=score_mode,
-                    per_depth_entropy=per_depth_entropies[req_idx],
-                    hybrid_alpha=hybrid_alpha,
-                )
-                trees.append(tree)
-                if req_idx == 0:
-                    self._capture_tree_builder_runtime_bundle(
-                        tree_budget=tree_budget,
+                with record_function_or_nullcontext("dflash_tree_root_token_sync"):
+                    root_token = next_token_ids[req_idx].item()
+                if self._dflash_debug_artifacts_enabled:
+                    topk_tok_0 = topk_tok[0].tolist()
+                    topk_lp_0 = topk_lp[0].tolist()
+                    self._pending_topk_log_indices.append(len(self._topk_log))
+                    self._topk_log.append({
+                        "step": self._tree_propose_step,
+                        "req": req_idx,
+                        "root_token": root_token,
+                        "topk_tok_0": topk_tok_0,
+                        "topk_lp_0": topk_lp_0,
+                    })
+                    if (
+                        self._tree_propose_step < 8
+                        or self._tree_propose_step % 50 == 0
+                    ):
+                        logger.info(
+                            "[tree-propose step=%d req=%d] root_token=%d  "
+                            "topk_tok[0]=%s  topk_lp[0]=%s",
+                            self._tree_propose_step, req_idx, root_token,
+                            topk_tok_0, topk_lp_0,
+                        )
+                with record_function_or_nullcontext("dflash_tree_cpu_build"):
+                    tree = build_tree_from_topk(
+                        root_token, topk_tok, topk_lp, tree_budget, device,
                         depth_first=depth_first,
                         score_mode=score_mode,
-                        hybrid_alpha=hybrid_alpha,
                         per_depth_entropy=per_depth_entropies[req_idx],
-                        topk_tok=topk_tok,
-                        topk_lp=topk_lp,
-                        tree=tree,
+                        hybrid_alpha=hybrid_alpha,
                     )
+                trees.append(tree)
+                if req_idx == 0:
+                    with record_function_or_nullcontext(
+                        "dflash_tree_builder_debug_capture"
+                    ):
+                        self._capture_tree_builder_runtime_bundle(
+                            tree_budget=tree_budget,
+                            depth_first=depth_first,
+                            score_mode=score_mode,
+                            hybrid_alpha=hybrid_alpha,
+                            per_depth_entropy=per_depth_entropies[req_idx],
+                            topk_tok=topk_tok,
+                            topk_lp=topk_lp,
+                            tree=tree,
+                        )
 
         last_cond_logits: torch.Tensor | None = None
 
@@ -1021,20 +1085,31 @@ class DFlashProposer(SpecDecodeBaseProposer):
                             device=device,
                         )
 
-                    log_detail = (self._tree_propose_step < 5
-                                  or self._tree_propose_step % 50 == 0)
-                    if log_detail:
-                        sig = tree_signature(trees[req_idx])
-                        tag = "CG-HIT " if is_hit else "CG-MISS"
-                        logger.info(
-                            "[step=%d req=%d] %s orig=%d target=%d  %s",
-                            self._tree_propose_step, req_idx, tag,
-                            orig_size, target, sig,
+                    with record_function_or_nullcontext(
+                        "dflash_tree_cg_log_detail"
+                    ):
+                        log_detail = (
+                            self._dflash_debug_artifacts_enabled
+                            and (
+                                self._tree_propose_step < 5
+                                or self._tree_propose_step % 50 == 0
+                            )
                         )
+                        if log_detail:
+                            sig = tree_signature(trees[req_idx])
+                            tag = "CG-HIT " if is_hit else "CG-MISS"
+                            logger.info(
+                                "[step=%d req=%d] %s orig=%d target=%d  %s",
+                                self._tree_propose_step, req_idx, tag,
+                                orig_size, target, sig,
+                            )
 
         self._tree_propose_step += 1
-        if (self._tree_propose_step % 100 == 0
-                and (self._cg_hit_count + self._cg_miss_count) > 0):
+        if (
+            self._dflash_debug_artifacts_enabled
+            and self._tree_propose_step % 100 == 0
+            and (self._cg_hit_count + self._cg_miss_count) > 0
+        ):
             total = self._cg_hit_count + self._cg_miss_count
             logger.info(
                 "CUDAGraph tree stats after %d steps: hits=%d (%.1f%%) "
@@ -1044,17 +1119,18 @@ class DFlashProposer(SpecDecodeBaseProposer):
                 self._cg_miss_count, 100.0 * self._cg_miss_count / total,
             )
 
-        self._last_tree_specs = []
-        draft_token_ids: list[list[int]] = []
-        for tree in trees:
-            tids = tree.token_ids[1:].tolist()
-            pids = tree.parent_indices[1:].tolist()
-            deps = tree.depth[1:].tolist()
-            draft_token_ids.append(tids)
-            self._last_tree_specs.append(
-                DFlashRequestTreeSpec(
-                    parent_indices=pids,
-                    depths=deps,
+        with record_function_or_nullcontext("dflash_tree_spec_pack"):
+            self._last_tree_specs = []
+            draft_token_ids: list[list[int]] = []
+            for tree in trees:
+                tids = tree.token_ids[1:].tolist()
+                pids = tree.parent_indices[1:].tolist()
+                deps = tree.depth[1:].tolist()
+                draft_token_ids.append(tids)
+                self._last_tree_specs.append(
+                    DFlashRequestTreeSpec(
+                        parent_indices=pids,
+                        depths=deps,
+                    )
                 )
-            )
         return draft_token_ids

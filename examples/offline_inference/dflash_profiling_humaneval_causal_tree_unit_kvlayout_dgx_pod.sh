@@ -68,11 +68,18 @@ done
 
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-${REPORT_BATCH_SIZE}}"
 
+ENABLE_TORCH_PROFILER_SCOPES=0
 for ((i = 0; i < ${#EXTRA_ARGS[@]}; i++)); do
   if [[ "${EXTRA_ARGS[$i]}" == "--profiler" && $((i + 1)) -lt ${#EXTRA_ARGS[@]} && "${EXTRA_ARGS[$((i + 1))]}" == "torch" ]]; then
-    export VLLM_CUSTOM_SCOPES_FOR_PROFILING="${VLLM_CUSTOM_SCOPES_FOR_PROFILING:-1}"
+    ENABLE_TORCH_PROFILER_SCOPES=1
   fi
 done
+if [[ "${ENABLE_TORCH_PROFILER_SCOPES}" == "1" ]]; then
+  export VLLM_CUSTOM_SCOPES_FOR_PROFILING=1
+else
+  export VLLM_CUSTOM_SCOPES_FOR_PROFILING=0
+  export VLLM_NVTX_SCOPES_FOR_PROFILING=0
+fi
 
 if [[ ! -d "$TARGET_MODEL" ]]; then
   echo "ERROR: TARGET_MODEL path does not exist: $TARGET_MODEL"

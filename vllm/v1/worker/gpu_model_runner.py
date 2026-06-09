@@ -4,6 +4,7 @@
 import functools
 import gc
 import itertools
+import os
 import threading
 import time
 from collections import defaultdict
@@ -834,6 +835,19 @@ class GPUModelRunner(
         self._dflash_logical_kv_output_lens: torch.Tensor | None = None
         self._dflash_logical_kv_output_starts: torch.Tensor | None = None
         self._dflash_logical_kv_positions: torch.Tensor | None = None
+        self._dflash_async_kv_commit_enabled = (
+            os.environ.get("VLLM_DFLASH_ASYNC_KV_COMMIT", "0").lower()
+            in ("1", "true", "yes", "on")
+        )
+        self._dflash_kv_commit_stream: torch.cuda.Stream | None = None
+        self._dflash_kv_commit_done_event: torch.cuda.Event | None = None
+        self._dflash_kv_commit_pending = False
+        self._dflash_pending_kv_commit_tensors: tuple[
+            torch.Tensor, torch.Tensor
+        ] | None = None
+        if self._dflash_async_kv_commit_enabled:
+            self._dflash_kv_commit_stream = torch.cuda.Stream()
+            self._dflash_kv_commit_done_event = torch.cuda.Event()
         self.transfer_event = torch.Event()
         self.sampled_token_ids_pinned_cpu = torch.empty(
             (self.max_num_reqs, 1),
@@ -3791,6 +3805,66 @@ class GPUModelRunner(
         )
         return sampler_output
 
+    def enable_dflash_debug_artifacts(self, max_records: int = 512) -> None:
+        self._dflash_runtime_verify_bundles: list[dict[str, object]] = []
+        self._dflash_tree_commit_debug_records: list[dict[str, object]] = []
+        self._dflash_debug_artifact_max_records = max_records
+        drafter = getattr(self, "drafter", None)
+        enable_drafter_debug = getattr(
+            drafter, "enable_dflash_debug_artifacts", None,
+        )
+        if enable_drafter_debug is not None:
+            enable_drafter_debug()
+
+    def get_dflash_tree_commit_debug_records(self) -> list[dict[str, object]]:
+        return list(getattr(self, "_dflash_tree_commit_debug_records", []))
+
+    def clear_dflash_tree_commit_debug_records(self) -> None:
+        records = getattr(self, "_dflash_tree_commit_debug_records", None)
+        if records is not None:
+            records.clear()
+
+    def _dflash_debug_artifact_limit(self) -> int:
+        return int(getattr(self, "_dflash_debug_artifact_max_records", 4))
+
+    def _append_dflash_tree_commit_debug_record(
+        self,
+        record: dict[str, object],
+    ) -> None:
+        records = getattr(self, "_dflash_tree_commit_debug_records", None)
+        if records is None or len(records) >= self._dflash_debug_artifact_limit():
+            return
+        records.append(record)
+
+    def _should_append_dflash_tree_commit_debug_record(self) -> bool:
+        records = getattr(self, "_dflash_tree_commit_debug_records", None)
+        return (
+            records is not None
+            and len(records) < self._dflash_debug_artifact_limit()
+        )
+
+    def _can_async_dflash_physical_kv_commit(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+    ) -> bool:
+        return (
+            self._dflash_async_kv_commit_enabled
+            and self._dflash_kv_commit_stream is not None
+            and self._dflash_kv_commit_done_event is not None
+            and not self._use_dflash_logical_kv_layout(spec_decode_metadata)
+        )
+
+    def _wait_dflash_kv_commit_if_pending(self) -> None:
+        if not self._dflash_kv_commit_pending:
+            return
+        assert self._dflash_kv_commit_done_event is not None
+        with record_function_or_nullcontext("dflash_tree_kv_commit_wait"):
+            torch.cuda.current_stream().wait_event(
+                self._dflash_kv_commit_done_event
+            )
+        self._dflash_kv_commit_pending = False
+        self._dflash_pending_kv_commit_tensors = None
+
     def _sample_dflash_tree(
         self,
         logits: torch.Tensor | None,
@@ -3887,11 +3961,43 @@ class GPUModelRunner(
 
                     if (
                         runtime_verify_bundles is not None
-                        and len(runtime_verify_bundles) < 4
+                        and len(runtime_verify_bundles)
+                        < self._dflash_debug_artifact_limit()
                     ):
+                        logical_kv_start = None
+                        logical_kv_slot_len = None
+                        logical_kv_slots = None
+                        if (
+                            spec_decode_metadata.logical_kv_starts is not None
+                            and spec_decode_metadata.logical_kv_slot_lens is not None
+                            and spec_decode_metadata.logical_kv_slots is not None
+                        ):
+                            logical_kv_start_t = spec_decode_metadata.logical_kv_starts[
+                                req_idx
+                            ]
+                            logical_kv_start = int(
+                                logical_kv_start_t.detach().cpu().item()
+                            )
+                            logical_kv_slot_len_t = (
+                                spec_decode_metadata.logical_kv_slot_lens[req_idx]
+                            )
+                            logical_kv_slot_len = int(
+                                logical_kv_slot_len_t.detach().cpu().item()
+                            )
+                            req_logical_slots = spec_decode_metadata.logical_kv_slots[
+                                req_idx
+                            ]
+                            if req_logical_slots is not None:
+                                logical_kv_slots = req_logical_slots[
+                                    :logical_kv_slot_len
+                                ].detach().cpu()
                         runtime_verify_bundles.append(
                             {
                                 "verify_step_index": len(runtime_verify_bundles),
+                                "req_idx": int(req_idx),
+                                "req_id": self.input_batch.req_ids[req_idx],
+                                "query_start": int(start),
+                                "query_end": int(end),
                                 "tree_num_nodes": int(qlen),
                                 "tree_node_token_ids": req_tokens.detach().cpu(),
                                 "tree_parent_indices": req_parents.detach().cpu(),
@@ -3907,20 +4013,9 @@ class GPUModelRunner(
                                 "query_positions": self.positions[
                                     start:end
                                 ].detach().cpu(),
-                                "logical_kv_start": (
-                                    None
-                                    if spec_decode_metadata.logical_kv_starts is None
-                                    else spec_decode_metadata.logical_kv_starts[req_idx]
-                                ),
-                                "logical_kv_slots": (
-                                    None
-                                    if spec_decode_metadata.logical_kv_slots is None
-                                    or spec_decode_metadata.logical_kv_slots[req_idx]
-                                    is None
-                                    else spec_decode_metadata.logical_kv_slots[
-                                        req_idx
-                                    ].detach().cpu()
-                                ),
+                                "logical_kv_start": logical_kv_start,
+                                "logical_kv_slot_len": logical_kv_slot_len,
+                                "logical_kv_slots": logical_kv_slots,
                             }
                         )
                     if hasattr(self.drafter, "record_topk_verify_outcome"):
@@ -3932,9 +4027,10 @@ class GPUModelRunner(
                         )
 
                     self._dflash_tree_accept_paths_gpu.append(accepted_path)
-                    self._dflash_tree_accept_paths.append(
-                        accepted_path.tolist()
-                    )
+                    # Keep the legacy CPU path list aligned without syncing the
+                    # GPU accepted path. KV/hidden compaction consume the GPU
+                    # path above.
+                    self._dflash_tree_accept_paths.append([])
 
                 elif draft_len == 0:
                     # No draft tokens — just emit the greedy bonus token.
@@ -3987,10 +4083,70 @@ class GPUModelRunner(
             sampled_token_ids=sampled_token_ids, logprobs_tensors=None
         )
 
+    def _copy_dflash_tree_kv_cache_slots(
+        self,
+        batch_src: torch.Tensor,
+        batch_dst: torch.Tensor,
+    ) -> None:
+        seen_cache_ptrs: set[int] = set()
+        for kv_cache in self.kv_caches:
+            cache_ptr = kv_cache.data_ptr()
+            if cache_ptr in seen_cache_ptrs:
+                continue
+            seen_cache_ptrs.add(cache_ptr)
+            if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
+                continue
+            key_cache, value_cache = kv_cache.unbind(0)
+            block_size = key_cache.shape[1]
+            src_blocks = torch.div(
+                batch_src, block_size, rounding_mode="floor"
+            )
+            src_offsets = batch_src % block_size
+            dst_blocks = torch.div(
+                batch_dst, block_size, rounding_mode="floor"
+            )
+            dst_offsets = batch_dst % block_size
+
+            keys = key_cache[src_blocks, src_offsets].clone()
+            values = value_cache[src_blocks, src_offsets].clone()
+            key_cache[dst_blocks, dst_offsets] = keys
+            value_cache[dst_blocks, dst_offsets] = values
+
+    def _launch_dflash_tree_kv_commit_copy(
+        self,
+        batch_src: torch.Tensor,
+        batch_dst: torch.Tensor,
+        *,
+        async_copy: bool,
+    ) -> None:
+        if async_copy:
+            self._wait_dflash_kv_commit_if_pending()
+            assert self._dflash_kv_commit_stream is not None
+            assert self._dflash_kv_commit_done_event is not None
+            current_stream = torch.cuda.current_stream()
+            self._dflash_kv_commit_stream.wait_stream(current_stream)
+            self._dflash_pending_kv_commit_tensors = (batch_src, batch_dst)
+            with record_function_or_nullcontext(
+                "dflash_tree_kv_commit_copy_async_launch"
+            ):
+                with torch.cuda.stream(self._dflash_kv_commit_stream):
+                    self._copy_dflash_tree_kv_cache_slots(batch_src, batch_dst)
+                    self._dflash_kv_commit_done_event.record(
+                        self._dflash_kv_commit_stream
+                    )
+            self._dflash_kv_commit_pending = True
+            return
+
+        with record_function_or_nullcontext("dflash_tree_kv_commit_copy"):
+            self._copy_dflash_tree_kv_cache_slots(batch_src, batch_dst)
+
     def _compact_dflash_tree_kv_cache(
         self,
         spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
         common_attn_metadata: CommonAttentionMetadata,
+        *,
+        async_copy: bool = False,
+        clear_accept_paths: bool = True,
     ) -> None:
         accept_paths_gpu = getattr(
             self, "_dflash_tree_accept_paths_gpu", None
@@ -4040,6 +4196,21 @@ class GPUModelRunner(
             all_src_slots.append(src_slots)
             all_dst_slots.append(dst_slots)
 
+            if self._should_append_dflash_tree_commit_debug_record():
+                self._append_dflash_tree_commit_debug_record(
+                    {
+                        "layout": "physical",
+                        "req_idx": int(req_idx),
+                        "req_id": self.input_batch.req_ids[req_idx],
+                        "query_len": int(qlen),
+                        "query_start": int(req_start),
+                        "accepted_path": path_gpu.detach().cpu(),
+                        "slot_mapping": req_slots.detach().cpu(),
+                        "compact_src_slots": src_slots.detach().cpu(),
+                        "compact_dst_slots": dst_slots.detach().cpu(),
+                    }
+                )
+
             verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
             if verify_bundles and "compact_src_slots" not in verify_bundles[-1]:
                 verify_bundles[-1]["compact_src_slots"] = src_slots.detach().cpu()
@@ -4050,34 +4221,15 @@ class GPUModelRunner(
         if all_src_slots:
             batch_src = torch.cat(all_src_slots)
             batch_dst = torch.cat(all_dst_slots)
+            self._launch_dflash_tree_kv_commit_copy(
+                batch_src,
+                batch_dst,
+                async_copy=async_copy,
+            )
 
-            with record_function_or_nullcontext("dflash_tree_kv_commit_copy"):
-                seen_cache_ptrs: set[int] = set()
-                for kv_cache in self.kv_caches:
-                    cache_ptr = kv_cache.data_ptr()
-                    if cache_ptr in seen_cache_ptrs:
-                        continue
-                    seen_cache_ptrs.add(cache_ptr)
-                    if kv_cache.ndim != 5 or kv_cache.shape[0] != 2:
-                        continue
-                    key_cache, value_cache = kv_cache.unbind(0)
-                    block_size = key_cache.shape[1]
-                    src_blocks = torch.div(
-                        batch_src, block_size, rounding_mode="floor"
-                    )
-                    src_offsets = batch_src % block_size
-                    dst_blocks = torch.div(
-                        batch_dst, block_size, rounding_mode="floor"
-                    )
-                    dst_offsets = batch_dst % block_size
-
-                    keys = key_cache[src_blocks, src_offsets].clone()
-                    values = value_cache[src_blocks, src_offsets].clone()
-                    key_cache[dst_blocks, dst_offsets] = keys
-                    value_cache[dst_blocks, dst_offsets] = values
-
-        self._dflash_tree_accept_paths_gpu = None
-        self._dflash_tree_accept_paths = None
+        if clear_accept_paths:
+            self._dflash_tree_accept_paths_gpu = None
+            self._dflash_tree_accept_paths = None
 
     def _compact_dflash_tree_hidden_states(
         self,
@@ -4863,6 +5015,28 @@ class GPUModelRunner(
             if num_accepted > 0:
                 persisted_slots[persisted_len:new_len].copy_(accepted_slots)
             self._dflash_logical_kv_slot_lens[req_id] = new_len
+            if self._should_append_dflash_tree_commit_debug_record():
+                self._append_dflash_tree_commit_debug_record(
+                    {
+                        "layout": "logical",
+                        "req_idx": int(req_idx),
+                        "req_id": req_id,
+                        "query_len": int(qlen),
+                        "query_start": int(req_start),
+                        "old_len": int(old_len),
+                        "logical_start": self._dflash_logical_kv_starts[req_id],
+                        "persisted_len_before": int(persisted_len),
+                        "persisted_len_after": int(new_len),
+                        "accepted_path": path_gpu.detach().cpu(),
+                        "slot_mapping": req_slots.detach().cpu(),
+                        "logical_commit_accepted_slots": (
+                            accepted_slots.detach().cpu()
+                        ),
+                        "logical_commit_slots": (
+                            persisted_slots[:new_len].detach().cpu()
+                        ),
+                    }
+                )
             verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
             if verify_bundles:
                 verify_bundles[-1]["logical_commit_accepted_slots"] = (
@@ -5226,6 +5400,8 @@ class GPUModelRunner(
         # When spec decode is enabled, defer connector finalization
         # (wait_for_save + clear metadata) until after draft model runs.
         defer_kv_connector_finalize = self.speculative_config is not None
+        if self._dflash_async_kv_commit_enabled:
+            self._wait_dflash_kv_commit_if_pending()
         with (
             set_forward_context(
                 attn_metadata,
@@ -5383,6 +5559,19 @@ class GPUModelRunner(
             isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata)
             and spec_decode_common_attn_metadata is not None
         ):
+            async_physical_kv_commit = (
+                self._can_async_dflash_physical_kv_commit(spec_decode_metadata)
+                if self._dflash_async_kv_commit_enabled
+                else False
+            )
+            if async_physical_kv_commit:
+                with record_function_or_nullcontext("dflash_tree_kv_commit"):
+                    self._compact_dflash_tree_kv_cache(
+                        spec_decode_metadata,
+                        spec_decode_common_attn_metadata,
+                        async_copy=True,
+                        clear_accept_paths=False,
+                    )
             with record_function_or_nullcontext(
                 "dflash_tree_hidden_state_compaction"
             ):
@@ -5391,11 +5580,12 @@ class GPUModelRunner(
                     hidden_states,
                     aux_hidden_states,
                 )
-            with record_function_or_nullcontext("dflash_tree_kv_commit"):
-                self._compact_dflash_tree_kv_cache(
-                    spec_decode_metadata,
-                    spec_decode_common_attn_metadata,
-                )
+            if not async_physical_kv_commit:
+                with record_function_or_nullcontext("dflash_tree_kv_commit"):
+                    self._compact_dflash_tree_kv_cache(
+                        spec_decode_metadata,
+                        spec_decode_common_attn_metadata,
+                    )
 
         self._update_states_after_model_execute(
             sampler_output.sampled_token_ids, scheduler_output
@@ -5538,6 +5728,11 @@ class GPUModelRunner(
 
         with record_function_or_nullcontext("gpu_model_runner: eplb"):
             self.eplb_step()
+
+        # Keep the async KV commit lifetime bounded even on the final decode
+        # iteration where no subsequent target forward will consume the event.
+        if self._dflash_async_kv_commit_enabled:
+            self._wait_dflash_kv_commit_if_pending()
 
         # self.kv_connector_output may be modified during drafting
         kv_connector_output = self.kv_connector_output
