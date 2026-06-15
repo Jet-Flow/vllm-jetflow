@@ -23,8 +23,18 @@ os.environ.setdefault("VLLM_ALLOW_INSECURE_SERIALIZATION", "1")
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
-_VLLM_ROOT = Path("/home/i-hulanxiang/workspace/vllm-parallel-drafting")
-_DFLASH_ROOT = Path("/home/i-hulanxiang/workspace/dflash")
+_VLLM_ROOT = Path(
+    os.environ.get(
+        "VLLM_PARALLEL_DRAFTING_ROOT",
+        Path(__file__).resolve().parents[3],
+    )
+)
+_DFLASH_ROOT = Path(
+    os.environ.get(
+        "DFLASH_ROOT",
+        "/root/workspace/causal_parallel_drafting_latest_eval",
+    )
+)
 sys.path.insert(0, str(_VLLM_ROOT))
 sys.path.insert(0, str(_DFLASH_ROOT))
 
@@ -33,6 +43,7 @@ from examples.offline_inference.dflash_profiling import (  # noqa: E402
     apply_chat_template,
     get_prompt_bank,
     run_native_profile,
+    tokenizer_load_kwargs,
 )
 from model import DFlashDraftModel, extract_context_feature, sample_topk  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -251,15 +262,146 @@ def _capture_cuda_memory_snapshot(label: str) -> dict[str, Any]:
 def _cleanup_cuda_stage(debug_dir: Path | None = None, label: str | None = None) -> dict[str, Any]:
     gc.collect()
     if torch.cuda.is_available():
-        torch.cuda.synchronize()
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        torch.cuda.synchronize()
+        current_device = torch.cuda.current_device()
+        for device_idx in range(torch.cuda.device_count()):
+            torch.cuda.set_device(device_idx)
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            torch.cuda.synchronize()
+        torch.cuda.set_device(current_device)
 
     snapshot = _capture_cuda_memory_snapshot(label or "post_cleanup")
     if debug_dir is not None and label is not None:
         _write_json(debug_dir / f"{label}.json", snapshot)
     return snapshot
+
+
+def _module_device(module: torch.nn.Module) -> torch.device:
+    return next(module.parameters()).device
+
+
+def _extract_context_feature_on_device(
+    hidden_states: list[torch.Tensor],
+    layer_ids: list[int],
+    device: torch.device,
+) -> torch.Tensor:
+    offset = 1
+    selected_states = [
+        hidden_states[int(layer_id) + offset].to(device)
+        for layer_id in layer_ids
+    ]
+    return torch.cat(selected_states, dim=-1)
+
+
+def _target_text_model(target: torch.nn.Module) -> torch.nn.Module:
+    if hasattr(target, "language_model"):
+        return target.language_model
+    if hasattr(target, "model") and hasattr(target.model, "language_model"):
+        return target.model.language_model
+    if hasattr(target, "model"):
+        return target.model
+    return target
+
+
+def _target_embed_tokens(target: torch.nn.Module) -> torch.nn.Module:
+    text_model = _target_text_model(target)
+    if hasattr(text_model, "embed_tokens"):
+        return text_model.embed_tokens
+    if hasattr(text_model, "get_input_embeddings"):
+        return text_model.get_input_embeddings()
+    raise AttributeError("Unable to locate target text embedding module")
+
+
+def _target_lm_head(target: torch.nn.Module) -> torch.nn.Module:
+    if hasattr(target, "lm_head"):
+        return target.lm_head
+    if hasattr(target, "get_output_embeddings"):
+        lm_head = target.get_output_embeddings()
+        if lm_head is not None:
+            return lm_head
+    raise AttributeError("Unable to locate target lm_head module")
+
+
+def _target_text_config(target: torch.nn.Module) -> Any:
+    config = target.config
+    return getattr(config, "text_config", config)
+
+
+def _target_vocab_size(target: torch.nn.Module) -> int:
+    text_config = _target_text_config(target)
+    if hasattr(text_config, "vocab_size"):
+        return int(text_config.vocab_size)
+    return int(_target_lm_head(target).weight.shape[0])
+
+
+def _target_num_hidden_layers(target: torch.nn.Module) -> int:
+    text_config = _target_text_config(target)
+    return int(getattr(text_config, "num_hidden_layers", 0) or 0)
+
+
+def _target_text_forward(
+    target: torch.nn.Module,
+    input_ids: torch.Tensor,
+    *,
+    position_ids: torch.Tensor,
+    past_key_values: DynamicCache,
+    use_cache: bool,
+    logits_to_keep: int,
+    output_hidden_states: bool,
+):
+    text_model = _target_text_model(target)
+    text_outputs = text_model(
+        input_ids=input_ids,
+        position_ids=position_ids,
+        past_key_values=past_key_values,
+        use_cache=use_cache,
+        output_hidden_states=output_hidden_states,
+        return_dict=True,
+    )
+    lm_head = _target_lm_head(target)
+    lm_head_device = _module_device(lm_head)
+    hidden_for_logits = text_outputs.last_hidden_state
+    if logits_to_keep:
+        hidden_for_logits = hidden_for_logits[:, -int(logits_to_keep):]
+    logits = lm_head(hidden_for_logits.to(lm_head_device))
+    return SimpleNamespace(
+        logits=logits,
+        hidden_states=text_outputs.hidden_states,
+        past_key_values=text_outputs.past_key_values,
+        last_hidden_state=text_outputs.last_hidden_state,
+    )
+
+
+def _load_hf_target_model(
+    model: str,
+    attn_implementation: str,
+    *,
+    device: torch.device,
+    device_map_auto: bool,
+    device_map_gpus: int | None,
+):
+    kwargs: dict[str, Any] = {
+        "attn_implementation": attn_implementation,
+        "dtype": torch.bfloat16,
+        "trust_remote_code": True,
+    }
+    if device_map_auto:
+        visible_gpus = torch.cuda.device_count()
+        if visible_gpus <= 0:
+            raise RuntimeError("CUDA is required for target_device_map_auto")
+        num_gpus = visible_gpus if device_map_gpus is None else device_map_gpus
+        if num_gpus < 1 or num_gpus > visible_gpus:
+            raise ValueError(
+                f"target_device_map_gpus must be in [1, {visible_gpus}], "
+                f"got {num_gpus}"
+            )
+        kwargs["device_map"] = "balanced" if num_gpus > 1 else "auto"
+        kwargs["max_memory"] = {idx: "130GiB" for idx in range(num_gpus)}
+    target = AutoModelForCausalLM.from_pretrained(model, **kwargs).eval()
+    if not device_map_auto:
+        target = target.to(device)
+    return target
 
 
 @torch.inference_mode()
@@ -274,6 +416,8 @@ def run_draft_quality_diagnostic(
     max_steps: int = 256,
     attn_implementation: str = "flash_attention_2",
     seed: int = 0,
+    target_device_map_auto: bool = False,
+    target_device_map_gpus: int | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -284,14 +428,23 @@ def run_draft_quality_diagnostic(
     target = None
     draft = None
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
-        prompt_bank = apply_chat_template(tokenizer, get_prompt_bank("humaneval"))
-        target = AutoModelForCausalLM.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(
             model,
-            attn_implementation=attn_implementation,
-            dtype=torch.bfloat16,
             trust_remote_code=True,
-        ).to(device).eval()
+            **tokenizer_load_kwargs(model),
+        )
+        prompt_bank = apply_chat_template(
+            tokenizer,
+            get_prompt_bank("humaneval"),
+            model,
+        )
+        target = _load_hf_target_model(
+            model,
+            attn_implementation,
+            device=device,
+            device_map_auto=target_device_map_auto,
+            device_map_gpus=target_device_map_gpus,
+        )
         draft = DFlashDraftModel.from_pretrained(
             draft_model_path,
             attn_implementation=attn_implementation,
@@ -321,16 +474,20 @@ def run_draft_quality_diagnostic(
             sample_dir = debug_dir / f"sample_{sample_index:03d}"
             sample_dir.mkdir(parents=True, exist_ok=True)
 
-            input_ids = tokenizer.encode(prompt_text, return_tensors="pt").to(device)
+            target_input_device = _module_device(_target_embed_tokens(target))
+            input_ids = tokenizer.encode(prompt_text, return_tensors="pt").to(
+                target_input_device
+            )
             num_input_tokens = int(input_ids.shape[1])
             position_ids = torch.arange(
                 num_input_tokens + max_steps + block_size + 2,
-                device=device,
+                device=target_input_device,
             ).unsqueeze(0)
             past_key_values_target = DynamicCache()
             past_key_values_draft = DynamicCache()
 
-            output = target(
+            output = _target_text_forward(
+                target,
                 input_ids,
                 position_ids=position_ids[:, :num_input_tokens],
                 past_key_values=past_key_values_target,
@@ -338,8 +495,8 @@ def run_draft_quality_diagnostic(
                 logits_to_keep=1,
                 output_hidden_states=True,
             )
-            target_hidden = extract_context_feature(
-                output.hidden_states, draft.target_layer_ids
+            target_hidden = _extract_context_feature_on_device(
+                output.hidden_states, draft.target_layer_ids, device
             )
             root_token = int(output.logits[0, -1].argmax(dim=-1).item())
             generated_target_tokens = [root_token]
@@ -360,7 +517,11 @@ def run_draft_quality_diagnostic(
                 draft_pos_ids = position_ids[
                     :, past_key_values_draft.get_seq_length() : start + block_size
                 ]
-                noise_embedding = target.model.embed_tokens(block_output_ids)
+                target_embed_tokens = _target_embed_tokens(target)
+                embed_device = _module_device(target_embed_tokens)
+                noise_embedding = target_embed_tokens(
+                    block_output_ids.to(embed_device)
+                ).to(device)
 
                 # Test G: capture HF per-layer draft outputs at d0 row on the
                 # very first draft step of sample 0. The d0 row in HF's
@@ -1192,7 +1353,11 @@ def run_draft_quality_diagnostic(
                     is_causal=head_is_causal,
                 )
                 sample_hidden_states = draft_output[:, -block_size + 1 :, :]
-                draft_logits = target.lm_head(sample_hidden_states)
+                target_lm_head = _target_lm_head(target)
+                lm_head_device = _module_device(target_lm_head)
+                draft_logits = target_lm_head(
+                    sample_hidden_states.to(lm_head_device)
+                ).to(device)
                 draft_logprobs = torch.log_softmax(
                     draft_logits[0, 0].float(), dim=-1
                 )
@@ -1261,7 +1426,7 @@ def run_draft_quality_diagnostic(
                     draft_vocab_size = (
                         _maybe_attr(draft_cfg, "draft_vocab_size")
                         or _maybe_attr(draft_cfg, "vocab_size")
-                        or int(target.config.vocab_size)
+                        or _target_vocab_size(target)
                     )
                     last_prompt_idx = num_input_tokens - 1
                     per_layer_hidden: dict[int, torch.Tensor] = {}
@@ -1330,8 +1495,8 @@ def run_draft_quality_diagnostic(
                             }
                     write_reference_capture(
                         output_path=debug_dir / "reference_capture.json",
-                        target_lm_head_weight=target.lm_head.weight,
-                        target_embed_tokens_weight=target.model.embed_tokens.weight,
+                        target_lm_head_weight=_target_lm_head(target).weight,
+                        target_embed_tokens_weight=_target_embed_tokens(target).weight,
                         sample_hidden_state=sample_hidden_states[0, 0],
                         query_ids=block_output_ids[0].tolist(),
                         target_embed_of_query_ids=noise_embedding[0],
@@ -1341,12 +1506,12 @@ def run_draft_quality_diagnostic(
                         draft_target_layer_ids=list(draft.target_layer_ids),
                         draft_rope_theta=draft_rope_theta,
                         draft_vocab_size=int(draft_vocab_size),
-                        target_vocab_size=int(target.config.vocab_size),
+                        target_vocab_size=_target_vocab_size(target),
                         num_prompt_tokens=int(num_input_tokens),
                         target_per_layer_hidden_at_last_prompt=per_layer_hidden,
                         target_concat_hidden_at_last_prompt=concat_at_last_prompt,
                         target_num_hidden_layers=int(
-                            getattr(target.config, "num_hidden_layers", 0) or 0
+                            _target_num_hidden_layers(target)
                         ),
                         draft_num_hidden_layers=draft_num_hidden_layers,
                         draft_d0_row_index=int(hf_d0_row_index),
@@ -1372,8 +1537,11 @@ def run_draft_quality_diagnostic(
                 draft_top1_token = int(topk_tok[0, 0].item())
                 past_key_values_draft.crop(start)
 
-                target_step = target(
-                    torch.tensor([[root_token]], device=device, dtype=torch.long),
+                target_step = _target_text_forward(
+                    target,
+                    torch.tensor(
+                        [[root_token]], device=target_input_device, dtype=torch.long
+                    ),
                     position_ids=position_ids[:, start : start + 1],
                     past_key_values=past_key_values_target,
                     use_cache=True,
@@ -1403,9 +1571,10 @@ def run_draft_quality_diagnostic(
                 }
                 steps.append(step_summary)
 
-                target_hidden = extract_context_feature(
+                target_hidden = _extract_context_feature_on_device(
                     target_step.hidden_states,
                     draft.target_layer_ids,
+                    device,
                 )
                 root_token = target_next_token
                 generated_target_tokens.append(root_token)
@@ -1553,6 +1722,9 @@ def run_draft_quality_diagnostic(
                 "max_steps": max_steps,
                 "attn_implementation": attn_implementation,
                 "seed": seed,
+                "target_device_map_auto": target_device_map_auto,
+                "target_device_map_gpus": target_device_map_gpus,
+                "target_hf_device_map": getattr(target, "hf_device_map", None),
             },
             "sample_indices": sample_indices,
             "num_samples": len(per_sample),
@@ -1567,6 +1739,23 @@ def run_draft_quality_diagnostic(
         _write_json(debug_dir / "draft_quality_diagnostic_summary.json", summary)
         return summary
     finally:
+        input_ids = None
+        position_ids = None
+        past_key_values_target = None
+        past_key_values_draft = None
+        output = None
+        target_step = None
+        target_hidden = None
+        noise_embedding = None
+        draft_output = None
+        sample_hidden_states = None
+        draft_logits = None
+        draft_logprobs = None
+        topk_tok = None
+        topk_lp = None
+        block_output_ids = None
+        target_lm_head = None
+        target_embed_tokens = None
         tokenizer = None
         prompt_bank = None
         target = None
@@ -1596,6 +1785,11 @@ def run_vllm_draft_quality_diagnostic(
     tree_attn_kernel: str = "optimus",
     attention_backend: str = "FLASH_ATTN",
     seed: int = 0,
+    tp_size: int = 1,
+    gpu_memory_utilization: float = 0.5,
+    max_num_batched_tokens: int = 51200,
+    enable_expert_parallel: bool = False,
+    disable_cascade_attn: bool = False,
     enforce_eager: bool = True,
     summary_filename: str = "vllm_draft_quality_diagnostic_summary.json",
     install_audit_hooks: bool = True,
@@ -1608,18 +1802,29 @@ def run_vllm_draft_quality_diagnostic(
     test_l_capture_filename: str = "vllm_test_l_probe_capture.json",
     test_q_capture_filename: str = "vllm_test_q_probe_capture.json",
 ) -> dict[str, Any]:
-    tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
-    prompt_bank = apply_chat_template(tokenizer, get_prompt_bank("humaneval"))
+    tokenizer = AutoTokenizer.from_pretrained(
+        model,
+        trust_remote_code=True,
+        **tokenizer_load_kwargs(model),
+    )
+    prompt_bank = apply_chat_template(
+        tokenizer,
+        get_prompt_bank("humaneval"),
+        model,
+    )
     sampling_params = SamplingParams(temperature=0.0, max_tokens=max_steps)
     args = SimpleNamespace(
         model=model,
         draft_model=draft_model_path,
         trust_remote_code=True,
-        gpu_memory_utilization=0.9,
-        max_num_batched_tokens=51200,
+        gpu_memory_utilization=gpu_memory_utilization,
+        max_num_batched_tokens=max_num_batched_tokens,
         max_num_seqs=1,
         max_model_len=max_model_len,
         enforce_eager=enforce_eager,
+        enable_expert_parallel=enable_expert_parallel,
+        disable_cascade_attn=disable_cascade_attn,
+        cudagraph_mode="none",
         attention_backend=attention_backend,
         head_type="causal",
         tree_width=tree_width,
@@ -1630,9 +1835,13 @@ def run_vllm_draft_quality_diagnostic(
         tree_prune_ratio=tree_prune_ratio,
         tree_construction=tree_construction,
         tree_attn_kernel=tree_attn_kernel,
+        tree_kv_layout="physical",
         num_cudagraph_tree_captures=0,
         num_warmup_runs=0,
         num_runs=1,
+        profiler="cuda",
+        write_dflash_debug_artifacts=True,
+        skip_engine_cleanup=False,
         sleep_after_stop=0.0,
     )
 
@@ -2201,7 +2410,7 @@ def run_vllm_draft_quality_diagnostic(
             mode="dflash",
             prompt_batches=[[prompt_text]],
             sampling_params=sampling_params,
-            tp_size=1,
+            tp_size=tp_size,
             batch_size=1,
             effective_num_speculative_tokens=_effective_spec_tokens,
             effective_max_num_seqs=1,
@@ -2278,6 +2487,11 @@ def run_vllm_draft_quality_diagnostic(
         "config": {
             "model": model,
             "draft_model": draft_model_path,
+            "tp_size": tp_size,
+            "gpu_memory_utilization": gpu_memory_utilization,
+            "max_num_batched_tokens": max_num_batched_tokens,
+            "enable_expert_parallel": enable_expert_parallel,
+            "disable_cascade_attn": disable_cascade_attn,
             "max_model_len": max_model_len,
             "block_size": block_size,
             "tree_width": tree_width,
@@ -2372,17 +2586,35 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-steps", type=int, default=256)
     parser.add_argument(
         "--attn-implementation",
-        default="flash_attention_2",
+        default="eager",
         help=(
             "HF transformers attn implementation for the reference draft/"
-            "target. Default 'flash_attention_2' matches production eval "
-            "(dflash/eval_scripts/run_benchmark_causal_head_blk16w2_multi_draft_run.sh). "
-            "'sdpa'/'eager' hit the _build_dflash_causal_attention_mask path "
-            "which previously had a layer-1+ cached_kv_len bug; 'flash_attention_2' "
-            "bypasses that path entirely and uses FA2's tail-aligned causal kernel."
+            "target. Default 'eager' is compatible with local Step-3.7; "
+            "vLLM's tree attention kernel is controlled separately by "
+            "--tree-attn-kernel."
         ),
     )
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--target-device-map-auto",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Shard the HF target model with device_map='auto'. This avoids "
+            "loading the Step-3.7 target and draft on one GPU during the "
+            "target-forced reference diagnostic."
+        ),
+    )
+    parser.add_argument(
+        "--target-device-map-gpus",
+        type=int,
+        default=None,
+        help=(
+            "Number of visible GPUs available to the HF target device map. "
+            "Use with --target-device-map-auto, e.g. 4 to balance the target "
+            "across cuda:0..cuda:3."
+        ),
+    )
     parser.add_argument(
         "--run-vllm-diagnostic",
         action=argparse.BooleanOptionalAction,
@@ -2397,6 +2629,42 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tree-construction", default="breadth_first")
     parser.add_argument("--tree-attn-kernel", default="optimus")
     parser.add_argument("--attention-backend", default="FLASH_ATTN")
+    parser.add_argument(
+        "--vllm-tp-size",
+        type=int,
+        default=1,
+        help="Tensor parallel size for the vLLM diagnostic replay.",
+    )
+    parser.add_argument(
+        "--vllm-gpu-memory-utilization",
+        type=float,
+        default=0.5,
+        help=(
+            "GPU memory utilization for the vLLM diagnostic replay. "
+            "Lower than throughput runs to leave room after HF diagnostics."
+        ),
+    )
+    parser.add_argument(
+        "--vllm-max-num-batched-tokens",
+        type=int,
+        default=16384,
+        help=(
+            "max_num_batched_tokens for the vLLM diagnostic replay. "
+            "Default matches the known-good Step-3.7 profiling command."
+        ),
+    )
+    parser.add_argument(
+        "--enable-expert-parallel",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Forward --enable-expert-parallel into the vLLM diagnostic replay.",
+    )
+    parser.add_argument(
+        "--disable-cascade-attn",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Forward --disable-cascade-attn into the vLLM diagnostic replay.",
+    )
     parser.add_argument(
         "--enforce-eager",
         action=argparse.BooleanOptionalAction,
@@ -2436,6 +2704,8 @@ def main() -> None:
         max_steps=args.max_steps,
         attn_implementation=args.attn_implementation,
         seed=args.seed,
+        target_device_map_auto=args.target_device_map_auto,
+        target_device_map_gpus=args.target_device_map_gpus,
     )
 
     if not args.run_vllm_diagnostic:
@@ -2464,6 +2734,11 @@ def main() -> None:
         tree_attn_kernel=args.tree_attn_kernel,
         attention_backend=args.attention_backend,
         seed=args.seed,
+        tp_size=args.vllm_tp_size,
+        gpu_memory_utilization=args.vllm_gpu_memory_utilization,
+        max_num_batched_tokens=args.vllm_max_num_batched_tokens,
+        enable_expert_parallel=args.enable_expert_parallel,
+        disable_cascade_attn=args.disable_cascade_attn,
         enforce_eager=args.enforce_eager,
     )
     comparison = build_draft_quality_comparison_summary(
@@ -2506,6 +2781,11 @@ def main() -> None:
                 tree_attn_kernel=args.tree_attn_kernel,
                 attention_backend=args.attention_backend,
                 seed=args.seed,
+                tp_size=args.vllm_tp_size,
+                gpu_memory_utilization=args.vllm_gpu_memory_utilization,
+                max_num_batched_tokens=args.vllm_max_num_batched_tokens,
+                enable_expert_parallel=args.enable_expert_parallel,
+                disable_cascade_attn=args.disable_cascade_attn,
                 enforce_eager=args.enforce_eager,
                 summary_filename=(
                     "vllm_draft_quality_diagnostic_summary_chain_spec.json"

@@ -439,9 +439,16 @@ class BackgroundResources:
                 # We must ensure that the sync output socket is
                 # closed cleanly in its own thread.
                 with self.ctx.socket(zmq.PAIR) as shutdown_sender:
+                    shutdown_sender.setsockopt(zmq.LINGER, 0)
+                    shutdown_sender.setsockopt(zmq.SNDTIMEO, 1000)
                     shutdown_sender.connect(self.shutdown_path)
                     # Send shutdown signal.
-                    shutdown_sender.send(b"")
+                    try:
+                        shutdown_sender.send(b"", flags=zmq.NOBLOCK)
+                    except zmq.Again:
+                        logger.warning(
+                            "Timed out signaling EngineCore output thread shutdown."
+                        )
 
     def validate_alive(self, frames: Sequence[zmq.Frame]):
         if len(frames) == 1 and (frames[0].buffer == EngineCoreProc.ENGINE_CORE_DEAD):

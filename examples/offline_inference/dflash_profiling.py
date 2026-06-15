@@ -81,10 +81,50 @@ def build_prompt_batches(prompts: list[str], batch_size: int) -> list[list[str]]
     return [prompts[start : start + batch_size] for start in range(0, len(prompts), batch_size)]
 
 
-def apply_chat_template(tokenizer, prompts: list[str]) -> list[str]:
+def _is_step3p7_model_path(model_path: str) -> bool:
+    config_path = Path(model_path) / "config.json"
+    if not config_path.is_file():
+        return False
+    try:
+        with config_path.open() as f:
+            config = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    return config.get("model_type") == "step3p7"
+
+
+def tokenizer_load_kwargs(model_path: str) -> dict[str, Any]:
+    if _is_step3p7_model_path(model_path):
+        return {"fix_mistral_regex": True}
+    return {}
+
+
+def _apply_step3p7_specforge_template(prompt: str) -> str:
+    """Match SpecForge's qwen3-instruct nothink training template."""
+    return (
+        "<|im_start|>system\n"
+        "You are a helpful assistant."
+        "<|im_end|>\n"
+        "<|im_start|>user\n"
+        f"{prompt}"
+        "<|im_end|>\n"
+        "<|im_start|>assistant\n"
+    )
+
+
+def apply_chat_template(
+    tokenizer,
+    prompts: list[str],
+    model_path: str,
+) -> list[str]:
+    is_step3p7 = _is_step3p7_model_path(model_path)
     templated_prompts = []
     for prompt in prompts:
         messages = [{"role": "user", "content": prompt}]
+        if is_step3p7:
+            templated_prompt = _apply_step3p7_specforge_template(prompt)
+            templated_prompts.append(templated_prompt)
+            continue
         try:
             templated_prompt = tokenizer.apply_chat_template(
                 messages,
@@ -1256,7 +1296,7 @@ def log_cuda_memory(prefix: str) -> None:
     )
 
 
-def cleanup_llm(llm: LLM | None) -> None:
+def cleanup_llm(llm: LLM | None, shutdown_timeout: float | None = None) -> None:
     """Release vLLM engine resources before constructing the next engine."""
     log_cuda_memory("before")
 
@@ -1264,7 +1304,7 @@ def cleanup_llm(llm: LLM | None) -> None:
         # Level 2 discards weights and KV cache from GPU before tearing down
         # the in-process engine.
         llm.sleep(level=2, mode="abort")
-        llm.llm_engine.engine_core.shutdown()
+        llm.llm_engine.engine_core.shutdown(timeout=shutdown_timeout)
         llm.llm_engine = None  # type: ignore[assignment]
 
     from vllm.distributed.parallel_state import cleanup_dist_env_and_memory
@@ -1306,6 +1346,15 @@ def run_native_profile(
         profiler_config=profiler_config,
         disable_log_stats=False,
     )
+    if args.enable_expert_parallel:
+        llm_kwargs["enable_expert_parallel"] = True
+    if args.disable_cascade_attn:
+        llm_kwargs["disable_cascade_attn"] = True
+    if _is_step3p7_model_path(args.model):
+        llm_kwargs["language_model_only"] = True
+        llm_kwargs["limit_mm_per_prompt"] = {"image": 0}
+        llm_kwargs["skip_mm_profiling"] = True
+        llm_kwargs["mm_processor_cache_gb"] = 0
     compilation_config = get_compilation_config_for_cudagraph_mode(
         args.cudagraph_mode
     )
@@ -1441,7 +1490,10 @@ def run_native_profile(
             "resources."
         )
     else:
-        cleanup_llm(llm)
+        cleanup_llm(
+            llm,
+            shutdown_timeout=getattr(args, "engine_shutdown_timeout", 10.0),
+        )
         del llm
         time.sleep(args.sleep_after_stop)
     phase_cuda = collect_execute_context_cuda_seconds(run_output_dir)
@@ -1673,6 +1725,16 @@ def parse_args():
         help="Disable CUDA graphs and use eager mode.",
     )
     parser.add_argument(
+        "--enable-expert-parallel",
+        action="store_true",
+        help="Forward enable_expert_parallel=True to vLLM LLM construction.",
+    )
+    parser.add_argument(
+        "--disable-cascade-attn",
+        action="store_true",
+        help="Forward disable_cascade_attn=True to vLLM LLM construction.",
+    )
+    parser.add_argument(
         "--temperature",
         type=float,
         default=0.0,
@@ -1709,6 +1771,15 @@ def parse_args():
             "Skip explicit llm.sleep()/engine shutdown at the end of a run. "
             "Useful when each mode runs in its own subprocess and TP worker "
             "shutdown would otherwise block metrics reporting."
+        ),
+    )
+    parser.add_argument(
+        "--engine-shutdown-timeout",
+        type=float,
+        default=10.0,
+        help=(
+            "Maximum seconds to wait for vLLM engine process shutdown during "
+            "explicit cleanup."
         ),
     )
     parser.add_argument(
@@ -1881,8 +1952,13 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         args.model,
         trust_remote_code=args.trust_remote_code,
+        **tokenizer_load_kwargs(args.model),
     )
-    prompt_bank = apply_chat_template(tokenizer, get_prompt_bank(args.prompt_set))
+    prompt_bank = apply_chat_template(
+        tokenizer,
+        get_prompt_bank(args.prompt_set),
+        args.model,
+    )
     if args.max_samples > 0:
         prompt_bank = prompt_bank[: args.max_samples]
     modes = get_modes(args.mode)

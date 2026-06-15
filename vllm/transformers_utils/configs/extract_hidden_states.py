@@ -53,3 +53,17 @@ class ExtractHiddenStatesConfig(PretrainedConfig):
         # ExtractHiddenStatesConfig with default arguments is not supported
         del use_diff
         return super().to_json_string(use_diff=False)
+
+    def get_text_config(self, decoder: bool = False) -> PretrainedConfig:
+        # For multimodal targets like Step3.7, the wrapped base config stores
+        # the real language-model config under ``text_config``.  The generic
+        # PretrainedConfig implementation can return ``self`` for this wrapper,
+        # which drops text-only fields such as ``num_attention_heads`` and
+        # ``moe_num_experts``.  Prefer the explicit nested text config when
+        # present so downstream vLLM validators see the Step3p5 config.
+        text_config = getattr(self, "text_config", None)
+        if text_config is None:
+            text_config = super().get_text_config(decoder=decoder)
+        if isinstance(text_config, dict):
+            return PretrainedConfig(**text_config)
+        return text_config

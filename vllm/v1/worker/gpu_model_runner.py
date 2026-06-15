@@ -6014,7 +6014,42 @@ class GPUModelRunner(
                 raise ValueError(
                     "aux_hidden_states are required when using `extract_hidden_states`"
                 )
-            target_hidden_states = [h[:num_scheduled_tokens] for h in aux_hidden_states]
+            target_hidden_states = []
+            offset = 0
+            for req_id, req_num_scheduled_tokens in (
+                scheduler_output.num_scheduled_tokens.items()
+            ):
+                if req_num_scheduled_tokens == 0:
+                    continue
+                req_idx = self.input_batch.req_id_to_index[req_id]
+                start = offset
+                end = offset + req_num_scheduled_tokens
+                offset = end
+
+                # For extract_hidden_states with one sampled token, the target
+                # run can include a leading extra row in aux captures. Keep the
+                # prompt-aligned rows only: row 1 maps to the first real token.
+                drop_leading_extra_row = (
+                    req_num_scheduled_tokens > 1
+                    and sampled_token_ids.ndim >= 1
+                    and req_idx < sampled_token_ids.shape[0]
+                )
+                if drop_leading_extra_row:
+                    start += 1
+
+                target_hidden_states.append(
+                    [h[start:end] for h in aux_hidden_states]
+                )
+
+            if target_hidden_states:
+                target_hidden_states = [
+                    torch.cat([req_hidden[layer_idx] for req_hidden in target_hidden_states])
+                    for layer_idx in range(len(aux_hidden_states))
+                ]
+            else:
+                target_hidden_states = [
+                    h[:num_scheduled_tokens] for h in aux_hidden_states
+                ]
 
             draft_token_ids = self.drafter.propose(
                 sampled_token_ids=sampled_token_ids,

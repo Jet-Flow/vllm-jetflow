@@ -44,7 +44,7 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.sequence import IntermediateTensors
 from vllm.v1.attention.backend import AttentionType
 
-from .interfaces import MixtureOfExperts, SupportsPP
+from .interfaces import EagleModelMixin, MixtureOfExperts, SupportsEagle3, SupportsPP
 from .utils import (
     AutoWeightsLoader,
     PPMissingLayer,
@@ -205,6 +205,7 @@ class Step3p5Attention(nn.Module):
             hidden_size,
             bias=False,
             quant_config=quant_config,
+            reduce_results=False,
             prefix=f"{prefix}.o_proj",
         )
 
@@ -303,6 +304,10 @@ class FusedMoEBlock(nn.Module):
         config = vllm_config.model_config.hf_config
         quant_config = vllm_config.quant_config
         parallel_config = vllm_config.parallel_config
+
+        if vllm_config.kernel_config.moe_backend != "triton":
+            logger.warning_once("Forcing Step3p5 MoE backend to Triton.")
+            vllm_config.kernel_config.moe_backend = "triton"
 
         self.hidden_size = config.hidden_size
         self.enable_eplb = parallel_config.enable_eplb
@@ -534,6 +539,13 @@ class Step3p5DecoderLayer(nn.Module):
             return in1 + in2
         return self.tp_group.all_reduce(in1 + in2)
 
+    def reduce_attention_output_and_add_residual(
+        self, hidden_states: torch.Tensor, residual: torch.Tensor
+    ) -> torch.Tensor:
+        if self.use_fused_all_reduce:
+            hidden_states = self.tp_group.all_reduce(hidden_states)
+        return hidden_states + residual
+
     def forward(
         self, positions: torch.Tensor, hidden_states: torch.Tensor
     ) -> torch.Tensor:
@@ -544,7 +556,9 @@ class Step3p5DecoderLayer(nn.Module):
             positions=positions,
             hidden_states=hidden_states,
         )
-        hidden_states += residual
+        hidden_states = self.reduce_attention_output_and_add_residual(
+            hidden_states, residual
+        )
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
 
@@ -557,7 +571,7 @@ class Step3p5DecoderLayer(nn.Module):
 
 
 @support_torch_compile
-class Step3p5Model(nn.Module):
+class Step3p5Model(nn.Module, EagleModelMixin):
     def __init__(self, vllm_config: VllmConfig, prefix: str = "") -> None:
         super().__init__()
 
@@ -604,7 +618,7 @@ class Step3p5Model(nn.Module):
         positions: torch.Tensor,
         intermediate_tensors: IntermediateTensors | None = None,
         inputs_embeds: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | IntermediateTensors | tuple[torch.Tensor, list[torch.Tensor]]:
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -613,9 +627,14 @@ class Step3p5Model(nn.Module):
         else:
             assert intermediate_tensors is not None
             hidden_states = intermediate_tensors["hidden_states"]
+
+        aux_hidden_states = self._maybe_add_hidden_state(
+            [], self.start_layer, hidden_states, None
+        )
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             hidden_states = layer(positions, hidden_states)
+            self._maybe_add_hidden_state(aux_hidden_states, i + 1, hidden_states, None)
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors(
@@ -624,6 +643,10 @@ class Step3p5Model(nn.Module):
                 }
             )
 
+        hidden_states = self.norm(hidden_states)
+
+        if len(aux_hidden_states) > 0:
+            return hidden_states, aux_hidden_states
         return hidden_states
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
@@ -826,7 +849,7 @@ class Step3p5Model(nn.Module):
         return loaded_params
 
 
-class Step3p5ForCausalLM(nn.Module, SupportsPP, MixtureOfExperts):
+class Step3p5ForCausalLM(nn.Module, SupportsPP, SupportsEagle3, MixtureOfExperts):
     hf_to_vllm_mapper = WeightsMapper(
         orig_to_new_substr={".share_expert.": ".moe.share_expert."}
     )
@@ -891,7 +914,6 @@ class Step3p5ForCausalLM(nn.Module, SupportsPP, MixtureOfExperts):
         return hidden_states
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        hidden_states = self.model.norm(hidden_states)
         logits = self.logits_processor(self.lm_head, hidden_states)
         return logits
 

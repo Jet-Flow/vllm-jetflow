@@ -1400,28 +1400,37 @@ class SpecDecodeBaseProposer:
         if supports_multimodal(target_model):
             # handle multimodality
             assert hasattr(target_model, "config")
-            if self.get_model_name(target_model) in [
-                "Qwen2_5_VLForConditionalGeneration",
-                "Qwen3VLForConditionalGeneration",
-                "Qwen3VLMoeForConditionalGeneration",
-                "HunYuanVLForConditionalGeneration",
-                "GlmOcrForConditionalGeneration",
-                "Qwen3_5ForConditionalGeneration",
-                "Qwen3_5MoeForConditionalGeneration",
-            ]:
-                self.model.config.image_token_index = target_model.config.image_token_id
-            elif self.get_model_name(target_model) == "PixtralForConditionalGeneration":
-                self.model.config.image_token_index = (
-                    target_model.config.vision_config.image_token_id
-                )
-            elif self.get_model_name(target_model) == "KimiK25ForConditionalGeneration":
-                self.model.config.image_token_index = (
-                    target_model.config.media_placeholder_token_id
-                )
-            else:
-                self.model.config.image_token_index = (
-                    target_model.config.image_token_index
-                )
+            target_mm_config = getattr(target_model, "multimodal_config", None)
+            target_is_lm_only = bool(
+                getattr(target_model, "language_model_only", False)
+                or getattr(target_mm_config, "language_model_only", False)
+            )
+            if not target_is_lm_only:
+                if self.get_model_name(target_model) in [
+                    "Qwen2_5_VLForConditionalGeneration",
+                    "Qwen3VLForConditionalGeneration",
+                    "Qwen3VLMoeForConditionalGeneration",
+                    "HunYuanVLForConditionalGeneration",
+                    "GlmOcrForConditionalGeneration",
+                    "Qwen3_5ForConditionalGeneration",
+                    "Qwen3_5MoeForConditionalGeneration",
+                    "Step3VLForConditionalGeneration",
+                ]:
+                    self.model.config.image_token_index = (
+                        target_model.config.image_token_id
+                    )
+                elif self.get_model_name(target_model) == "PixtralForConditionalGeneration":
+                    self.model.config.image_token_index = (
+                        target_model.config.vision_config.image_token_id
+                    )
+                elif self.get_model_name(target_model) == "KimiK25ForConditionalGeneration":
+                    self.model.config.image_token_index = (
+                        target_model.config.media_placeholder_token_id
+                    )
+                else:
+                    self.model.config.image_token_index = (
+                        target_model.config.image_token_index
+                    )
             target_language_model = cast(
                 SupportsMultiModal, target_model
             ).get_language_model()

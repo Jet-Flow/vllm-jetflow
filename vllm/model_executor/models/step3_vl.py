@@ -39,14 +39,14 @@ from vllm.multimodal.processing import (
 )
 from vllm.sequence import IntermediateTensors
 from vllm.transformers_utils.configs.step3_vl import Step3VisionEncoderConfig
-from vllm.transformers_utils.processors.step3_vl import (
-    MAX_IMAGE_SIZE,
-    Step3VLImageProcessor,
-    Step3VLProcessor,
-)
 from vllm.utils.tensor_schema import TensorSchema, TensorShape
 
-from .interfaces import MultiModalEmbeddings, SupportsMultiModal, SupportsPP
+from .interfaces import (
+    MultiModalEmbeddings,
+    SupportsEagle3,
+    SupportsMultiModal,
+    SupportsPP,
+)
 from .utils import (
     AutoWeightsLoader,
     WeightsMapper,
@@ -54,6 +54,8 @@ from .utils import (
     maybe_prefix,
 )
 from .vision import is_vit_use_data_parallel, run_dp_sharded_vision_model
+
+MAX_IMAGE_SIZE: int = 3024
 
 
 class Step3VLImagePixelInputs(TensorSchema):
@@ -91,6 +93,8 @@ Step3VLImageInputs: TypeAlias = Step3VLImagePixelInputs | Step3VLImageEmbeddingI
 
 class Step3VLProcessingInfo(BaseProcessingInfo):
     def get_image_processor(self, **kwargs):
+        from vllm.transformers_utils.processors.step3_vl import Step3VLImageProcessor
+
         config = self.get_hf_config()
 
         kwargs.setdefault(
@@ -100,7 +104,9 @@ class Step3VLProcessingInfo(BaseProcessingInfo):
 
         return Step3VLImageProcessor(**kwargs)
 
-    def get_hf_processor(self) -> Step3VLProcessor:
+    def get_hf_processor(self):
+        from vllm.transformers_utils.processors.step3_vl import Step3VLProcessor
+
         return Step3VLProcessor(
             tokenizer=self.get_tokenizer(),
             image_processor=self.get_image_processor(),
@@ -487,9 +493,15 @@ class Step3VisionTransformer(nn.Module):
     info=Step3VLProcessingInfo,
     dummy_inputs=Step3VLDummyInputsBuilder,
 )
-class Step3VLForConditionalGeneration(nn.Module, SupportsMultiModal, SupportsPP):
+class Step3VLForConditionalGeneration(
+    nn.Module, SupportsMultiModal, SupportsEagle3, SupportsPP
+):
     hf_to_vllm_mapper = WeightsMapper(
         orig_to_new_prefix={
+            "model.language_model.model.": "language_model.model.",
+            "model.language_model.lm_head.": "language_model.lm_head.",
+            "language_model.model.": "language_model.model.",
+            "language_model.lm_head.": "language_model.lm_head.",
             "model.": "language_model.model.",
             "lm_head.": "language_model.lm_head.",
         }
@@ -512,6 +524,7 @@ class Step3VLForConditionalGeneration(nn.Module, SupportsMultiModal, SupportsPP)
         self.config = config
         self.multimodal_config = multimodal_config
         self.use_data_parallel = multimodal_config.mm_encoder_tp_mode == "data"
+        self.language_model_only = multimodal_config.language_model_only
 
         # NOTE: This behavior is consistent with the previous OOV handling,
         # but does not currently handle the start/stop toks around the
@@ -526,30 +539,31 @@ class Step3VLForConditionalGeneration(nn.Module, SupportsMultiModal, SupportsPP)
             [self.config.image_token_id],
         )
 
-        with self._mark_tower_model(vllm_config, "image"):
-            self.vision_model = Step3VisionTransformer(
-                config.vision_config,
-                None,
-                prefix=maybe_prefix(prefix, "vision_model"),
-            )
-            self.vit_downsampler = Conv2dLayer(
-                config.vision_config.hidden_size,
-                config.vision_config.output_hidden_size,
-                kernel_size=2,
-                stride=config.understand_projector_stride,
-            )
-            self.vit_downsampler2 = Conv2dLayer(
-                config.vision_config.output_hidden_size,
-                config.vision_config.output_hidden_size * 2,
-                kernel_size=3,
-                stride=2,
-                padding=1,
-            )
-            self.vit_large_projector = nn.Linear(
-                config.vision_config.output_hidden_size * 2,
-                config.hidden_size,
-                bias=config.projector_bias,
-            )
+        if not self.language_model_only:
+            with self._mark_tower_model(vllm_config, "image"):
+                self.vision_model = Step3VisionTransformer(
+                    config.vision_config,
+                    None,
+                    prefix=maybe_prefix(prefix, "vision_model"),
+                )
+                self.vit_downsampler = Conv2dLayer(
+                    config.vision_config.hidden_size,
+                    config.vision_config.output_hidden_size,
+                    kernel_size=2,
+                    stride=config.understand_projector_stride,
+                )
+                self.vit_downsampler2 = Conv2dLayer(
+                    config.vision_config.output_hidden_size,
+                    config.vision_config.output_hidden_size * 2,
+                    kernel_size=3,
+                    stride=2,
+                    padding=1,
+                )
+                self.vit_large_projector = nn.Linear(
+                    config.vision_config.output_hidden_size * 2,
+                    config.hidden_size,
+                    bias=config.projector_bias,
+                )
 
         with self._mark_language_model(vllm_config):
             self.language_model = init_vllm_registered_model(
@@ -649,6 +663,8 @@ class Step3VLForConditionalGeneration(nn.Module, SupportsMultiModal, SupportsPP)
         return merged_image_features
 
     def embed_multimodal(self, **kwargs) -> MultiModalEmbeddings:
+        if self.language_model_only:
+            return []
         image_input = self._parse_and_validate_image_input(**kwargs)
         if image_input is None:
             return []
@@ -696,5 +712,22 @@ class Step3VLForConditionalGeneration(nn.Module, SupportsMultiModal, SupportsPP)
         return self.language_model.compute_logits(hidden_states)
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]):
+        if self.language_model_only:
+            def language_weights():
+                for name, weight in weights:
+                    if name.startswith("model.language_model.model."):
+                        yield "model." + name[len("model.language_model.model.") :], weight
+                    elif name.startswith("model.language_model.lm_head."):
+                        yield "lm_head." + name[len("model.language_model.lm_head.") :], weight
+                    elif name.startswith("language_model.model."):
+                        yield "model." + name[len("language_model.model.") :], weight
+                    elif name.startswith("language_model.lm_head."):
+                        yield "lm_head." + name[len("language_model.lm_head.") :], weight
+                    elif name.startswith("model.") or name.startswith("lm_head."):
+                        yield name, weight
+
+            loaded_params = self.language_model.load_weights(language_weights())
+            return {f"language_model.{name}" for name in loaded_params}
+
         loader = AutoWeightsLoader(self)
         return loader.load_weights(weights, mapper=self.hf_to_vllm_mapper)

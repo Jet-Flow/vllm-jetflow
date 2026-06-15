@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import contextlib
 import copy
+import json
 from pathlib import Path
 from typing import TypeAlias
 
@@ -12,6 +13,19 @@ from vllm.transformers_utils.config import get_sentence_transformer_tokenizer_co
 from .protocol import TokenizerLike
 
 HfTokenizer: TypeAlias = PreTrainedTokenizer | PreTrainedTokenizerFast
+
+
+def _is_step3p7_tokenizer_path(path_or_repo_id: str | Path) -> bool:
+    path = Path(path_or_repo_id)
+    config_path = path / "config.json"
+    if not config_path.is_file():
+        return False
+    try:
+        with config_path.open() as f:
+            config = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    return config.get("model_type") == "step3p7"
 
 
 def get_cached_tokenizer(tokenizer: HfTokenizer) -> HfTokenizer:
@@ -81,6 +95,8 @@ class CachedHfTokenizer(TokenizerLike):
         download_dir: str | None = None,
         **kwargs,
     ) -> HfTokenizer:
+        if _is_step3p7_tokenizer_path(path_or_repo_id):
+            kwargs.setdefault("fix_mistral_regex", True)
         try:
             tokenizer = AutoTokenizer.from_pretrained(
                 path_or_repo_id,

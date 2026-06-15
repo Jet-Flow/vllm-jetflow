@@ -886,6 +886,7 @@ class SpeculativeConfig:
             "deepseek_v3",
             "kimi_k2",
             "kimi_k25",
+            "step3p5",
         ]
         if (
             self.method in ("eagle3", "extract_hidden_states", "dflash")
