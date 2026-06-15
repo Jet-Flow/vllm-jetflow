@@ -62,6 +62,17 @@ def load_dataset_prompt_bank(prompt_set: str) -> list[str]:
             "passes the tests:\n```python\n{prompt}\n```"
         )
         return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set in {"math-500", "math500"}:
+        dataset = load_dataset("HuggingFaceH4/MATH-500", split="test")
+        prompt_fmt = (
+            "{problem}\n"
+            "Please reason step by step, and put your final answer within \\boxed{{}}."
+        )
+        prompts = []
+        for row in dataset:
+            problem = row["problem"] if "problem" in row else row["question"]
+            prompts.append(prompt_fmt.format(problem=problem))
+        return prompts
     raise ValueError(f"Unknown dataset-backed prompt set: {prompt_set}")
 
 
@@ -70,7 +81,7 @@ def get_prompt_bank(prompt_set: str) -> list[str]:
         return DEFAULT_PROMPTS
     if prompt_set == "coding":
         return CODING_PROMPTS
-    if prompt_set in {"gsm8k", "humaneval"}:
+    if prompt_set in {"gsm8k", "humaneval", "math-500", "math500"}:
         return load_dataset_prompt_bank(prompt_set)
     raise ValueError(f"Unknown prompt set: {prompt_set}")
 
@@ -1603,12 +1614,13 @@ def parse_args():
         "--prompt-set",
         type=str,
         default="mix",
-        choices=["mix", "coding", "gsm8k", "humaneval"],
+        choices=["mix", "coding", "gsm8k", "humaneval", "math-500", "math500"],
         help=(
             "Prompt set to use. "
             "'mix' uses general profiling prompts; 'coding' uses 4 Python "
-            "algorithm/data-structure tasks; 'gsm8k' and 'humaneval' match "
-            "the dataset prompt formatting used in the dflash repo."
+            "algorithm/data-structure tasks; 'gsm8k', 'humaneval', and "
+            "'math-500' match the dataset prompt formatting used in the "
+            "dflash repo."
         ),
     )
     parser.add_argument(
