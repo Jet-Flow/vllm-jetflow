@@ -14,7 +14,6 @@ from typing import Any, Callable
 from datasets import load_dataset
 import torch
 from transformers import AutoTokenizer
-from tqdm.auto import tqdm
 from vllm import LLM, SamplingParams
 from vllm.utils.argparse_utils import FlexibleArgumentParser
 
@@ -1421,21 +1420,7 @@ def run_native_profile(
     total_progress_prompts = args.num_runs * prompts_per_run
     completed_progress_prompts = 0
     for run_idx in range(args.num_runs):
-        batch_iter = tqdm(
-            enumerate(prompt_batches),
-            total=len(prompt_batches),
-            desc=(
-                f"{args.prompt_set} {mode} tp{tp_size} bs{batch_size} "
-                f"run {run_idx + 1}/{args.num_runs}"
-            ),
-            unit="batch",
-            dynamic_ncols=True,
-            leave=True,
-        )
-        for batch_idx, batch_prompts in batch_iter:
-            batch_iter.set_postfix_str(
-                f"prompts={completed_progress_prompts}/{total_progress_prompts}"
-            )
+        for batch_idx, batch_prompts in enumerate(prompt_batches):
             batch_t0 = time.perf_counter()
             outputs = llm.generate(batch_prompts, sampling_params=sampling_params)
             batch_elapsed = time.perf_counter() - batch_t0
@@ -1451,8 +1436,13 @@ def run_native_profile(
             num_batches += 1
             num_samples += len(outputs)
             completed_progress_prompts += len(batch_prompts)
-            batch_iter.set_postfix_str(
-                f"prompts={completed_progress_prompts}/{total_progress_prompts}"
+            print(
+                "[PROGRESS] "
+                f"prompt_set={args.prompt_set} mode={mode} tp={tp_size} "
+                f"bs={batch_size} run={run_idx + 1}/{args.num_runs} "
+                f"batch={batch_idx + 1}/{len(prompt_batches)} "
+                f"prompts={completed_progress_prompts}/{total_progress_prompts}",
+                flush=True,
             )
             if batch_output_tokens > 0:
                 time_per_output_token_samples.append(

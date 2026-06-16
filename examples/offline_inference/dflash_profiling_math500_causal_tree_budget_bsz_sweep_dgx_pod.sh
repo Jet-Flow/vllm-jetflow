@@ -44,6 +44,9 @@ TREE_BUDGETS="${TREE_BUDGETS:-16 32 64 128 256}"
 TP_SIZE="${TP_SIZE:-1}"
 TREE_KV_LAYOUT="${TREE_KV_LAYOUT:-logical}"
 PROFILER_DIR="${PROFILER_DIR:-}"
+CUDA_DEVICE_LIST="${CUDA_DEVICE_LIST:-}"
+PARALLEL_WORKERS="${PARALLEL_WORKERS:-0}"
+RESUME_COMPLETED="${RESUME_COMPLETED:-1}"
 RUN_AR=1
 RUN_DFLASH=1
 
@@ -80,6 +83,8 @@ Options:
   --tree-kv-layout LAYOUT      physical or logical (default: ${TREE_KV_LAYOUT})
   --tree-attn-kernel KERNEL    optimus or triton (default: ${TREE_ATTN_KERNEL})
   --attention-backend NAME     vLLM attention backend (default: ${ATTENTION_BACKEND})
+  --cuda-devices "0 1 ..."      CUDA devices to shard across (default: all visible GPUs)
+  --parallel-workers N          Concurrent cells to run (default: floor(num_gpus / tp_size))
   --max-tokens N               Generation max tokens (default: ${MAX_TOKENS})
   --max-samples N              0 means full Math-500 set (default: ${MAX_SAMPLES})
   --num-runs N                 Timed runs per setting (default: ${NUM_RUNS})
@@ -87,6 +92,7 @@ Options:
   --profiler NAME              none, torch, or cuda (default: ${PROFILER})
   --cudagraph-mode MODE        vLLM CUDA graph mode (default: ${CUDAGRAPH_MODE})
   --summary-metric KEY         e2e_throughput_tok_s or benchmark_tok_s
+  --no-resume                  Rerun cells even when metrics already exist
   --skip-ar                    Do not rerun AR baselines
   --skip-dflash                Do not rerun DFlash budget cells
 EOF
@@ -103,6 +109,8 @@ while [[ $# -gt 0 ]]; do
     --tree-kv-layout)        TREE_KV_LAYOUT="$2"; shift 2 ;;
     --tree-attn-kernel)      TREE_ATTN_KERNEL="$2"; shift 2 ;;
     --attention-backend)     ATTENTION_BACKEND="$2"; shift 2 ;;
+    --cuda-devices)          CUDA_DEVICE_LIST="$2"; shift 2 ;;
+    --parallel-workers)      PARALLEL_WORKERS="$2"; shift 2 ;;
     --max-tokens)            MAX_TOKENS="$2"; shift 2 ;;
     --max-samples)           MAX_SAMPLES="$2"; shift 2 ;;
     --num-runs)              NUM_RUNS="$2"; shift 2 ;;
@@ -110,6 +118,7 @@ while [[ $# -gt 0 ]]; do
     --profiler)              PROFILER="$2"; shift 2 ;;
     --cudagraph-mode)        CUDAGRAPH_MODE="$2"; shift 2 ;;
     --summary-metric)        SUMMARY_METRIC="$2"; shift 2 ;;
+    --no-resume)             RESUME_COMPLETED=0; shift ;;
     --skip-ar)               RUN_AR=0; shift ;;
     --skip-dflash)           RUN_DFLASH=0; shift ;;
     -h|--help)               usage; exit 0 ;;
@@ -188,6 +197,38 @@ if not torch.cuda.is_available() or torch.cuda.device_count() == 0:
 print(f"CUDA device 0:      {torch.cuda.get_device_name(0)}")
 PY
 
+if [[ -z "${CUDA_DEVICE_LIST}" ]]; then
+  CUDA_DEVICE_LIST="$(python - <<'PY'
+import torch
+print(" ".join(str(i) for i in range(torch.cuda.device_count())))
+PY
+)"
+fi
+read -r -a CUDA_DEVICE_ARRAY <<< "${CUDA_DEVICE_LIST//,/ }"
+NUM_CUDA_DEVICES="${#CUDA_DEVICE_ARRAY[@]}"
+if (( NUM_CUDA_DEVICES < 1 )); then
+  echo "ERROR: no CUDA devices selected"
+  exit 1
+fi
+if (( TP_SIZE < 1 )); then
+  echo "ERROR: --tp-size must be >= 1"
+  exit 1
+fi
+MAX_WORKER_GROUPS=$(( NUM_CUDA_DEVICES / TP_SIZE ))
+if (( MAX_WORKER_GROUPS < 1 )); then
+  echo "ERROR: selected CUDA devices (${CUDA_DEVICE_ARRAY[*]}) are fewer than TP_SIZE=${TP_SIZE}"
+  exit 1
+fi
+if (( PARALLEL_WORKERS <= 0 )); then
+  PARALLEL_WORKERS="${MAX_WORKER_GROUPS}"
+elif (( PARALLEL_WORKERS > MAX_WORKER_GROUPS )); then
+  echo "WARNING: capping --parallel-workers ${PARALLEL_WORKERS} to ${MAX_WORKER_GROUPS} for TP_SIZE=${TP_SIZE}"
+  PARALLEL_WORKERS="${MAX_WORKER_GROUPS}"
+fi
+echo "CUDA devices:       ${CUDA_DEVICE_ARRAY[*]}"
+echo "Parallel workers:   ${PARALLEL_WORKERS} (TP_SIZE=${TP_SIZE})"
+echo "Resume completed:   ${RESUME_COMPLETED}"
+
 cd "$REPO_ROOT"
 
 run_profile() {
@@ -196,6 +237,9 @@ run_profile() {
   local batch_size="$3"
   local max_tree_budget="${4:-}"
   local run_dir="${PROFILER_DIR}/${label}"
+  local cell_log="${run_dir}/cell_$(date +%Y%m%d_%H%M%S).log"
+
+  mkdir -p "$run_dir"
 
   local tree_args=()
   if [[ "${mode}" == "dflash" ]]; then
@@ -206,7 +250,7 @@ run_profile() {
   fi
 
   echo ""
-  echo "Running label=${label} mode=${mode} batch_size=${batch_size} max_tree_budget=${max_tree_budget:-n/a}"
+  echo "Running label=${label} mode=${mode} batch_size=${batch_size} max_tree_budget=${max_tree_budget:-n/a} CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-all}"
   python examples/offline_inference/dflash_profiling.py \
     --prompt-set math-500 \
     --mode "${mode}" \
@@ -235,21 +279,132 @@ run_profile() {
     --num-warmup-runs "${NUM_WARMUP_RUNS}" \
     --profiler "${PROFILER}" \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" \
-    --torch-profiler-dir "${run_dir}"
+    --torch-profiler-dir "${run_dir}" 2>&1 | sed -u "s/^/[${label}] /" | tee -a "$cell_log"
+}
+
+is_cell_complete() {
+  local label="$1"
+  local mode="$2"
+  local batch_size="$3"
+  local run_dir="${PROFILER_DIR}/${label}"
+  [[ -s "${run_dir}/metrics_summary.txt" && -s "${run_dir}/${mode}/tp${TP_SIZE}/bs${batch_size}/metrics_report.txt" ]]
+}
+
+worker_cuda_devices() {
+  local worker_idx="$1"
+  local start=$(( worker_idx * TP_SIZE ))
+  local devices=()
+  local offset
+  for ((offset = 0; offset < TP_SIZE; offset++)); do
+    devices+=("${CUDA_DEVICE_ARRAY[$((start + offset))]}")
+  done
+  local joined="${devices[0]}"
+  for ((offset = 1; offset < ${#devices[@]}; offset++)); do
+    joined+=",${devices[$offset]}"
+  done
+  echo "$joined"
+}
+
+TASK_ROOT="${PROFILER_DIR}/.task_queue_$(date +%Y%m%d_%H%M%S)"
+TASK_PENDING="${TASK_ROOT}/pending"
+TASK_RUNNING="${TASK_ROOT}/running"
+TASK_DONE="${TASK_ROOT}/done"
+TASK_FAILED="${TASK_ROOT}/failed"
+mkdir -p "$TASK_PENDING" "$TASK_RUNNING" "$TASK_DONE" "$TASK_FAILED"
+
+TASK_COUNT=0
+SKIP_COUNT=0
+enqueue_task() {
+  local label="$1"
+  local mode="$2"
+  local batch_size="$3"
+  local max_tree_budget="${4:-}"
+  if [[ "${RESUME_COMPLETED}" == "1" ]] && is_cell_complete "$label" "$mode" "$batch_size"; then
+    echo "Skipping completed label=${label} mode=${mode} batch_size=${batch_size}"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
+    return
+  fi
+  printf "%s|%s|%s|%s\n" "$label" "$mode" "$batch_size" "$max_tree_budget" \
+    > "${TASK_PENDING}/$(printf "%04d" "$TASK_COUNT")_${label}.task"
+  TASK_COUNT=$((TASK_COUNT + 1))
 }
 
 if [[ "${RUN_AR}" == "1" ]]; then
   for batch_size in "${BATCH_SIZE_LIST[@]}"; do
-    run_profile "ar_bsz${batch_size}" "ar" "${batch_size}"
+    enqueue_task "ar_bsz${batch_size}" "ar" "${batch_size}"
   done
 fi
 
 if [[ "${RUN_DFLASH}" == "1" ]]; then
   for batch_size in "${BATCH_SIZE_LIST[@]}"; do
     for budget in "${TREE_BUDGET_LIST[@]}"; do
-      run_profile "budget${budget}_bsz${batch_size}_${TREE_KV_LAYOUT}" "dflash" "${batch_size}" "${budget}"
+      enqueue_task "budget${budget}_bsz${batch_size}_${TREE_KV_LAYOUT}" "dflash" "${batch_size}" "${budget}"
     done
   done
+fi
+
+echo "Queued cells:        ${TASK_COUNT}"
+echo "Skipped completed:  ${SKIP_COUNT}"
+
+run_worker() {
+  local worker_idx="$1"
+  local worker_devices="$2"
+  local task_file=""
+  local running_file=""
+  local label=""
+  local mode=""
+  local batch_size=""
+  local max_tree_budget=""
+
+  export CUDA_VISIBLE_DEVICES="$worker_devices"
+  echo "[worker ${worker_idx}] started CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+
+  while true; do
+    task_file=""
+    for candidate in "${TASK_PENDING}"/*.task; do
+      [[ -e "$candidate" ]] || break
+      running_file="${TASK_RUNNING}/$(basename "$candidate").worker${worker_idx}"
+      if mv "$candidate" "$running_file" 2>/dev/null; then
+        task_file="$running_file"
+        break
+      fi
+    done
+    [[ -n "$task_file" ]] || break
+
+    IFS="|" read -r label mode batch_size max_tree_budget < "$task_file"
+    echo "[worker ${worker_idx}] picked label=${label} mode=${mode} batch_size=${batch_size} max_tree_budget=${max_tree_budget:-n/a}"
+    if run_profile "$label" "$mode" "$batch_size" "$max_tree_budget"; then
+      mv "$task_file" "${TASK_DONE}/$(basename "$task_file")"
+      echo "[worker ${worker_idx}] completed label=${label}"
+    else
+      mv "$task_file" "${TASK_FAILED}/$(basename "$task_file")"
+      echo "[worker ${worker_idx}] FAILED label=${label}"
+      return 1
+    fi
+  done
+
+  echo "[worker ${worker_idx}] no more tasks"
+}
+
+if (( TASK_COUNT > 0 )); then
+  WORKER_PIDS=()
+  for ((worker_idx = 0; worker_idx < PARALLEL_WORKERS; worker_idx++)); do
+    run_worker "$worker_idx" "$(worker_cuda_devices "$worker_idx")" &
+    WORKER_PIDS+=("$!")
+  done
+
+  FAILED=0
+  for pid in "${WORKER_PIDS[@]}"; do
+    if ! wait "$pid"; then
+      FAILED=1
+    fi
+  done
+  if (( FAILED != 0 )); then
+    echo "ERROR: at least one worker failed. Failed task files are in ${TASK_FAILED}"
+    exit 1
+  fi
+else
+  echo "No cells to run; all requested cells are already complete."
 fi
 
 python examples/offline_inference/dflash_math500_sweep_summary.py \
