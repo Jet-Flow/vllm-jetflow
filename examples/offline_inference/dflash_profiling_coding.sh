@@ -8,7 +8,7 @@ if [[ -n "${ATTENTION_BACKEND}" ]]; then
 fi
 
 python examples/offline_inference/dflash_profiling.py \
-  --prompt-set coding \
+  --prompt-set example-coding \
   --mode both \
   --tp-sizes 1 2 4 8 \
   --batch-sizes 1 2 4 8 16 \

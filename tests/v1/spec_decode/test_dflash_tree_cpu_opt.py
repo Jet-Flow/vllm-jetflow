@@ -16,6 +16,7 @@ from vllm.v1.spec_decode.dflash_tree import (
     gpu_tree_accept,
     prune_and_regrow,
     sample_topk_from_logits,
+    top2gap_fanout_caps,
     tree_accept,
 )
 
@@ -151,6 +152,48 @@ def test_depth_first_spine_contains_top1_tokens():
     )
     expected = [99, 10, 20, 30, 40, 50]
     assert list(spine.values()) == expected
+
+
+def test_top2gap_fanout_caps_narrow_decisive_depths():
+    """Large top-2 gaps collapse fanout toward a chain."""
+    caps = top2gap_fanout_caps([
+        [0.0, -8.0, -9.0, -10.0],
+        [-0.1, -6.0, -7.0, -8.0],
+    ])
+    assert caps == [1, 1]
+
+
+def test_top2gap_fanout_caps_keep_close_runner_up():
+    """Small top-2 gaps keep wider fanout where rank 2 is plausible."""
+    caps = top2gap_fanout_caps([
+        [0.0, -0.05, -4.0, -5.0],
+    ])
+    assert caps[0] > 1
+
+
+def test_top2gap_fanout_builds_chain_for_decisive_logits():
+    topk_tokens = torch.tensor([
+        [10, 11, 12, 13],
+        [20, 21, 22, 23],
+        [30, 31, 32, 33],
+    ])
+    topk_logprobs = torch.tensor([
+        [0.0, -8.0, -9.0, -10.0],
+        [0.0, -8.0, -9.0, -10.0],
+        [0.0, -8.0, -9.0, -10.0],
+    ])
+    tree = build_tree_from_topk(
+        root_token=99,
+        topk_tokens=topk_tokens,
+        topk_logprobs=topk_logprobs,
+        budget=40,
+        device=torch.device("cpu"),
+        score_mode="top2gap_fanout",
+    )
+    assert tree.num_nodes == 4
+    assert tree.token_ids.tolist() == [99, 10, 20, 30]
+    assert tree.parent_indices.tolist() == [-1, 0, 1, 2]
+    assert tree.depth.tolist() == [0, 1, 2, 3]
 
 
 def test_sample_topk_from_logits_shape():

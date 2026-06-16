@@ -14,6 +14,7 @@ from typing import Any, Callable
 from datasets import load_dataset
 import torch
 from transformers import AutoTokenizer
+from tqdm.auto import tqdm
 from vllm import LLM, SamplingParams
 from vllm.utils.argparse_utils import FlexibleArgumentParser
 
@@ -55,6 +56,13 @@ def load_dataset_prompt_bank(prompt_set: str) -> list[str]:
             "Please reason step by step, and put your final answer within \\boxed{{}}."
         )
         return [prompt_fmt.format(**row) for row in dataset]
+    if prompt_set == "math-500":
+        dataset = load_dataset("HuggingFaceH4/MATH-500", split="test")
+        prompt_fmt = (
+            "{problem}\n"
+            "Please reason step by step, and put your final answer within \\boxed{{}}."
+        )
+        return [prompt_fmt.format(**row) for row in dataset]
     if prompt_set == "humaneval":
         dataset = load_dataset("openai/openai_humaneval", split="test")
         prompt_fmt = (
@@ -62,26 +70,15 @@ def load_dataset_prompt_bank(prompt_set: str) -> list[str]:
             "passes the tests:\n```python\n{prompt}\n```"
         )
         return [prompt_fmt.format(**row) for row in dataset]
-    if prompt_set in {"math-500", "math500"}:
-        dataset = load_dataset("HuggingFaceH4/MATH-500", split="test")
-        prompt_fmt = (
-            "{problem}\n"
-            "Please reason step by step, and put your final answer within \\boxed{{}}."
-        )
-        prompts = []
-        for row in dataset:
-            problem = row["problem"] if "problem" in row else row["question"]
-            prompts.append(prompt_fmt.format(problem=problem))
-        return prompts
     raise ValueError(f"Unknown dataset-backed prompt set: {prompt_set}")
 
 
 def get_prompt_bank(prompt_set: str) -> list[str]:
-    if prompt_set == "mix":
+    if prompt_set == "example-mix":
         return DEFAULT_PROMPTS
-    if prompt_set == "coding":
+    if prompt_set == "example-coding":
         return CODING_PROMPTS
-    if prompt_set in {"gsm8k", "humaneval", "math-500", "math500"}:
+    if prompt_set in {"gsm8k", "humaneval", "math-500"}:
         return load_dataset_prompt_bank(prompt_set)
     raise ValueError(f"Unknown prompt set: {prompt_set}")
 
@@ -1420,8 +1417,25 @@ def run_native_profile(
     sampled_outputs: list[tuple[str, str]] = []
     num_batches = 0
     num_samples = 0
+    prompts_per_run = sum(len(batch_prompts) for batch_prompts in prompt_batches)
+    total_progress_prompts = args.num_runs * prompts_per_run
+    completed_progress_prompts = 0
     for run_idx in range(args.num_runs):
-        for batch_idx, batch_prompts in enumerate(prompt_batches):
+        batch_iter = tqdm(
+            enumerate(prompt_batches),
+            total=len(prompt_batches),
+            desc=(
+                f"{args.prompt_set} {mode} tp{tp_size} bs{batch_size} "
+                f"run {run_idx + 1}/{args.num_runs}"
+            ),
+            unit="batch",
+            dynamic_ncols=True,
+            leave=True,
+        )
+        for batch_idx, batch_prompts in batch_iter:
+            batch_iter.set_postfix_str(
+                f"prompts={completed_progress_prompts}/{total_progress_prompts}"
+            )
             batch_t0 = time.perf_counter()
             outputs = llm.generate(batch_prompts, sampling_params=sampling_params)
             batch_elapsed = time.perf_counter() - batch_t0
@@ -1436,8 +1450,14 @@ def run_native_profile(
             total_prompt_tokens += batch_prompt_tokens
             num_batches += 1
             num_samples += len(outputs)
+            completed_progress_prompts += len(batch_prompts)
+            batch_iter.set_postfix_str(
+                f"prompts={completed_progress_prompts}/{total_progress_prompts}"
+            )
             if batch_output_tokens > 0:
-                time_per_output_token_samples.append(batch_elapsed / batch_output_tokens)
+                time_per_output_token_samples.append(
+                    batch_elapsed / batch_output_tokens
+                )
             if run_idx == args.num_runs - 1 and batch_idx < 3:
                 sampled_outputs.extend(
                     (output.prompt, output.outputs[0].text) for output in outputs
@@ -1613,14 +1633,13 @@ def parse_args():
     parser.add_argument(
         "--prompt-set",
         type=str,
-        default="mix",
-        choices=["mix", "coding", "gsm8k", "humaneval", "math-500", "math500"],
+        default="example-mix",
+        choices=["example-mix", "example-coding", "gsm8k", "humaneval", "math-500"],
         help=(
             "Prompt set to use. "
-            "'mix' uses general profiling prompts; 'coding' uses 4 Python "
-            "algorithm/data-structure tasks; 'gsm8k', 'humaneval', and "
-            "'math-500' match the dataset prompt formatting used in the "
-            "dflash repo."
+            "'example-mix' uses general profiling prompts; 'example-coding' "
+            "uses 4 Python algorithm/data-structure tasks; 'gsm8k', 'humaneval', and "
+            "'math-500' match dataset prompt formatting used in the dflash repo."
         ),
     )
     parser.add_argument(
@@ -1848,14 +1867,22 @@ def parse_args():
         "--tree-draft",
         type=str,
         default="accum_logp",
-        choices=["accum_logp", "entropy", "hybrid", "opt_prefix"],
+        choices=[
+            "accum_logp",
+            "entropy",
+            "hybrid",
+            "opt_prefix",
+            "top2gap_fanout",
+        ],
         help=(
             "Scoring strategy for tree node expansion. "
             "'accum_logp' prioritises high-probability prefixes. "
             "'entropy' prioritises uncertain positions. "
             "'hybrid' combines cumulative log-prob with entropy. "
             "'opt_prefix' builds the provably optimal tree under factorized "
-            "draft marginals (ignores --tree-construction)."
+            "draft marginals (ignores --tree-construction). "
+            "'top2gap_fanout' caps per-depth fanout from the rank-1/rank-2 "
+            "logprob gap."
         ),
     )
     parser.add_argument(

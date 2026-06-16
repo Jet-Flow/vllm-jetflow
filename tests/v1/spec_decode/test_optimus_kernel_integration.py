@@ -636,6 +636,15 @@ class TestSpeculativeConfigKernel:
         assert "triton" in args
         assert "optimus" in args
 
+    def test_tree_draft_includes_top2gap_fanout(self):
+        """Verify DFlash tree_draft accepts top2gap_fanout."""
+        import typing
+        from vllm.config.speculative import SpeculativeConfig
+
+        hints = typing.get_type_hints(SpeculativeConfig)
+        args = typing.get_args(hints["tree_draft"])
+        assert "top2gap_fanout" in args
+
     def test_tree_kv_layout_field(self):
         """Verify DFlash tree KV layout defaults to physical compaction."""
         import typing

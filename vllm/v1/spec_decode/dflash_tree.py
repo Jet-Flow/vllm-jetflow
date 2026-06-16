@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import heapq
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -219,6 +220,7 @@ def _build_tree_breadth_first(
     score_mode: str = "accum_logp",
     per_depth_entropy: list[float] | None = None,
     hybrid_alpha: float = 1.0,
+    fanout_caps: list[int] | None = None,
 ) -> DraftTreeCPU:
     """Heap expansion (breadth-biased) using the chosen scoring strategy.
 
@@ -243,7 +245,8 @@ def _build_tree_breadth_first(
         depth = depths_list[node_idx]
         if depth >= depth_count:
             continue
-        children_to_add = min(width, budget - num_nodes)
+        fanout_cap = fanout_caps[depth] if fanout_caps is not None else width
+        children_to_add = min(fanout_cap, width, budget - num_nodes)
         row_tokens = topk_tokens_cpu[depth]
         row_logprobs = topk_logprobs_cpu[depth]
         expansion_ent = (
@@ -275,6 +278,90 @@ def _build_tree_breadth_first(
     )
 
 
+def _top2gap_sigmoid_cap(
+    gap: float,
+    width: int,
+    beta: float = 2.0,
+    g_0: float = 1.0,
+) -> int:
+    """Return fanout cap from rank-1/rank-2 logprob gap.
+
+    Large gap means the drafter is decisive, so keep a narrow fanout. Small
+    gap means rank 1 and 2 are close, so spend more tree budget at that depth.
+    """
+    arg = -beta * (gap - g_0)
+    if arg >= 0:
+        sigmoid = 1.0 / (1.0 + math.exp(-arg))
+    else:
+        exp_arg = math.exp(arg)
+        sigmoid = exp_arg / (1.0 + exp_arg)
+    return max(1, int(round(width * sigmoid)))
+
+
+def top2gap_fanout_caps(
+    topk_logprobs_cpu: list[list[float]],
+    beta: float = 2.0,
+    g_0: float = 1.0,
+) -> list[int]:
+    """Compute per-depth fanout caps for ``top2gap_fanout`` mode."""
+    if not topk_logprobs_cpu:
+        return []
+    width = len(topk_logprobs_cpu[0])
+    if width < 2:
+        return [1] * len(topk_logprobs_cpu)
+    return [
+        _top2gap_sigmoid_cap(row[0] - row[1], width, beta=beta, g_0=g_0)
+        for row in topk_logprobs_cpu
+    ]
+
+
+def _build_tree_with_per_depth_cap(
+    root_token: int,
+    topk_tokens_cpu: list[list[int]],
+    topk_logprobs_cpu: list[list[float]],
+    budget: int,
+    fanout_caps: list[int],
+) -> DraftTreeCPU:
+    """Heap expansion using a per-depth fanout cap."""
+    depth_count = len(topk_tokens_cpu)
+    width = len(topk_tokens_cpu[0]) if depth_count else 0
+
+    tokens_list: list[int] = [root_token]
+    parents_list: list[int] = [-1]
+    depths_list: list[int] = [0]
+    num_nodes = 1
+
+    counter = 0
+    heap: list[tuple[float, int, int]] = [(0.0, counter, 0)]
+    cum_lp_at: list[float] = [0.0]
+
+    while heap and num_nodes < budget:
+        neg_cum_lp, _, node_idx = heapq.heappop(heap)
+        depth = depths_list[node_idx]
+        if depth >= depth_count:
+            continue
+        cap = fanout_caps[depth] if depth < len(fanout_caps) else width
+        children_to_add = min(cap, width, budget - num_nodes)
+        row_tokens = topk_tokens_cpu[depth]
+        row_logprobs = topk_logprobs_cpu[depth]
+        for child_idx in range(children_to_add):
+            child_cum_lp = -neg_cum_lp + row_logprobs[child_idx]
+            tokens_list.append(row_tokens[child_idx])
+            parents_list.append(node_idx)
+            depths_list.append(depth + 1)
+            cum_lp_at.append(child_cum_lp)
+            counter += 1
+            heapq.heappush(heap, (-child_cum_lp, counter, num_nodes))
+            num_nodes += 1
+
+    return DraftTreeCPU(
+        token_ids=tokens_list,
+        parent_indices=parents_list,
+        depths=depths_list,
+        num_nodes=num_nodes,
+    )
+
+
 def _build_tree_depth_first(
     root_token: int,
     topk_tokens_cpu: list[list[int]],
@@ -283,6 +370,7 @@ def _build_tree_depth_first(
     score_mode: str = "accum_logp",
     per_depth_entropy: list[float] | None = None,
     hybrid_alpha: float = 1.0,
+    fanout_caps: list[int] | None = None,
 ) -> DraftTreeCPU:
     """Depth-first tree construction that guarantees the greedy spine.
 
@@ -338,7 +426,11 @@ def _build_tree_depth_first(
         if depth >= depth_count:
             continue
         start_child = 1 if node_idx in spine_set else 0
-        children_to_add = min(width - start_child, budget - num_nodes)
+        fanout_cap = fanout_caps[depth] if fanout_caps is not None else width
+        capped_children = max(fanout_cap - start_child, 0)
+        children_to_add = min(
+            capped_children, width - start_child, budget - num_nodes,
+        )
         if children_to_add <= 0:
             continue
         row_tokens = topk_tokens_cpu[depth]
@@ -470,12 +562,25 @@ def _build_tree_cpu(
         return _build_tree_opt_prefix(
             root_token, topk_tokens_cpu, topk_logprobs_cpu, budget,
         )
+    if score_mode == "top2gap_fanout":
+        fanout_caps = top2gap_fanout_caps(topk_logprobs_cpu)
+        builder = (
+            _build_tree_depth_first if depth_first else _build_tree_breadth_first
+        )
+        return builder(
+            root_token, topk_tokens_cpu, topk_logprobs_cpu, budget,
+            score_mode="accum_logp",
+            per_depth_entropy=None,
+            hybrid_alpha=hybrid_alpha,
+            fanout_caps=fanout_caps,
+        )
     builder = _build_tree_depth_first if depth_first else _build_tree_breadth_first
     return builder(
         root_token, topk_tokens_cpu, topk_logprobs_cpu, budget,
         score_mode=score_mode,
         per_depth_entropy=per_depth_entropy,
         hybrid_alpha=hybrid_alpha,
+        fanout_caps=None,
     )
 
 

@@ -148,7 +148,7 @@ class SpeculativeConfig:
     """Optional cap on the total number of tree nodes used for DFlash tree
     inference experiments."""
     tree_draft: Literal[
-        "accum_logp", "entropy", "hybrid", "opt_prefix",
+        "accum_logp", "entropy", "hybrid", "opt_prefix", "top2gap_fanout",
     ] = "accum_logp"
     """Scoring strategy for DFlash tree node expansion.
     'accum_logp' prioritises high-probability prefixes (original behaviour).
@@ -157,7 +157,9 @@ class SpeculativeConfig:
     tree_hybrid_alpha).
     'opt_prefix' builds the provably optimal tree under factorized draft
     marginals by selecting the top-B prefix-probability nodes via a best-first
-    heap (DDTree algorithm).  Ignores tree_construction."""
+    heap (DDTree algorithm).  Ignores tree_construction.
+    'top2gap_fanout' caps per-depth fanout from the rank-1/rank-2 logprob gap
+    and uses cumulative-log-prob heap expansion."""
     tree_hybrid_alpha: float = Field(default=1.0, gt=0.0)
     """Weight applied to per-depth entropy in 'hybrid' scoring mode.
     Larger values shift budget towards uncertain positions."""
