@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Inference-only Jurassic model."""
 
+import os
 import typing
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -42,6 +43,7 @@ from vllm.model_executor.layers.vocab_parallel_embedding import (
 )
 from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.sequence import IntermediateTensors
+from vllm.utils.torch_utils import direct_register_custom_op
 from vllm.v1.attention.backend import AttentionType
 
 from .interfaces import EagleModelMixin, MixtureOfExperts, SupportsEagle3, SupportsPP
@@ -57,6 +59,33 @@ from .utils import (
 )
 
 logger = init_logger(__name__)
+
+def _dflash_compiled_layer_barrier(hidden_states: torch.Tensor) -> torch.Tensor:
+    return torch.zeros((), device=hidden_states.device, dtype=torch.float32)
+
+
+def _dflash_compiled_layer_barrier_fake(hidden_states: torch.Tensor) -> torch.Tensor:
+    return torch.zeros((), device=hidden_states.device, dtype=torch.float32)
+
+
+direct_register_custom_op(
+    op_name="dflash_compiled_layer_barrier",
+    op_func=_dflash_compiled_layer_barrier,
+    fake_impl=_dflash_compiled_layer_barrier_fake,
+    mutates_args=[],
+)
+
+
+def _maybe_apply_dflash_compiled_layer_barrier(
+    hidden_states: torch.Tensor,
+) -> torch.Tensor:
+    if (
+        torch.compiler.is_compiling()
+        and os.environ.get("DFLASH_COMPILED_LAYER_BARRIER", "1") != "0"
+    ):
+        dep = torch.ops.vllm.dflash_compiled_layer_barrier(hidden_states)
+        return hidden_states + dep.to(dtype=hidden_states.dtype)
+    return hidden_states
 
 
 class FP32ReplicatedLinear(ReplicatedLinear):
@@ -634,6 +663,7 @@ class Step3p5Model(nn.Module, EagleModelMixin):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             hidden_states = layer(positions, hidden_states)
+            hidden_states = _maybe_apply_dflash_compiled_layer_barrier(hidden_states)
             self._maybe_add_hidden_state(aux_hidden_states, i + 1, hidden_states, None)
 
         if not get_pp_group().is_last_rank:

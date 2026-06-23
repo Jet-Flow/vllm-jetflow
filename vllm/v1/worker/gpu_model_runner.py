@@ -404,6 +404,7 @@ class ExecuteModelState(NamedTuple):
     ec_connector_output: ECConnectorOutput | None
     cudagraph_stats: CUDAGraphStat | None
     slot_mappings: dict[str, torch.Tensor] | list[dict[str, torch.Tensor]] | None
+    attn_metadata: PerLayerAttnMetadata | None
 
 
 class GPUModelRunner(
@@ -2139,12 +2140,9 @@ class GPUModelRunner(
                 # slot, but RoPE must reflect each node's depth in the
                 # tree so the target model computes correct logits.
                 if spec_decode_metadata.depths is not None:
-                    lidx = spec_decode_metadata.logits_indices
-                    self.positions[lidx] = (
-                        self.num_computed_tokens[
-                            req_indices_gpu[lidx]
-                        ].to(torch.int64)
-                        + spec_decode_metadata.depths
+                    self._apply_dflash_tree_depth_positions(
+                        spec_decode_metadata,
+                        req_indices_gpu,
                     )
             else:
                 spec_decode_metadata = self._calc_spec_decode_metadata(
@@ -2370,6 +2368,17 @@ class GPUModelRunner(
                     }
                 except Exception:
                     pass
+                # Provide depth-based absolute positions for every tree
+                # query token so the attention kernel uses the correct
+                # causal mask and sliding-window bounds (instead of the
+                # sequential index within the flat query batch).
+                # self.positions is updated with depth-based values for
+                # all tree nodes just before this point (see the
+                # spec_decode_metadata.depths block in _prepare_inputs).
+                # The buffer is pre-allocated (CUDAGraph-safe): the
+                # captured graph reads from the same pointer at replay
+                # time, after the positions have been written.
+                dflash_per_query_abs_pos = self.positions
                 attn_metadata_i = builder.build_for_dflash_tree(
                     common_attn_metadata,
                     spec_decode_metadata.tree_attn_bias,
@@ -2384,6 +2393,7 @@ class GPUModelRunner(
                     logical_kv_slots=spec_decode_metadata.logical_kv_slots,
                     logical_kv_slot_lens=spec_decode_metadata.logical_kv_slot_lens,
                     logical_kv_starts=spec_decode_metadata.logical_kv_starts,
+                    per_query_abs_pos=dflash_per_query_abs_pos,
                 )
             elif for_cudagraph_capture:
                 attn_metadata_i = builder.build_for_cudagraph_capture(
@@ -2710,6 +2720,35 @@ class GPUModelRunner(
                 )
 
                 xdrope_pos_ptr += completion_part_len
+
+    def _apply_dflash_tree_depth_positions(
+        self,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        req_indices_gpu: torch.Tensor,
+    ) -> None:
+        """Apply depth-based positions to every position buffer used by forward.
+
+        ``self.positions`` is always used for slot mapping and for non-MRoPE
+        models.  M-RoPE/XD-RoPE models bypass it in ``_get_positions()``, so
+        tree verification must mirror the same depth-based positions into those
+        model-facing buffers as well.
+        """
+        assert spec_decode_metadata.depths is not None
+        lidx = spec_decode_metadata.logits_indices
+        depth_positions = (
+            self.num_computed_tokens[req_indices_gpu[lidx]].to(torch.int64)
+            + spec_decode_metadata.depths
+        )
+        self.positions[lidx] = depth_positions
+
+        if self.uses_mrope:
+            expanded = depth_positions.unsqueeze(0).expand(3, -1)
+            self.mrope_positions.gpu[:, lidx] = expanded
+        elif self.uses_xdrope_dim > 0:
+            expanded = depth_positions.unsqueeze(0).expand(
+                self.uses_xdrope_dim, -1
+            )
+            self.xdrope_positions.gpu[:, lidx] = expanded
 
     def _calc_spec_decode_metadata(
         self,
@@ -3076,10 +3115,21 @@ class GPUModelRunner(
         logical_kv_slots: torch.Tensor | None = None
         logical_kv_slot_lens: torch.Tensor | None = None
         logical_kv_starts: torch.Tensor | None = None
+        # Only create logical KV slots in the dummy metadata when the runtime
+        # will actually USE the logical KV layout.  _use_dflash_logical_kv_layout
+        # requires tree_kv_layout=="logical" AND exactly one KV cache group.
+        # The dummy metadata is used for CUDAGraph capture; if we allocate
+        # logical_kv_slots here, the Triton kernel is compiled/captured with
+        # USE_LOGICAL_KV_SLOTS=True.  During inference, if the condition is not
+        # met (e.g. multiple KV cache groups), _prepare_dflash_logical_kv_step
+        # returns early leaving logical_kv_slots=None, and _copy_logical_kv_for_
+        # cudagraph is never called to refresh the capture buffer — the kernel
+        # then reads stale values, causing corrupt attention and wrong outputs.
         if (
             self.speculative_config is not None
             and getattr(self.speculative_config, "tree_kv_layout", "physical")
             == "logical"
+            and len(self.kv_cache_config.kv_cache_groups) == 1
         ):
             logical_kv_slots, logical_kv_slot_lens, logical_kv_starts = (
                 self._ensure_dflash_logical_kv_output_buffers(
@@ -3827,6 +3877,386 @@ class GPUModelRunner(
     def _dflash_debug_artifact_limit(self) -> int:
         return int(getattr(self, "_dflash_debug_artifact_max_records", 4))
 
+    @staticmethod
+    def _dflash_parse_int_list_env(
+        name: str,
+        default: list[int],
+    ) -> list[int]:
+        value = os.environ.get(name)
+        if value is None or value.strip() == "":
+            return list(default)
+        result: list[int] = []
+        for part in value.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                result.append(int(part))
+            except ValueError:
+                logger.warning(
+                    "Ignoring invalid integer %r in %s=%r", part, name, value
+                )
+        return result
+
+    @staticmethod
+    def _dflash_tensor_norms(tensor: torch.Tensor) -> torch.Tensor:
+        if tensor.numel() == 0:
+            return torch.empty(0, dtype=torch.float32)
+        return tensor.float().flatten(start_dim=1).norm(dim=1).cpu()
+
+    def _dflash_gather_kv_slots(
+        self,
+        kv_cache: torch.Tensor,
+        slots: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        key_cache, value_cache = kv_cache.unbind(0)
+        block_size = int(key_cache.shape[1])
+        slots = slots.to(device=key_cache.device, dtype=torch.int64)
+        blocks = torch.div(slots, block_size, rounding_mode="floor")
+        offsets = slots % block_size
+        return (
+            key_cache[blocks, offsets].detach().cpu(),
+            value_cache[blocks, offsets].detach().cpu(),
+        )
+
+    def _find_dflash_verify_bundle(
+        self,
+        *,
+        req_id: str,
+        query_start: int,
+        query_end: int,
+    ) -> dict[str, object] | None:
+        verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+        if not verify_bundles:
+            return None
+        for bundle in reversed(verify_bundles):
+            if (
+                bundle.get("req_id") == req_id
+                and int(bundle.get("query_start", -1)) == int(query_start)
+                and int(bundle.get("query_end", -1)) == int(query_end)
+            ):
+                return bundle
+        return None
+
+    def _attach_dflash_verifier_state_probe(
+        self,
+        *,
+        bundle: dict[str, object],
+        req_idx: int,
+        req_start: int,
+        qlen: int,
+        req_slots: torch.Tensor,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+        common_attn_metadata: CommonAttentionMetadata,
+    ) -> None:
+        """Attach small verifier-forward state snapshots to a debug bundle."""
+        bundle["slot_mapping"] = req_slots.detach().cpu()
+        bundle["verifier_query_start_loc"] = (
+            common_attn_metadata.query_start_loc.detach().cpu()
+        )
+        bundle["verifier_seq_lens"] = common_attn_metadata.seq_lens.detach().cpu()
+        bundle["verifier_max_seq_len"] = int(common_attn_metadata.max_seq_len)
+        if common_attn_metadata.block_table_tensor is not None:
+            bundle["verifier_block_table_req"] = (
+                common_attn_metadata.block_table_tensor[req_idx].detach().cpu()
+            )
+
+        node_indices = self._dflash_parse_int_list_env(
+            "DFLASH_VERIFIER_PROBE_NODES",
+            [0, 6],
+        )
+        node_indices = sorted({idx for idx in node_indices if 0 <= idx < qlen})
+        if not node_indices:
+            return
+
+        node_idx_t = torch.tensor(
+            node_indices, dtype=torch.long, device=req_slots.device
+        )
+        probe_slots = req_slots[node_idx_t]
+        global_indices = req_start + node_idx_t
+        bundle["verifier_probe_node_indices"] = node_idx_t.detach().cpu()
+        bundle["verifier_probe_slots"] = probe_slots.detach().cpu()
+        bundle["verifier_probe_positions"] = (
+            self.positions[global_indices].detach().cpu()
+        )
+        if self.uses_mrope:
+            bundle["verifier_probe_model_positions"] = (
+                self.mrope_positions.gpu[:, global_indices].detach().cpu()
+            )
+            bundle["verifier_probe_model_position_kind"] = "mrope"
+        elif self.uses_xdrope_dim > 0:
+            bundle["verifier_probe_model_positions"] = (
+                self.xdrope_positions.gpu[:, global_indices].detach().cpu()
+            )
+            bundle["verifier_probe_model_position_kind"] = "xdrope"
+        else:
+            bundle["verifier_probe_model_positions"] = (
+                self.positions[global_indices].unsqueeze(0).detach().cpu()
+            )
+            bundle["verifier_probe_model_position_kind"] = "default"
+        if spec_decode_metadata.depths is not None:
+            bundle["verifier_probe_depths"] = (
+                spec_decode_metadata.depths[global_indices].detach().cpu()
+            )
+        if spec_decode_metadata.parent_indices is not None:
+            bundle["verifier_probe_parent_indices"] = (
+                spec_decode_metadata.parent_indices[global_indices].detach().cpu()
+            )
+
+        layer_indices = self._dflash_parse_int_list_env(
+            "DFLASH_VERIFIER_PROBE_KV_LAYERS",
+            [0],
+        )
+        max_layers = len(getattr(self, "kv_caches", []))
+        layer_indices = sorted({idx for idx in layer_indices if 0 <= idx < max_layers})
+        if not layer_indices:
+            return
+
+        kv_probe: dict[str, dict[str, torch.Tensor]] = {}
+        for layer_idx in layer_indices:
+            key, value = self._dflash_gather_kv_slots(
+                self.kv_caches[layer_idx],
+                probe_slots,
+            )
+            kv_probe[str(layer_idx)] = {
+                "key": key,
+                "value": value,
+                "key_norm": self._dflash_tensor_norms(key),
+                "value_norm": self._dflash_tensor_norms(value),
+            }
+        bundle["verifier_probe_kv"] = kv_probe
+
+        tail = int(os.environ.get("DFLASH_VERIFIER_PROBE_CONTEXT_TAIL", "4"))
+        if tail <= 0 or common_attn_metadata.block_table_tensor is None:
+            return
+        seq_len = int(common_attn_metadata.seq_lens[req_idx].detach().cpu().item())
+        context_len = max(0, seq_len - qlen)
+        start_pos = max(0, context_len - tail)
+        context_positions = torch.arange(
+            start_pos,
+            context_len,
+            dtype=torch.int64,
+            device=req_slots.device,
+        )
+        if context_positions.numel() == 0:
+            return
+        key_cache0, _ = self.kv_caches[layer_indices[0]].unbind(0)
+        block_size = int(key_cache0.shape[1])
+        block_table_req = common_attn_metadata.block_table_tensor[req_idx].to(
+            device=req_slots.device,
+            dtype=torch.int64,
+        )
+        blocks = block_table_req[
+            torch.div(context_positions, block_size, rounding_mode="floor")
+        ]
+        context_slots = blocks * block_size + (context_positions % block_size)
+        bundle["verifier_probe_context_positions"] = context_positions.detach().cpu()
+        bundle["verifier_probe_context_slots"] = context_slots.detach().cpu()
+        context_kv_probe: dict[str, dict[str, torch.Tensor]] = {}
+        for layer_idx in layer_indices:
+            key, value = self._dflash_gather_kv_slots(
+                self.kv_caches[layer_idx],
+                context_slots,
+            )
+            context_kv_probe[str(layer_idx)] = {
+                "key_norm": self._dflash_tensor_norms(key),
+                "value_norm": self._dflash_tensor_norms(value),
+            }
+        bundle["verifier_probe_context_kv"] = context_kv_probe
+
+    @staticmethod
+    def _iter_dflash_attention_debug_records(
+        attn_metadata: PerLayerAttnMetadata | None,
+    ) -> list[dict[str, object]]:
+        if attn_metadata is None:
+            return []
+        metadata_values: list[AttentionMetadata] = []
+        if isinstance(attn_metadata, list):
+            for ubatch_metadata in attn_metadata:
+                metadata_values.extend(ubatch_metadata.values())
+        else:
+            metadata_values.extend(attn_metadata.values())
+
+        records: list[dict[str, object]] = []
+        seen_metadata: set[int] = set()
+        for metadata in metadata_values:
+            metadata_id = id(metadata)
+            if metadata_id in seen_metadata:
+                continue
+            seen_metadata.add(metadata_id)
+            debug_records = getattr(metadata, "debug_attn_records", None)
+            if debug_records:
+                records.extend(debug_records)
+        return records
+
+    def _attach_dflash_verifier_attention_probe(
+        self,
+        *,
+        attn_metadata: PerLayerAttnMetadata | None,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+    ) -> None:
+        """Attach per-layer verifier attention-output diagnostics."""
+        records = self._iter_dflash_attention_debug_records(attn_metadata)
+        if not records:
+            return
+        verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+        if not verify_bundles:
+            return
+
+        query_lens = spec_decode_metadata.query_lens
+        req_spans: list[tuple[int, int, dict[str, object] | None]] = []
+        start = 0
+        for req_idx, qlen in enumerate(query_lens):
+            end = start + qlen
+            bundle = None
+            if (
+                req_idx < len(spec_decode_metadata.is_tree_req)
+                and spec_decode_metadata.is_tree_req[req_idx]
+            ):
+                bundle = self._find_dflash_verify_bundle(
+                    req_id=self.input_batch.req_ids[req_idx],
+                    query_start=start,
+                    query_end=end,
+                )
+            req_spans.append((start, end, bundle))
+            start = end
+
+        by_bundle_id: dict[int, list[dict[str, object]]] = {}
+        bundles_by_id: dict[int, dict[str, object]] = {}
+        for record in records:
+            nodes = record.get("nodes")
+            if not isinstance(nodes, list):
+                continue
+            base_record = {
+                key: value for key, value in record.items() if key != "nodes"
+            }
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                req_idx = int(node.get("req_idx", -1))
+                if req_idx < 0 or req_idx >= len(req_spans):
+                    continue
+                _, _, bundle = req_spans[req_idx]
+                if bundle is None:
+                    continue
+                bundle_id = id(bundle)
+                bundles_by_id[bundle_id] = bundle
+                node_payload = {
+                    key: value for key, value in node.items() if key != "req_idx"
+                }
+                by_bundle_id.setdefault(bundle_id, []).append(
+                    {
+                        **base_record,
+                        **node_payload,
+                        "req_idx": req_idx,
+                    }
+                )
+
+        for bundle_id, bundle_records in by_bundle_id.items():
+            bundles_by_id[bundle_id]["verifier_attention_probe"] = bundle_records
+
+    def _attach_dflash_verifier_forward_probe(
+        self,
+        *,
+        logits: torch.Tensor | None,
+        sample_hidden_states: torch.Tensor,
+        spec_decode_metadata: DFlashTreeSpecDecodeMetadata,
+    ) -> None:
+        """Attach small verifier-forward logits/hidden diagnostics."""
+        if logits is None:
+            return
+        verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
+        if not verify_bundles:
+            return
+
+        probe_topk = int(os.environ.get("DFLASH_VERIFIER_PROBE_TOPK", "8"))
+        probe_topk = max(0, min(probe_topk, int(logits.shape[-1])))
+        probe_nodes_default = [0, 6]
+        probe_token_ids = self._dflash_parse_int_list_env(
+            "DFLASH_VERIFIER_PROBE_TOKEN_IDS",
+            [201, 78560],
+        )
+
+        query_token_ids = self.input_ids.gpu[spec_decode_metadata.logits_indices]
+        greedy_all = torch.argmax(logits, dim=-1)
+        query_lens = spec_decode_metadata.query_lens
+        start = 0
+        for req_idx, qlen in enumerate(query_lens):
+            end = start + qlen
+            if (
+                req_idx >= len(spec_decode_metadata.is_tree_req)
+                or not spec_decode_metadata.is_tree_req[req_idx]
+            ):
+                start = end
+                continue
+
+            bundle = self._find_dflash_verify_bundle(
+                req_id=self.input_batch.req_ids[req_idx],
+                query_start=start,
+                query_end=end,
+            )
+            if bundle is None:
+                start = end
+                continue
+
+            node_indices = self._dflash_parse_int_list_env(
+                "DFLASH_VERIFIER_PROBE_NODES",
+                probe_nodes_default,
+            )
+            node_indices = sorted({idx for idx in node_indices if 0 <= idx < qlen})
+            if not node_indices:
+                start = end
+                continue
+
+            node_idx_t = torch.tensor(
+                node_indices, dtype=torch.long, device=logits.device
+            )
+            req_logits = logits[start:end]
+            req_hidden = sample_hidden_states[start:end]
+            req_tokens = query_token_ids[start:end]
+            req_greedy = greedy_all[start:end]
+            probe_logits = req_logits[node_idx_t].float()
+            bundle["verifier_forward_probe_node_indices"] = node_idx_t.detach().cpu()
+            bundle["verifier_forward_probe_token_ids"] = (
+                req_tokens[node_idx_t].detach().cpu()
+            )
+            bundle["verifier_forward_probe_greedy_token_ids"] = (
+                req_greedy[node_idx_t].detach().cpu()
+            )
+            bundle["verifier_forward_probe_hidden_norm"] = self._dflash_tensor_norms(
+                req_hidden[node_idx_t]
+            )
+            bundle["verifier_forward_probe_logits_norm"] = self._dflash_tensor_norms(
+                probe_logits
+            )
+            if probe_topk > 0:
+                topk_vals, topk_ids = torch.topk(probe_logits, k=probe_topk, dim=-1)
+                bundle["verifier_forward_probe_topk_token_ids"] = (
+                    topk_ids.detach().cpu()
+                )
+                bundle["verifier_forward_probe_topk_logits"] = (
+                    topk_vals.detach().cpu()
+                )
+
+            candidate_ids = set(probe_token_ids)
+            candidate_ids.update(int(t) for t in req_tokens[node_idx_t].detach().cpu())
+            candidate_ids.update(int(t) for t in req_greedy[node_idx_t].detach().cpu())
+            candidate_ids = {
+                tok for tok in candidate_ids if 0 <= tok < int(logits.shape[-1])
+            }
+            if candidate_ids:
+                candidate_t = torch.tensor(
+                    sorted(candidate_ids), dtype=torch.long, device=logits.device
+                )
+                bundle["verifier_forward_probe_candidate_token_ids"] = (
+                    candidate_t.detach().cpu()
+                )
+                bundle["verifier_forward_probe_candidate_logits"] = (
+                    probe_logits[:, candidate_t].detach().cpu()
+                )
+
+            start = end
+
     def _append_dflash_tree_commit_debug_record(
         self,
         record: dict[str, object],
@@ -4182,7 +4612,7 @@ class GPUModelRunner(
                 path_gpu is None
                 or req_idx >= len(spec_decode_metadata.is_tree_req)
                 or not spec_decode_metadata.is_tree_req[req_idx]
-                or path_gpu.shape[0] <= 1
+                or path_gpu.shape[0] < 1
             ):
                 req_start += qlen
                 continue
@@ -4193,8 +4623,9 @@ class GPUModelRunner(
             path_len = path_gpu.shape[0]
             src_slots = req_slots[path_gpu]
             dst_slots = req_slots[:path_len]
-            all_src_slots.append(src_slots)
-            all_dst_slots.append(dst_slots)
+            if not torch.equal(src_slots, dst_slots):
+                all_src_slots.append(src_slots)
+                all_dst_slots.append(dst_slots)
 
             if self._should_append_dflash_tree_commit_debug_record():
                 self._append_dflash_tree_commit_debug_record(
@@ -4211,10 +4642,24 @@ class GPUModelRunner(
                     }
                 )
 
-            verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
-            if verify_bundles and "compact_src_slots" not in verify_bundles[-1]:
-                verify_bundles[-1]["compact_src_slots"] = src_slots.detach().cpu()
-                verify_bundles[-1]["compact_dst_slots"] = dst_slots.detach().cpu()
+            verify_bundle = self._find_dflash_verify_bundle(
+                req_id=self.input_batch.req_ids[req_idx],
+                query_start=req_start,
+                query_end=req_start + qlen,
+            )
+            if verify_bundle is not None:
+                self._attach_dflash_verifier_state_probe(
+                    bundle=verify_bundle,
+                    req_idx=req_idx,
+                    req_start=req_start,
+                    qlen=qlen,
+                    req_slots=req_slots,
+                    spec_decode_metadata=spec_decode_metadata,
+                    common_attn_metadata=common_attn_metadata,
+                )
+                if "compact_src_slots" not in verify_bundle:
+                    verify_bundle["compact_src_slots"] = src_slots.detach().cpu()
+                    verify_bundle["compact_dst_slots"] = dst_slots.detach().cpu()
 
             req_start += qlen
 
@@ -4337,7 +4782,7 @@ class GPUModelRunner(
             if (
                 req_idx >= len(spec_decode_metadata.is_tree_req)
                 or not spec_decode_metadata.is_tree_req[req_idx]
-                or len(accepted_path) <= 1
+                or len(accepted_path) < 1
             ):
                 continue
 
@@ -4971,88 +5416,27 @@ class GPUModelRunner(
     ) -> bool:
         if not self._use_dflash_logical_kv_layout(spec_decode_metadata):
             return False
-        if (
-            spec_decode_metadata.logical_kv_slots is None
-            or spec_decode_metadata.logical_kv_slot_lens is None
-            or spec_decode_metadata.logical_kv_starts is None
-        ):
-            return False
-        accept_paths_gpu = getattr(
-            self, "_dflash_tree_accept_paths_gpu", None
-        )
-        if not accept_paths_gpu:
-            return False
-
-        slot_mapping = common_attn_metadata.slot_mapping
-        req_start = 0
-        for req_idx, path_gpu in enumerate(accept_paths_gpu):
-            qlen = spec_decode_metadata.query_lens[req_idx]
-            req_id = self.input_batch.req_ids[req_idx]
-            old_len = int(self.input_batch.num_computed_tokens_cpu[req_idx])
-            if (
-                path_gpu is None
-                or req_idx >= len(spec_decode_metadata.is_tree_req)
-                or not spec_decode_metadata.is_tree_req[req_idx]
-                or path_gpu.numel() == 0
-            ):
-                req_start += qlen
-                continue
-
-            req_slots = self._dflash_as_int64(
-                slot_mapping[req_start : req_start + qlen]
-            )
-            accepted_slots = req_slots[path_gpu].detach()
-            persisted_slots = self._dflash_logical_kv_slots.get(req_id)
-            persisted_len = self._dflash_logical_kv_slot_lens.get(req_id, 0)
-            num_accepted = accepted_slots.numel()
-            if persisted_slots is None or persisted_len == 0:
-                self._dflash_logical_kv_starts[req_id] = old_len
-            new_len = persisted_len + num_accepted
-            persisted_slots = self._ensure_dflash_logical_kv_persisted_slots(
-                req_id,
-                max(self.max_model_len, new_len),
-            )
-            if num_accepted > 0:
-                persisted_slots[persisted_len:new_len].copy_(accepted_slots)
-            self._dflash_logical_kv_slot_lens[req_id] = new_len
-            if self._should_append_dflash_tree_commit_debug_record():
-                self._append_dflash_tree_commit_debug_record(
-                    {
-                        "layout": "logical",
-                        "req_idx": int(req_idx),
-                        "req_id": req_id,
-                        "query_len": int(qlen),
-                        "query_start": int(req_start),
-                        "old_len": int(old_len),
-                        "logical_start": self._dflash_logical_kv_starts[req_id],
-                        "persisted_len_before": int(persisted_len),
-                        "persisted_len_after": int(new_len),
-                        "accepted_path": path_gpu.detach().cpu(),
-                        "slot_mapping": req_slots.detach().cpu(),
-                        "logical_commit_accepted_slots": (
-                            accepted_slots.detach().cpu()
-                        ),
-                        "logical_commit_slots": (
-                            persisted_slots[:new_len].detach().cpu()
-                        ),
-                    }
-                )
-            verify_bundles = getattr(self, "_dflash_runtime_verify_bundles", None)
-            if verify_bundles:
-                verify_bundles[-1]["logical_commit_accepted_slots"] = (
-                    accepted_slots.detach().cpu()
-                )
-                verify_bundles[-1]["logical_commit_start"] = (
-                    self._dflash_logical_kv_starts[req_id]
-                )
-                verify_bundles[-1]["logical_commit_slots"] = (
-                    persisted_slots[:new_len].detach().cpu()
-                )
-            req_start += qlen
-
-        self._dflash_tree_accept_paths_gpu = None
-        self._dflash_tree_accept_paths = None
-        return True
+        # Return False to fall through to physical KV compaction.
+        #
+        # The persisted-slot optimization reuses accepted-node KV slots across
+        # tree steps, but the bonus token written between consecutive tree steps
+        # occupies a canonical slot that is not tracked in persisted_slots.
+        # That untracked slot falls inside the candidate range for the next
+        # prepare call and gets incorrectly assigned as a step_slot, overwriting
+        # the bonus token's KV on the next forward pass.
+        #
+        # The fix is to never accumulate persisted_slots (persisted_len stays 0
+        # after each step).  With persisted_len == 0, _prepare_dflash_logical_kv_step
+        # always uses canonical step_slots (== block-table slots), so
+        # logical_kv_slots carries the same physical addresses as the block table.
+        # Returning False here lets _compact_dflash_tree_kv_cache run the normal
+        # physical compaction path, which moves accepted-node KV to consecutive
+        # canonical positions and restores correctness.
+        #
+        # The slot-reuse optimisation can be restored once the bonus-token gap is
+        # properly accounted for (e.g. by recording the bonus slot and excluding
+        # it from the free-slot candidate set in the next prepare call).
+        return False
 
     def _get_slot_mappings(
         self,
@@ -5498,6 +5882,7 @@ class GPUModelRunner(
             ec_connector_output,
             cudagraph_stats,
             slot_mappings,
+            attn_metadata,
         )
         self.kv_connector_output = kv_connector_output
 
@@ -5542,6 +5927,7 @@ class GPUModelRunner(
             ec_connector_output,
             cudagraph_stats,
             slot_mappings,
+            attn_metadata,
         ) = self.execute_model_state
         # Clear ephemeral state.
         self.execute_model_state = None
@@ -5559,6 +5945,15 @@ class GPUModelRunner(
             isinstance(spec_decode_metadata, DFlashTreeSpecDecodeMetadata)
             and spec_decode_common_attn_metadata is not None
         ):
+            self._attach_dflash_verifier_attention_probe(
+                attn_metadata=attn_metadata,
+                spec_decode_metadata=spec_decode_metadata,
+            )
+            self._attach_dflash_verifier_forward_probe(
+                logits=logits,
+                sample_hidden_states=sample_hidden_states,
+                spec_decode_metadata=spec_decode_metadata,
+            )
             async_physical_kv_commit = (
                 self._can_async_dflash_physical_kv_commit(spec_decode_metadata)
                 if self._dflash_async_kv_commit_enabled

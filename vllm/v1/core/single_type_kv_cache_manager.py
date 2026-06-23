@@ -5,7 +5,10 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
 
+from vllm.logger import init_logger
 from vllm.utils.math_utils import cdiv
+
+logger = init_logger(__name__)
 from vllm.v1.core.block_pool import BlockPool
 from vllm.v1.core.kv_cache_utils import (
     BlockHashList,
@@ -565,11 +568,29 @@ class SlidingWindowManager(SingleTypeKVCacheManager):
                 for computed in computed_blocks:
                     computed.pop()
         if use_eagle and computed_blocks[0]:
-            assert kv_cache_spec.block_size == alignment_tokens, (
-                "aligned_length is not compatible with eagle now"
-            )
-            for computed in computed_blocks:
-                computed.pop()
+            if kv_cache_spec.block_size != alignment_tokens:
+                # This happens when the combined KV cache has attention
+                # layers with different page sizes (e.g. DFlash draft model
+                # with fewer KV heads than the target model under TP). The
+                # LCM alignment_tokens > block_size for these sliding-window
+                # layers. Prefix cache reuse is unsupported in this config;
+                # discard the cache hit and log a one-time warning.
+                logger.warning_once(
+                    "Eagle-style speculative decoding prefix caching is "
+                    "disabled for sliding-window layers because the LCM "
+                    "alignment (%d tokens) differs from the layer block size "
+                    "(%d tokens). This typically occurs when the draft and "
+                    "target models have different KV-head counts under tensor "
+                    "parallelism. Generation correctness is unaffected; only "
+                    "prefix-cache reuse for sliding-window layers is skipped.",
+                    alignment_tokens,
+                    kv_cache_spec.block_size,
+                )
+                for computed in computed_blocks:
+                    computed.clear()
+            else:
+                for computed in computed_blocks:
+                    computed.pop()
         return computed_blocks
 
     def get_num_skipped_tokens(self, num_computed_tokens: int) -> int:

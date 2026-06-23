@@ -668,8 +668,17 @@ def unified_kv_cache_update(
     Returns a dummy that is passed to unified_attention to signal a side effect and
     the data dependency between them to ensure torch.compile preserves ordering.
     """
-    _, attn_layer, kv_cache, layer_slot_mapping = get_attention_context(layer_name)
-    if layer_slot_mapping is not None:
+    attn_metadata, attn_layer, kv_cache, layer_slot_mapping = get_attention_context(
+        layer_name
+    )
+    metadata_slot_mapping = getattr(attn_metadata, "slot_mapping", None)
+    # Tree attention carries the verifier slot mapping on the layer metadata.
+    # Prefer it over the generic forward-context mapping so the split KV update
+    # writes exactly the slots that the following attention metadata will read.
+    slot_mapping = (
+        metadata_slot_mapping if metadata_slot_mapping is not None else layer_slot_mapping
+    )
+    if slot_mapping is not None:
         assert hasattr(attn_layer.impl, "do_kv_cache_update"), (
             f"{attn_layer.impl.__class__.__name__} does not support kv cache update"
         )
@@ -678,7 +687,7 @@ def unified_kv_cache_update(
             key,
             value,
             kv_cache,
-            layer_slot_mapping,
+            slot_mapping,
         )
 
     return torch.empty(0, device=kv_cache.device, dtype=kv_cache.dtype)

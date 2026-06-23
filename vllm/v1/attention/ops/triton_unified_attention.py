@@ -83,6 +83,7 @@ def kernel_unified_attention_2d(
     output_stride_0: tl.int64,  # int
     output_stride_1: tl.int64,  # int, should be equal to head_size
     qq_bias_stride_0: tl.int64,  # int
+    qq_bias_len: tl.int64,  # int
     BLOCK_SIZE: tl.constexpr,  # int
     TILE_SIZE: tl.constexpr,  # int must be power of 2
     HEAD_SIZE: tl.constexpr,  # int
@@ -97,6 +98,8 @@ def kernel_unified_attention_2d(
     USE_MM_PREFIX: tl.constexpr,  # bool
     MAX_MM_RANGES: tl.constexpr,  # int
     mm_prefix_range_ptr,  # [num_seqs] - prefix length for each sequence
+    per_query_abs_pos_ptr,  # [num_query_tokens] depth-based abs positions (or 0)
+    USE_PER_QUERY_ABS_POS: tl.constexpr,  # bool
     stride_k_cache_0: tl.int64,  # int
     stride_k_cache_1: tl.int64,  # int
     stride_k_cache_2: tl.int64,  # int
@@ -190,8 +193,32 @@ def kernel_unified_attention_2d(
             qq_bias_ptr + query_bias_pos[:, None] * qq_bias_stride_0
         )  # shape: [BLOCK_M]
 
+    # Depth-based absolute positions for the sliding-window mask only.
+    # For tree verification the Q tensor lays all tree nodes out in BFS
+    # order: a depth-d node may have sequential index S > d.  Using the
+    # sequential index as the window anchor shifts the window relative to
+    # the equivalent AR pass, breaking exact parity.  When per_query_abs_pos
+    # is provided, load the precomputed depth-based position for each query
+    # token to use exclusively for sliding-window bounds.
+    #
+    # IMPORTANT: per_query_abs_pos is NOT used for the causal mask.  The
+    # causal mask must use sequential positions because BFS-ordered tree
+    # ancestors of a depth-d node can have sequential indices *larger* than
+    # d, so a depth-based causal mask would incorrectly block them.  The
+    # qq_bias (tree_attn_bias) separately enforces correct intra-tree
+    # causality via -inf entries for non-ancestor pairs.
+    if USE_PER_QUERY_ABS_POS:
+        # per_query_abs_pos_ptr[global_query_idx] = context_len_for_req + depth
+        q_sw_abs_pos = tl.load(
+            per_query_abs_pos_ptr + cur_batch_in_all_start_index + query_pos,
+            mask=query_mask_0,
+            other=0,
+        ).to(tl.int64)
+    # q_abs_pos_for_mask always uses sequential positions for causal mask.
+    q_abs_pos_for_mask = context_len + query_pos
+
     # compute the length of the longest sequence prefix spanned by any
-    # query token in the current q_block (q_block_local_idx)
+    # query token in the current q_block (q_block_local_idx).
     max_seq_prefix_len = (
         context_len
         + q_block_local_idx * BLOCK_Q
@@ -227,10 +254,22 @@ def kernel_unified_attention_2d(
         )
         # For sliding window, each query position q can only attend to
         # keys in the range [q_abs - SLIDING_WINDOW + 1, q_abs]
-        # where q_abs = context_len + q
+        # where q_abs = context_len + q (or depth-based for tree verify)
         # The union of allowed key positions for this Q-block is:
-        # [context_len + qpos_lo - SLIDING_WINDOW + 1, context_len + qpos_hi]
-        first_allowed_key = context_len + qpos_lo - SLIDING_WINDOW + 1
+        # [sw_lo - SLIDING_WINDOW + 1, context_len + qpos_hi]
+        if USE_PER_QUERY_ABS_POS:
+            # In BFS-ordered tree verification the sequential index of a node
+            # is always >= its depth.  Using the sequential position as the SW
+            # anchor would shift first_allowed_key too far right, skipping
+            # valid context tiles for deeper nodes.  Load the depth-based
+            # anchor for qpos_lo (the node with the smallest BFS index in
+            # this Q-block, which in BFS order has the smallest depth).
+            sw_anchor_lo = tl.load(
+                per_query_abs_pos_ptr + cur_batch_in_all_start_index + qpos_lo
+            ).to(tl.int64)
+            first_allowed_key = sw_anchor_lo - SLIDING_WINDOW + 1
+        else:
+            first_allowed_key = context_len + qpos_lo - SLIDING_WINDOW + 1
         last_allowed_key = context_len + qpos_hi
         # Convert to tile indices and clamp
         tile_start = tl.maximum(0, first_allowed_key // TILE_SIZE)
@@ -316,14 +355,21 @@ def kernel_unified_attention_2d(
         else:
             V = V_load
 
-        # Compute attention mask: causal by default (key <= query)
-        query_abs_pos = context_len + query_pos[:, None]
+        # Compute causal mask using sequential positions (not depth-based).
+        # Sequential positions correctly allow ancestors in BFS-ordered trees.
+        query_abs_pos = q_abs_pos_for_mask[:, None]  # sequential: context_len + query_pos
         seq_mask = seq_offset[None, :] <= query_abs_pos
 
-        # Apply sliding window to base mask BEFORE mm_prefix OR.
-        # Order must match FlexAttention: (causal AND sliding_window) OR mm_prefix
+        # Apply sliding window using depth-based positions when available,
+        # otherwise fall back to sequential.  Depth-based positions ensure
+        # each tree node sees exactly the same context window as the
+        # equivalent AR decode step, regardless of BFS sequential index.
         if SLIDING_WINDOW > 0:
-            seq_mask = seq_mask & ((query_abs_pos - seq_offset) < SLIDING_WINDOW)
+            if USE_PER_QUERY_ABS_POS:
+                sw_abs_pos = q_sw_abs_pos[:, None]
+            else:
+                sw_abs_pos = query_abs_pos
+            seq_mask = seq_mask & ((sw_abs_pos - seq_offset) < SLIDING_WINDOW)
 
         # PrefixLM: extend mask with bidirectional ranges for multimodal tokens.
         # Applied AFTER sliding window so mm_prefix ranges override SW restriction.
@@ -378,7 +424,7 @@ def kernel_unified_attention_2d(
             key_rel_pos = seq_offset - context_len  # shape: [BLOCK_SIZE]
             key_bias_pos = cur_batch_in_all_start_index + key_rel_pos
             # load bias only for keys that correspond to queries
-            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_stride_0)
+            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_len)
             qq_bias = tl.load(
                 qq_bias_row_ptrs + key_bias_pos[None, :],
                 mask=query_mask_0[:, None] & is_query_key[None, :],
@@ -412,9 +458,27 @@ def kernel_unified_attention_2d(
 
         if SLIDING_WINDOW:
             qpos_lo = q_block_local_idx * BLOCK_Q
-            V = tl.where(
-                (context_len + qpos_lo - seq_offset[:, None]) < SLIDING_WINDOW, V, 0.0
-            )
+            if USE_PER_QUERY_ABS_POS:
+                # Use depth-based SW anchor (most conservative = smallest) for
+                # this Q-block to avoid incorrectly zeroing out V values that
+                # are within the sliding window of deeper (low-depth) tree nodes
+                # but outside the window of their sequential BFS position.
+                v_sw_anchor = tl.load(
+                    per_query_abs_pos_ptr
+                    + cur_batch_in_all_start_index
+                    + qpos_lo
+                ).to(tl.int64)
+                V = tl.where(
+                    (v_sw_anchor - seq_offset[:, None]) < SLIDING_WINDOW,
+                    V,
+                    0.0,
+                )
+            else:
+                V = tl.where(
+                    (context_len + qpos_lo - seq_offset[:, None]) < SLIDING_WINDOW,
+                    V,
+                    0.0,
+                )
 
         # acc : (BLOCK_M, HEAD_SIZE_PADDED)
         acc += tl.dot(P.to(V.dtype), V)
@@ -466,6 +530,7 @@ def kernel_unified_attention_3d(
     query_stride_0: tl.int64,  # int
     query_stride_1: tl.int64,  # int, should be equal to head_size
     qq_bias_stride_0: tl.int64,  # int
+    qq_bias_len: tl.int64,  # int
     BLOCK_SIZE: tl.constexpr,  # int
     TILE_SIZE: tl.constexpr,  # int, must be power of 2
     HEAD_SIZE: tl.constexpr,  # int
@@ -767,7 +832,7 @@ def kernel_unified_attention_3d(
             key_rel_pos = seq_offset - context_len  # shape: [BLOCK_SIZE]
             key_bias_pos = cur_batch_in_all_start_index + key_rel_pos
             # load bias only for keys that correspond to queries
-            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_stride_0)
+            is_query_key = (key_rel_pos >= 0) & (key_bias_pos < qq_bias_len)
             qq_bias = tl.load(
                 qq_bias_row_ptrs + key_bias_pos[None, :],
                 mask=query_mask_0[:, None] & is_query_key[None, :],
@@ -984,6 +1049,11 @@ def unified_attention(
     # Optional tensor for prefix lengths (PrefixLM support)
     mm_prefix_range=None,
     use_alibi_sqrt=False,
+    # Optional per-query depth-based absolute positions for tree verification.
+    # Shape: [num_query_tokens], dtype int64.  When provided, each token's
+    # causal mask and sliding-window bounds are computed from this position
+    # (context_len + depth) instead of the sequential index within the batch.
+    per_query_abs_pos=None,
 ):
     assert causal, "Only causal attention is supported"
     assert q_descale is None, "Q scales not supported"
@@ -1004,6 +1074,7 @@ def unified_attention(
 
     use_alibi_slopes = alibi_slopes is not None
     use_qq_bias = qq_bias is not None
+    use_per_query_abs_pos = per_query_abs_pos is not None
     use_logical_kv_slots = logical_kv_slots is not None
     if use_logical_kv_slots:
         assert logical_kv_slot_lens is not None
@@ -1106,6 +1177,7 @@ def unified_attention(
             output_stride_0=out.stride(0),
             output_stride_1=out.stride(1),
             qq_bias_stride_0=qq_bias.stride(0) if use_qq_bias else 0,
+            qq_bias_len=qq_bias.shape[0] if use_qq_bias else 0,
             BLOCK_SIZE=block_size,
             TILE_SIZE=TILE_SIZE_PREFILL,
             HEAD_SIZE=head_size,
@@ -1119,6 +1191,8 @@ def unified_attention(
             USE_MM_PREFIX=use_mm_prefix,
             MAX_MM_RANGES=max_mm_ranges,
             mm_prefix_range_ptr=mm_prefix_range,
+            per_query_abs_pos_ptr=per_query_abs_pos,
+            USE_PER_QUERY_ABS_POS=use_per_query_abs_pos,
             SLIDING_WINDOW=(1 + window_size[0]),
             stride_k_cache_0=k.stride(0),
             stride_k_cache_1=k.stride(1),
@@ -1165,6 +1239,7 @@ def unified_attention(
             query_stride_0=q.stride(0),
             query_stride_1=q.stride(1),
             qq_bias_stride_0=qq_bias.stride(0) if use_qq_bias else 0,
+            qq_bias_len=qq_bias.shape[0] if use_qq_bias else 0,
             BLOCK_SIZE=block_size,
             TILE_SIZE=TILE_SIZE_DECODE,
             HEAD_SIZE=head_size,

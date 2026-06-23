@@ -106,17 +106,26 @@ def tokenizer_load_kwargs(model_path: str) -> dict[str, Any]:
     return {}
 
 
-def _apply_step3p7_specforge_template(prompt: str) -> str:
-    """Match SpecForge's qwen3-instruct nothink training template."""
-    return (
-        "<|im_start|>system\n"
-        "You are a helpful assistant."
-        "<|im_end|>\n"
-        "<|im_start|>user\n"
-        f"{prompt}"
-        "<|im_end|>\n"
-        "<|im_start|>assistant\n"
+def _apply_step3p7_regen_template(tokenizer, prompt: str) -> str:
+    """Render the Step-3.7 reasoning-low prompt with no-thinking prefill.
+
+    Use the model's native chat template for BOS, role tokens, and
+    ``Reasoning: low`` injection, then close the empty thinking bucket so raw
+    offline generation starts on answer tokens.
+    """
+    templated_prompt = tokenizer.apply_chat_template(
+        [{"role": "user", "content": prompt}],
+        tokenize=False,
+        add_generation_prompt=True,
+        reasoning_effort="low",
     )
+    think_prefix = "<think>\n"
+    if not templated_prompt.endswith(think_prefix):
+        raise ValueError(
+            "Unexpected Step-3.7 chat template: generation prompt does not end "
+            f"with {think_prefix!r}"
+        )
+    return templated_prompt + "\n</think>\n\n"
 
 
 def apply_chat_template(
@@ -129,7 +138,7 @@ def apply_chat_template(
     for prompt in prompts:
         messages = [{"role": "user", "content": prompt}]
         if is_step3p7:
-            templated_prompt = _apply_step3p7_specforge_template(prompt)
+            templated_prompt = _apply_step3p7_regen_template(tokenizer, prompt)
             templated_prompts.append(templated_prompt)
             continue
         try:

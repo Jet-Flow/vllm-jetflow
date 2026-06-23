@@ -9,6 +9,7 @@ from vllm.platforms import current_platform
 from vllm.utils.math_utils import next_power_of_2
 from vllm.utils.torch_utils import set_random_seed
 from vllm.v1.attention.ops.triton_unified_attention import unified_attention
+from vllm.v1.spec_decode.dflash_tree import _build_attention_bias_np
 
 NUM_HEADS = [(4, 4), (8, 2), (5, 1)]
 HEAD_SIZES = [128, 256]
@@ -85,6 +86,63 @@ def ref_paged_attn(
 
         outputs.append(out)
         start_idx += query_len
+
+    return torch.cat(outputs, dim=0)
+
+
+def ref_tree_paged_attn(
+    query: torch.Tensor,
+    key_cache: torch.Tensor,
+    value_cache: torch.Tensor,
+    query_lens: list[int],
+    kv_lens: list[int],
+    block_tables: torch.Tensor,
+    scale: float,
+    qq_bias: torch.Tensor,
+    per_query_abs_pos: torch.Tensor,
+    sliding_window: int | None,
+) -> torch.Tensor:
+    num_seqs = len(query_lens)
+    block_tables = block_tables.cpu().numpy()
+    _, block_size, num_kv_heads, head_size = key_cache.shape
+
+    outputs: list[torch.Tensor] = []
+    query_start = 0
+    for seq_idx in range(num_seqs):
+        query_len = query_lens[seq_idx]
+        kv_len = kv_lens[seq_idx]
+        context_len = kv_len - query_len
+        q = query[query_start : query_start + query_len] * scale
+
+        num_kv_blocks = (kv_len + block_size - 1) // block_size
+        block_indices = block_tables[seq_idx, :num_kv_blocks]
+        k = key_cache[block_indices].view(-1, num_kv_heads, head_size)[:kv_len]
+        v = value_cache[block_indices].view(-1, num_kv_heads, head_size)[:kv_len]
+        if q.shape[1] != k.shape[1]:
+            k = torch.repeat_interleave(k, q.shape[1] // k.shape[1], dim=1)
+            v = torch.repeat_interleave(v, q.shape[1] // v.shape[1], dim=1)
+
+        attn = torch.einsum("qhd,khd->hqk", q, k).float()
+        key_pos = torch.arange(kv_len, device=query.device)
+        query_seq_pos = context_len + torch.arange(query_len, device=query.device)
+        mask = key_pos[None, :] > query_seq_pos[:, None]
+        if sliding_window is not None:
+            q_abs = per_query_abs_pos[
+                query_start : query_start + query_len
+            ].to(query.device)
+            mask |= (q_abs[:, None] - key_pos[None, :]) >= sliding_window
+
+        query_bias = qq_bias[
+            query_start : query_start + query_len,
+            query_start : query_start + query_len,
+        ]
+        bias_full = torch.zeros(query_len, kv_len, device=query.device)
+        bias_full[:, context_len:] = query_bias
+        attn = attn + bias_full[None, :, :]
+        attn.masked_fill_(mask[None, :, :], float("-inf"))
+        attn = torch.softmax(attn, dim=-1).to(v.dtype)
+        outputs.append(torch.einsum("hqk,khd->qhd", attn, v))
+        query_start += query_len
 
     return torch.cat(outputs, dim=0)
 
@@ -219,6 +277,247 @@ def test_triton_unified_attn(
         torch.testing.assert_close(output, ref_output, atol=atol, rtol=rtol),
         f"{torch.max(torch.abs(output - ref_output))}",
     )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required.")
+@pytest.mark.parametrize("seq_threshold_3D", SEQ_THRESHOLD_3D_VALUES)
+@torch.inference_mode()
+def test_triton_unified_attn_tree_depth1_sibling_mask(
+    seq_threshold_3D: int,
+) -> None:
+    """Depth-1 tree siblings must not leak through sequential causal masking.
+
+    This mirrors the first bad Step-3.7 probe shape: root plus seven depth-1
+    siblings.  The tree request is placed after another request so the test
+    also covers nonzero global qq_bias row/column offsets.  The sequential
+    causal mask admits earlier siblings for node 6, so the block-diagonal
+    qq_bias must be the thing that removes them.
+    """
+    torch.set_default_device("cuda")
+    set_random_seed(0)
+
+    query_lens = [3, 8]
+    context_lens = [32, 167]
+    kv_lens = [
+        context_len + query_len
+        for context_len, query_len in zip(context_lens, query_lens)
+    ]
+    block_size = 16
+    num_blocks = (max(kv_lens) + block_size - 1) // block_size
+    num_query_heads = 4
+    num_kv_heads = 4
+    head_size = 128
+    dtype = torch.bfloat16
+    scale = head_size**-0.5
+    sliding_window = 128
+
+    total_query_len = sum(query_lens)
+    query = torch.randn(total_query_len, num_query_heads, head_size, dtype=dtype)
+    key_cache = torch.randn(
+        num_blocks, block_size, num_kv_heads, head_size, dtype=dtype
+    )
+    value_cache = torch.randn_like(key_cache)
+    block_tables = torch.arange(
+        num_blocks, dtype=torch.int32, device=query.device
+    ).expand(len(query_lens), num_blocks)
+    cu_query_lens = torch.tensor([0, *query_lens], dtype=torch.int32).cumsum(dim=0)
+    kv_lens_t = torch.tensor(kv_lens, dtype=torch.int32)
+
+    # Root at depth 0, all children at depth 1.  Node 6 should see only the
+    # root and itself among query keys, even though sequential causal masking
+    # would otherwise admit siblings 1..5.
+    chain_parents = [-1, 0, 1]
+    tree_parents = [-1, 0, 0, 0, 0, 0, 0, 0]
+    neg_inf = float(torch.finfo(torch.float32).min)
+    qq_bias = torch.full(
+        (total_query_len, total_query_len),
+        neg_inf,
+        device=query.device,
+        dtype=torch.float32,
+    )
+    chain_bias = torch.from_numpy(_build_attention_bias_np(chain_parents, neg_inf)).to(
+        device=query.device, dtype=torch.float32
+    )
+    tree_bias = torch.from_numpy(_build_attention_bias_np(tree_parents, neg_inf)).to(
+        device=query.device, dtype=torch.float32
+    )
+    qq_bias[:3, :3] = chain_bias
+    qq_bias[3:, 3:] = tree_bias
+    per_query_abs_pos = torch.tensor(
+        [
+            context_lens[0],
+            context_lens[0] + 1,
+            context_lens[0] + 2,
+            context_lens[1],
+            *([context_lens[1] + 1] * (query_lens[1] - 1)),
+        ],
+        dtype=torch.int64,
+        device=query.device,
+    )
+
+    output = torch.empty_like(query)
+    head_size_padded = next_power_of_2(head_size)
+    num_par_softmax_segments = 16
+    softmax_segm_output = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments, head_size_padded),
+        dtype=torch.float32,
+    )
+    softmax_segm_max = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments),
+        dtype=torch.float32,
+    )
+    softmax_segm_expsum = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments),
+        dtype=torch.float32,
+    )
+
+    unified_attention(
+        q=query,
+        k=key_cache,
+        v=value_cache,
+        out=output,
+        cu_seqlens_q=cu_query_lens,
+        seqused_k=kv_lens_t,
+        max_seqlen_q=max(query_lens),
+        max_seqlen_k=max(kv_lens),
+        softmax_scale=scale,
+        causal=True,
+        qq_bias=qq_bias,
+        window_size=(sliding_window - 1, 0),
+        block_table=block_tables,
+        softcap=0,
+        q_descale=None,
+        k_descale=None,
+        v_descale=None,
+        per_query_abs_pos=per_query_abs_pos,
+        seq_threshold_3D=seq_threshold_3D,
+        num_par_softmax_segments=num_par_softmax_segments,
+        softmax_segm_output=softmax_segm_output,
+        softmax_segm_max=softmax_segm_max,
+        softmax_segm_expsum=softmax_segm_expsum,
+    )
+
+    ref_output = ref_tree_paged_attn(
+        query=query,
+        key_cache=key_cache,
+        value_cache=value_cache,
+        query_lens=query_lens,
+        kv_lens=kv_lens,
+        block_tables=block_tables,
+        scale=scale,
+        qq_bias=qq_bias,
+        per_query_abs_pos=per_query_abs_pos,
+        sliding_window=sliding_window,
+    )
+    # Global row 9 is request-1 local node 6.
+    torch.testing.assert_close(output[9], ref_output[9], atol=1.5e-2, rtol=1e-2)
+    torch.testing.assert_close(output, ref_output, atol=1.5e-2, rtol=1e-2)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required.")
+@pytest.mark.parametrize("seq_threshold_3D", SEQ_THRESHOLD_3D_VALUES)
+@torch.inference_mode()
+def test_triton_unified_attn_tree_step37_node6_gqa_shape(
+    seq_threshold_3D: int,
+) -> None:
+    """Mirror the failing Step-3.7 verifier shape for node 6.
+
+    Layer 0 of Step-3.7 uses more query heads than KV heads and verifies a
+    127-node tree after 167 context tokens.  The first observed AR mismatch is
+    depth-1 node 6, whose only visible query keys should be root and itself.
+    """
+    torch.set_default_device("cuda")
+    set_random_seed(0)
+
+    query_lens = [127]
+    context_lens = [167]
+    kv_lens = [294]
+    block_size = 16
+    num_blocks = (kv_lens[0] + block_size - 1) // block_size
+    num_query_heads = 8
+    num_kv_heads = 1
+    head_size = 128
+    dtype = torch.bfloat16
+    scale = head_size**-0.5
+
+    query = torch.randn(query_lens[0], num_query_heads, head_size, dtype=dtype)
+    key_cache = torch.randn(
+        num_blocks, block_size, num_kv_heads, head_size, dtype=dtype
+    )
+    value_cache = torch.randn_like(key_cache)
+    block_tables = torch.arange(
+        num_blocks, dtype=torch.int32, device=query.device
+    ).unsqueeze(0)
+    cu_query_lens = torch.tensor([0, query_lens[0]], dtype=torch.int32).cumsum(dim=0)
+    kv_lens_t = torch.tensor(kv_lens, dtype=torch.int32)
+
+    tree_parents = [-1] + [0] * (query_lens[0] - 1)
+    neg_inf = float(torch.finfo(torch.float32).min)
+    qq_bias = torch.from_numpy(_build_attention_bias_np(tree_parents, neg_inf)).to(
+        device=query.device, dtype=torch.float32
+    )
+    per_query_abs_pos = torch.tensor(
+        [context_lens[0], *([context_lens[0] + 1] * (query_lens[0] - 1))],
+        dtype=torch.int64,
+        device=query.device,
+    )
+
+    output = torch.empty_like(query)
+    head_size_padded = next_power_of_2(head_size)
+    num_par_softmax_segments = 16
+    softmax_segm_output = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments, head_size_padded),
+        dtype=torch.float32,
+    )
+    softmax_segm_max = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments),
+        dtype=torch.float32,
+    )
+    softmax_segm_expsum = torch.empty(
+        (seq_threshold_3D, num_query_heads, num_par_softmax_segments),
+        dtype=torch.float32,
+    )
+
+    unified_attention(
+        q=query,
+        k=key_cache,
+        v=value_cache,
+        out=output,
+        cu_seqlens_q=cu_query_lens,
+        seqused_k=kv_lens_t,
+        max_seqlen_q=max(query_lens),
+        max_seqlen_k=max(kv_lens),
+        softmax_scale=scale,
+        causal=True,
+        qq_bias=qq_bias,
+        window_size=(-1, -1),
+        block_table=block_tables,
+        softcap=0,
+        q_descale=None,
+        k_descale=None,
+        v_descale=None,
+        per_query_abs_pos=per_query_abs_pos,
+        seq_threshold_3D=seq_threshold_3D,
+        num_par_softmax_segments=num_par_softmax_segments,
+        softmax_segm_output=softmax_segm_output,
+        softmax_segm_max=softmax_segm_max,
+        softmax_segm_expsum=softmax_segm_expsum,
+    )
+
+    ref_output = ref_tree_paged_attn(
+        query=query,
+        key_cache=key_cache,
+        value_cache=value_cache,
+        query_lens=query_lens,
+        kv_lens=kv_lens,
+        block_tables=block_tables,
+        scale=scale,
+        qq_bias=qq_bias,
+        per_query_abs_pos=per_query_abs_pos,
+        sliding_window=None,
+    )
+    torch.testing.assert_close(output[6], ref_output[6], atol=1.5e-2, rtol=1e-2)
+    torch.testing.assert_close(output, ref_output, atol=1.5e-2, rtol=1e-2)
 
 
 @pytest.mark.parametrize(

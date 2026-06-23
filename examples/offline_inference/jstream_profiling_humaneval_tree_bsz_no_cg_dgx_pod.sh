@@ -19,9 +19,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-${BATCH_SIZE}}"
-PROFILER_DIR="${PROFILER_DIR:-/root/data/vllm-ptd/dflash_bsz${BATCH_SIZE}_no_cg_smoke_$(date +%m%d)}"
+PROFILER_DIR="${PROFILER_DIR:-/root/data/vllm-ptd/jstream_bsz${BATCH_SIZE}_no_cg_smoke_$(date +%m%d)}"
 
-exec "${SCRIPT_DIR}/dflash_profiling_humaneval_causal_tree_unit_kvlayout_dgx_pod.sh" \
+exec "${SCRIPT_DIR}/jstream_profiling_humaneval_tree_unit_kvlayout_dgx_pod.sh" \
   --profiler-dir "${PROFILER_DIR}" \
   --cudagraph-mode none \
   --tp-size "${TP_SIZE}" \

@@ -5,7 +5,7 @@
 import ast
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 import torch
@@ -30,6 +30,48 @@ from vllm.v1.attention.ops.triton_unified_attention import unified_attention
 from vllm.v1.kv_cache_interface import AttentionSpec
 
 logger = init_logger(__name__)
+
+
+def _parse_dflash_debug_int_list_env(name: str) -> list[int] | None:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return None
+    result: list[int] = []
+    for part in value.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            result.append(int(part))
+        except ValueError:
+            logger.warning("Ignoring invalid integer %r in %s=%r", part, name, value)
+    return result
+
+
+def _extract_dflash_layer_index(layer_name: str) -> int | None:
+    marker = ".layers."
+    if marker not in layer_name:
+        return None
+    suffix = layer_name.split(marker, 1)[1]
+    layer_idx = suffix.split(".", 1)[0]
+    try:
+        return int(layer_idx)
+    except ValueError:
+        return None
+
+
+def _should_probe_dflash_attention_layer(layer_name: str) -> bool:
+    layer_indices = _parse_dflash_debug_int_list_env(
+        "DFLASH_VERIFIER_PROBE_ATTN_LAYERS"
+    )
+    if layer_indices is None:
+        layer_indices = _parse_dflash_debug_int_list_env(
+            "DFLASH_VERIFIER_PROBE_KV_LAYERS"
+        )
+    if not layer_indices:
+        return False
+    layer_idx = _extract_dflash_layer_index(layer_name)
+    return layer_idx in set(layer_indices)
 
 
 class TreeAttentionBackend(AttentionBackend):
@@ -99,6 +141,17 @@ class TreeAttentionMetadata:
     logical_kv_slots: torch.Tensor | None = None
     logical_kv_slot_lens: torch.Tensor | None = None
     logical_kv_starts: torch.Tensor | None = None
+    # Depth-based absolute positions for each tree query token.
+    # Shape: [num_decode_tokens].  When set, the attention kernel uses these
+    # positions (instead of sequential query positions) for causal masking and
+    # sliding-window bounds.  This is required for exact AR-parity: tree nodes
+    # at depth d appear at sequential index S >= d in BFS order, so using S
+    # for the sliding window start shifts the window by (S - d) relative to
+    # what the equivalent AR pass would see.
+    per_query_abs_pos: torch.Tensor | None = None
+    # Debug-only attention-boundary records collected during DFlash verifier
+    # forwards.  Parent and cached decode metadata share the same list.
+    debug_attn_records: list[dict[str, object]] = field(default_factory=list)
 
     # Cached Prefill/decode metadata.
     _cached_prefill_metadata: "TreeAttentionMetadata | None" = None
@@ -160,6 +213,8 @@ class TreeAttentionMetadata:
             logical_kv_slots=self.logical_kv_slots,
             logical_kv_slot_lens=self.logical_kv_slot_lens,
             logical_kv_starts=self.logical_kv_starts,
+            per_query_abs_pos=self.per_query_abs_pos,
+            debug_attn_records=self.debug_attn_records,
         )
         return self._cached_decode_metadata
 
@@ -614,6 +669,7 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
         logical_kv_slots: list[torch.Tensor | None] | torch.Tensor | None = None,
         logical_kv_slot_lens: torch.Tensor | None = None,
         logical_kv_starts: list[int] | torch.Tensor | None = None,
+        per_query_abs_pos: torch.Tensor | None = None,
     ) -> TreeAttentionMetadata:
         debug_context = getattr(self, "_dflash_tree_debug_context", {}) or {}
         if tree_attn_bias is not None and for_cudagraph_capture:
@@ -677,6 +733,7 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
                         device=self.device,
                     )
 
+        debug_attn_records: list[dict[str, object]] = []
         decode_meta = TreeAttentionMetadata(
             num_actual_tokens=num_actual_tokens,
             max_query_len=common_attn_metadata.max_query_len,
@@ -690,8 +747,9 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
             logical_kv_slots=logical_kv_slots_t,
             logical_kv_slot_lens=logical_kv_slot_lens_t,
             logical_kv_starts=logical_kv_starts_t,
+            per_query_abs_pos=per_query_abs_pos,
+            debug_attn_records=debug_attn_records,
         )
-
         meta = TreeAttentionMetadata(
             num_actual_tokens=num_actual_tokens,
             max_query_len=common_attn_metadata.max_query_len,
@@ -709,6 +767,8 @@ class TreeAttentionMetadataBuilder(AttentionMetadataBuilder[TreeAttentionMetadat
             logical_kv_slots=logical_kv_slots_t,
             logical_kv_slot_lens=logical_kv_slot_lens_t,
             logical_kv_starts=logical_kv_starts_t,
+            per_query_abs_pos=per_query_abs_pos,
+            debug_attn_records=debug_attn_records,
             _cached_decode_metadata=decode_meta,
         )
         self._append_dflash_tree_debug_record(
@@ -922,6 +982,424 @@ class TreeAttentionImpl(AttentionImpl):
             layer._v_scale,
         )
 
+    def _maybe_record_dflash_verifier_attention_probe(
+        self,
+        *,
+        layer: torch.nn.Module,
+        query: torch.Tensor,
+        key_cache: torch.Tensor,
+        value_cache: torch.Tensor,
+        decode_meta: TreeAttentionMetadata,
+        output: torch.Tensor,
+        kernel: str,
+    ) -> None:
+        layer_name = str(getattr(layer, "layer_name", ""))
+        if not _should_probe_dflash_attention_layer(layer_name):
+            return
+        node_indices = _parse_dflash_debug_int_list_env(
+            "DFLASH_VERIFIER_PROBE_NODES"
+        )
+        if node_indices is None:
+            node_indices = [0, 6]
+        node_indices = sorted({idx for idx in node_indices if idx >= 0})
+        if not node_indices:
+            return
+        if output.is_cuda and torch.cuda.is_current_stream_capturing():
+            return
+
+        q_start_loc = decode_meta.query_start_loc.detach().to("cpu")
+        flat_indices: list[int] = []
+        node_records: list[dict[str, object]] = []
+        for req_idx in range(max(0, int(q_start_loc.numel()) - 1)):
+            req_start = int(q_start_loc[req_idx].item())
+            req_end = int(q_start_loc[req_idx + 1].item())
+            qlen = req_end - req_start
+            for node_idx in node_indices:
+                if node_idx >= qlen:
+                    continue
+                flat_idx = req_start + node_idx
+                flat_indices.append(flat_idx)
+                node_records.append(
+                    {
+                        "req_idx": req_idx,
+                        "node_index": node_idx,
+                        "flat_index": flat_idx,
+                    }
+                )
+        if not flat_indices:
+            return
+
+        flat_idx_t = torch.tensor(
+            flat_indices, dtype=torch.long, device=output.device
+        )
+        selected = output.index_select(0, flat_idx_t).detach().float()
+        flat_selected = selected.flatten(start_dim=1)
+        norms = flat_selected.norm(dim=1).cpu().tolist()
+        mean_abs = flat_selected.abs().mean(dim=1).cpu().tolist()
+        max_abs = flat_selected.abs().amax(dim=1).cpu().tolist()
+
+        reference_records = self._compute_dflash_attention_reference_probe(
+            query=query,
+            key_cache=key_cache,
+            value_cache=value_cache,
+            decode_meta=decode_meta,
+            output=output,
+            node_records=node_records,
+        )
+        for node_record, norm, mean_abs_i, max_abs_i, ref_record in zip(
+            node_records, norms, mean_abs, max_abs, reference_records, strict=True
+        ):
+            node_record["output_norm"] = float(norm)
+            node_record["output_mean_abs"] = float(mean_abs_i)
+            node_record["output_max_abs"] = float(max_abs_i)
+            node_record.update(ref_record)
+
+        decode_meta.debug_attn_records.append(
+            {
+                "layer_name": layer_name,
+                "layer_index": _extract_dflash_layer_index(layer_name),
+                "kernel": kernel,
+                "output_shape": [int(dim) for dim in output.shape],
+                "nodes": node_records,
+            }
+        )
+
+    def _compute_dflash_attention_reference_probe(
+        self,
+        *,
+        query: torch.Tensor,
+        key_cache: torch.Tensor,
+        value_cache: torch.Tensor,
+        decode_meta: TreeAttentionMetadata,
+        output: torch.Tensor,
+        node_records: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
+        if (
+            decode_meta.tree_attn_bias is None
+            or decode_meta.block_table is None
+            or self.alibi_slopes is not None
+        ):
+            return [{"reference_skipped": True} for _ in node_records]
+
+        block_size = int(key_cache.shape[1])
+        kv_head_indices = torch.div(
+            torch.arange(self.num_heads, device=query.device),
+            max(1, self.num_heads // self.num_kv_heads),
+            rounding_mode="floor",
+        )
+        q_start_loc = decode_meta.query_start_loc.detach().to("cpu")
+        seq_lens = decode_meta.seq_lens.detach().to("cpu")
+        per_query_abs_pos = decode_meta.per_query_abs_pos
+        tree_attn_bias = decode_meta.tree_attn_bias
+        results: list[dict[str, object]] = []
+
+        def _slot_sample(tensor: torch.Tensor, limit: int = 8) -> list[int]:
+            if tensor.numel() == 0:
+                return []
+            return [int(x) for x in tensor[: min(limit, tensor.numel())].detach().cpu()]
+
+        def _float_sample(tensor: torch.Tensor, limit: int = 8) -> list[float]:
+            if tensor.numel() == 0:
+                return []
+            return [
+                float(x)
+                for x in tensor.flatten()[: min(limit, tensor.numel())].detach().cpu()
+            ]
+
+        for node_record in node_records:
+            req_idx = int(node_record["req_idx"])
+            node_idx = int(node_record["node_index"])
+            flat_idx = int(node_record["flat_index"])
+            req_start = int(q_start_loc[req_idx].item())
+            req_end = int(q_start_loc[req_idx + 1].item())
+            qlen = req_end - req_start
+            seq_len = int(seq_lens[req_idx].item())
+            context_len = max(0, seq_len - qlen)
+
+            if per_query_abs_pos is not None:
+                abs_pos = int(per_query_abs_pos[flat_idx].detach().cpu().item())
+            else:
+                abs_pos = context_len + node_idx
+            context_start = 0
+            if self.sliding_window is not None:
+                window_left = (
+                    self.sliding_window[0]
+                    if isinstance(self.sliding_window, (tuple, list))
+                    else self.sliding_window
+                )
+                if window_left is not None and int(window_left) >= 0:
+                    context_start = max(0, abs_pos - int(window_left))
+            context_end = min(context_len, abs_pos + 1)
+            context_positions = torch.arange(
+                context_start,
+                context_end,
+                dtype=torch.int64,
+                device=query.device,
+            )
+            block_table_req = decode_meta.block_table[req_idx].to(
+                device=query.device,
+                dtype=torch.int64,
+            )
+            if context_positions.numel() > 0:
+                context_blocks = block_table_req[
+                    torch.div(context_positions, block_size, rounding_mode="floor")
+                ]
+                context_slots = (
+                    context_blocks * block_size + (context_positions % block_size)
+                )
+            else:
+                context_slots = torch.empty(
+                    0, dtype=torch.int64, device=query.device
+                )
+
+            bias_row = tree_attn_bias[node_idx, :qlen]
+            allowed_query_cols = torch.nonzero(
+                bias_row == 0, as_tuple=False
+            ).flatten()
+            sequential_query_cols = torch.arange(
+                0, min(node_idx + 1, qlen), dtype=torch.long, device=query.device
+            )
+            all_query_cols = torch.arange(0, qlen, dtype=torch.long, device=query.device)
+            tree_slots = decode_meta.slot_mapping[
+                req_start + allowed_query_cols.to(decode_meta.slot_mapping.device)
+            ].to(device=query.device, dtype=torch.int64)
+            sequential_tree_slots = decode_meta.slot_mapping[
+                req_start + sequential_query_cols.to(decode_meta.slot_mapping.device)
+            ].to(device=query.device, dtype=torch.int64)
+            all_tree_slots = decode_meta.slot_mapping[
+                req_start + all_query_cols.to(decode_meta.slot_mapping.device)
+            ].to(device=query.device, dtype=torch.int64)
+            canonical_tree_positions = context_len + allowed_query_cols.to(query.device)
+            canonical_tree_blocks = block_table_req[
+                torch.div(canonical_tree_positions, block_size, rounding_mode="floor")
+            ]
+            canonical_tree_slots = (
+                canonical_tree_blocks * block_size
+                + (canonical_tree_positions % block_size)
+            )
+            if decode_meta.logical_kv_slots is not None:
+                logical_start = int(
+                    decode_meta.logical_kv_starts[req_idx].detach().cpu().item()
+                )
+                logical_len = int(
+                    decode_meta.logical_kv_slot_lens[req_idx].detach().cpu().item()
+                )
+                logical_end = logical_start + logical_len
+                logical_tree_slots = canonical_tree_slots.clone()
+                use_logical = (
+                    (canonical_tree_positions >= logical_start)
+                    & (canonical_tree_positions < logical_end)
+                )
+                if bool(use_logical.any().item()):
+                    logical_tree_slots[use_logical] = decode_meta.logical_kv_slots[
+                        req_idx,
+                        (canonical_tree_positions[use_logical] - logical_start).to(
+                            decode_meta.logical_kv_slots.device
+                        ),
+                    ].to(device=query.device, dtype=torch.int64)
+            else:
+                logical_start = None
+                logical_len = None
+                logical_tree_slots = canonical_tree_slots
+
+            slots = torch.cat([context_slots, tree_slots])
+            if slots.numel() == 0:
+                results.append({"reference_skipped": True})
+                continue
+
+            q = query[flat_idx].detach().float().view(self.num_heads, self.head_size)
+            kernel_out = output[flat_idx].detach().float().view(
+                self.num_heads, self.head_size
+            )
+            blocks = torch.div(slots, block_size, rounding_mode="floor")
+            offsets = slots % block_size
+            main_key = key_cache[blocks, offsets].detach().float()
+            main_value = value_cache[blocks, offsets].detach().float()
+            main_k_for_heads = main_key[:, kv_head_indices, :]
+            main_v_for_heads = main_value[:, kv_head_indices, :]
+            unscaled_scores = torch.einsum("hd,khd->hk", q, main_k_for_heads)
+            tree_score_indices = torch.arange(
+                context_slots.numel(), slots.numel(), device=query.device
+            )
+            block_m = 16 if self.num_heads // self.num_kv_heads <= 16 else 2 ** (
+                self.num_heads // self.num_kv_heads - 1
+            ).bit_length()
+            block_q = max(1, block_m // max(1, self.num_heads // self.num_kv_heads))
+            q_block_local_idx = node_idx // block_q
+            q_block_lo = q_block_local_idx * block_q
+            q_block_hi = min(
+                q_block_lo + (block_m - 1) // max(1, self.num_heads // self.num_kv_heads),
+                qlen - 1,
+            )
+
+            def _compute_ref_for_slots(
+                ref_slots: torch.Tensor,
+                ref_query: torch.Tensor | None = None,
+            ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                q_for_ref = q if ref_query is None else ref_query
+                blocks = torch.div(ref_slots, block_size, rounding_mode="floor")
+                offsets = ref_slots % block_size
+                key = key_cache[blocks, offsets].detach().float()
+                value = value_cache[blocks, offsets].detach().float()
+                k_for_heads = key[:, kv_head_indices, :]
+                v_for_heads = value[:, kv_head_indices, :]
+                scores = torch.einsum("hd,khd->hk", q_for_ref, k_for_heads) * self.scale
+                if self.logits_soft_cap > 0:
+                    scores = torch.tanh(scores / self.logits_soft_cap)
+                    scores = scores * self.logits_soft_cap
+                probs = torch.softmax(scores, dim=-1)
+                ref_out = torch.einsum("hk,khd->hd", probs, v_for_heads)
+                return ref_out, probs, scores
+
+            ref, probs, scores = _compute_ref_for_slots(slots)
+            diff = (kernel_out - ref).abs()
+            sequential_ref, _, _ = _compute_ref_for_slots(
+                torch.cat([context_slots, sequential_tree_slots])
+            )
+            all_tree_ref, _, _ = _compute_ref_for_slots(
+                torch.cat([context_slots, all_tree_slots])
+            )
+            canonical_ref, _, _ = _compute_ref_for_slots(
+                torch.cat([context_slots, canonical_tree_slots])
+            )
+            logical_ref, _, _ = _compute_ref_for_slots(
+                torch.cat([context_slots, logical_tree_slots])
+            )
+            next_query_diff = None
+            if node_idx + 1 < qlen:
+                next_q = query[flat_idx + 1].detach().float().view(
+                    self.num_heads, self.head_size
+                )
+                next_query_ref, _, _ = _compute_ref_for_slots(slots, next_q)
+                next_query_diff = float(
+                    (kernel_out - next_query_ref).abs().max().detach().cpu().item()
+                )
+            head_diffs = diff.flatten(start_dim=1).amax(dim=1)
+            score_ranges = torch.stack(
+                [scores.amin(dim=1), scores.amax(dim=1)], dim=1
+            )
+            unscaled_score_ranges = torch.stack(
+                [unscaled_scores.amin(dim=1), unscaled_scores.amax(dim=1)], dim=1
+            )
+            prob_ranges = torch.stack(
+                [probs.amin(dim=1), probs.amax(dim=1)], dim=1
+            )
+            top_prob_values, top_prob_indices = torch.topk(
+                probs[0], k=min(8, int(probs.shape[1]))
+            )
+            results.append(
+                {
+                    "reference_skipped": False,
+                    "reference_key_count": int(slots.numel()),
+                    "reference_context_key_count": int(context_slots.numel()),
+                    "reference_tree_key_count": int(tree_slots.numel()),
+                    "reference_allowed_query_cols": _slot_sample(allowed_query_cols),
+                    "reference_sequential_query_cols": _slot_sample(
+                        sequential_query_cols
+                    ),
+                    "reference_context_slot_head": _slot_sample(context_slots),
+                    "reference_context_slot_tail": _slot_sample(
+                        context_slots[-min(8, context_slots.numel()) :]
+                    ),
+                    "reference_tree_slots": _slot_sample(tree_slots),
+                    "reference_canonical_tree_slots": _slot_sample(
+                        canonical_tree_slots
+                    ),
+                    "reference_logical_tree_slots": _slot_sample(logical_tree_slots),
+                    "reference_logical_start": logical_start,
+                    "reference_logical_len": logical_len,
+                    "reference_attention_scale": float(self.scale),
+                    "reference_key_cache_dtype": str(key_cache.dtype),
+                    "reference_value_cache_dtype": str(value_cache.dtype),
+                    "reference_key_cache_shape": [
+                        int(dim) for dim in key_cache.shape
+                    ],
+                    "reference_value_cache_shape": [
+                        int(dim) for dim in value_cache.shape
+                    ],
+                    "reference_key_cache_stride": [
+                        int(stride) for stride in key_cache.stride()
+                    ],
+                    "reference_value_cache_stride": [
+                        int(stride) for stride in value_cache.stride()
+                    ],
+                    "reference_slot_blocks_head": _slot_sample(blocks),
+                    "reference_slot_offsets_head": _slot_sample(offsets),
+                    "reference_selected_key_abs_max": float(
+                        main_key.abs().max().detach().cpu().item()
+                    ),
+                    "reference_selected_value_abs_max": float(
+                        main_value.abs().max().detach().cpu().item()
+                    ),
+                    "reference_selected_key_norm_sample": _float_sample(
+                        main_key.flatten(start_dim=1).norm(dim=1)
+                    ),
+                    "reference_selected_value_norm_sample": _float_sample(
+                        main_value.flatten(start_dim=1).norm(dim=1)
+                    ),
+                    "reference_repeated_key_abs_max": float(
+                        main_k_for_heads.abs().max().detach().cpu().item()
+                    ),
+                    "reference_repeated_value_abs_max": float(
+                        main_v_for_heads.abs().max().detach().cpu().item()
+                    ),
+                    "reference_tree_key_head0_scores": _float_sample(
+                        unscaled_scores[0, tree_score_indices]
+                    ),
+                    "reference_context_tail_head0_scores": _float_sample(
+                        unscaled_scores[0, -min(8, unscaled_scores.shape[1]) :]
+                    ),
+                    "reference_kernel_block_m": int(block_m),
+                    "reference_kernel_block_q": int(block_q),
+                    "reference_kernel_q_block_local_idx": int(q_block_local_idx),
+                    "reference_kernel_q_block_lo": int(q_block_lo),
+                    "reference_kernel_q_block_hi": int(q_block_hi),
+                    "reference_query_norms": [
+                        float(x) for x in q.norm(dim=1).detach().cpu()
+                    ],
+                    "reference_unscaled_score_min_max_by_head": [
+                        [float(v) for v in row]
+                        for row in unscaled_score_ranges.detach().cpu()
+                    ],
+                    "reference_score_min_max_by_head": [
+                        [float(v) for v in row] for row in score_ranges.detach().cpu()
+                    ],
+                    "reference_prob_min_max_by_head": [
+                        [float(v) for v in row] for row in prob_ranges.detach().cpu()
+                    ],
+                    "reference_output_norm": float(ref.norm().detach().cpu().item()),
+                    "kernel_reference_max_abs_diff": float(
+                        diff.max().detach().cpu().item()
+                    ),
+                    "kernel_reference_mean_abs_diff": float(
+                        diff.mean().detach().cpu().item()
+                    ),
+                    "kernel_reference_head_max_abs_diff": [
+                        float(x) for x in head_diffs.detach().cpu()
+                    ],
+                    "kernel_sequential_tree_max_abs_diff": float(
+                        (kernel_out - sequential_ref).abs().max().detach().cpu().item()
+                    ),
+                    "kernel_all_tree_max_abs_diff": float(
+                        (kernel_out - all_tree_ref).abs().max().detach().cpu().item()
+                    ),
+                    "kernel_canonical_tree_max_abs_diff": float(
+                        (kernel_out - canonical_ref).abs().max().detach().cpu().item()
+                    ),
+                    "kernel_logical_tree_max_abs_diff": float(
+                        (kernel_out - logical_ref).abs().max().detach().cpu().item()
+                    ),
+                    "kernel_next_query_same_keys_max_abs_diff": next_query_diff,
+                    "reference_head0_top_prob_indices": [
+                        int(x) for x in top_prob_indices.detach().cpu()
+                    ],
+                    "reference_head0_top_prob_values": [
+                        float(x) for x in top_prob_values.detach().cpu()
+                    ],
+                }
+            )
+        return results
+
     def forward(
         self,
         layer: torch.nn.Module,
@@ -984,7 +1462,9 @@ class TreeAttentionImpl(AttentionImpl):
             )
 
         if decode_meta := attn_metadata.decode_metadata:
+            dflash_debug_kernel = "triton_unified"
             if decode_meta.ancestor_masks is not None:
+                dflash_debug_kernel = "optimus_tree"
                 try:
                     from optimus_cutedsl.flash_attn import (
                         flash_attn_varlen_tree_paged_sm90,
@@ -1026,6 +1506,14 @@ class TreeAttentionImpl(AttentionImpl):
                     out=output[:num_decode_tokens],
                 )
             else:
+                # When per_query_abs_pos is provided (tree verification), each
+                # tree node carries a depth-based absolute position used for
+                # causal masking and sliding-window bounds.  This ensures exact
+                # AR parity: a tree node at depth d sees window [L+d-W, L+d],
+                # regardless of its sequential index S within the batch.
+                # The old heuristic of expanding the window by (max_query_len-1)
+                # is no longer needed because the kernel now uses the correct
+                # per-node position for every node, including the root.
                 unified_attention(
                     q=query[:num_decode_tokens],
                     k=key_cache,
@@ -1048,5 +1536,15 @@ class TreeAttentionImpl(AttentionImpl):
                     q_descale=None,  # Not supported
                     k_descale=layer._k_scale.expand(descale_shape),
                     v_descale=layer._v_scale.expand(descale_shape),
+                    per_query_abs_pos=decode_meta.per_query_abs_pos,
                 )
+            self._maybe_record_dflash_verifier_attention_probe(
+                layer=layer,
+                query=query[:num_decode_tokens],
+                key_cache=key_cache,
+                value_cache=value_cache,
+                decode_meta=decode_meta,
+                output=output[:num_decode_tokens],
+                kernel=dflash_debug_kernel,
+            )
         return output

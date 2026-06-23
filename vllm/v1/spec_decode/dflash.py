@@ -122,7 +122,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
             discard_request_mask=discard_request_mask,
         )
         batch_size = sampled_token_ids.shape[0]
-        if self._dflash_debug_artifacts_enabled:
+        if self._debug_artifacts_enabled():
             backup_gpu = getattr(self.backup_next_token_ids, "gpu", None)
             self._latest_prepare_next_debug = {
                 "prepare_next_sampled_token_ids": sampled_token_ids.detach().cpu(),
@@ -157,7 +157,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
             spec_decode_metadata=spec_decode_metadata,
             valid_sampled_tokens_count=valid_sampled_tokens_count,
         )
-        if self._dflash_debug_artifacts_enabled:
+        if self._debug_artifacts_enabled():
             self._latest_prepare_inputs_debug = {
                 "prepare_inputs_query_start_loc": (
                     common_attn_metadata.query_start_loc.detach().cpu()
@@ -219,6 +219,9 @@ class DFlashProposer(SpecDecodeBaseProposer):
         self._topk_log.clear()
         self._pending_topk_log_indices.clear()
 
+    def _debug_artifacts_enabled(self) -> bool:
+        return bool(getattr(self, "_dflash_debug_artifacts_enabled", False))
+
     def enable_dflash_debug_artifacts(self) -> None:
         self._dflash_debug_artifacts_enabled = True
 
@@ -230,7 +233,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
         correction_token: torch.Tensor | int | None = None,
         tree_num_nodes: int | None = None,
     ) -> None:
-        if not self._dflash_debug_artifacts_enabled:
+        if not self._debug_artifacts_enabled():
             return
         if not self._pending_topk_log_indices:
             return
@@ -311,7 +314,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
         draft_logits: torch.Tensor,
         num_rejected_tokens_gpu: torch.Tensor | None = None,
     ) -> None:
-        if not self._dflash_debug_artifacts_enabled:
+        if not self._debug_artifacts_enabled():
             return
         current_step = int(self._tree_propose_step)
         if current_step not in self._runtime_capture_steps:
@@ -393,7 +396,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
         topk_lp: torch.Tensor,
         tree: DraftTree,
     ) -> None:
-        if not self._dflash_debug_artifacts_enabled:
+        if not self._debug_artifacts_enabled():
             return
         current_step = int(self._tree_propose_step)
         if current_step not in self._runtime_capture_steps or not self._runtime_bundles:
@@ -567,7 +570,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
         output_seq_lens = effective_seq_lens + num_query_per_req
         output_max_seq_len = cad.max_seq_len + num_query_per_req
 
-        if self._dflash_debug_artifacts_enabled:
+        if self._debug_artifacts_enabled():
             self._latest_first_pass_debug = {
                 "input_cad_query_start_loc": cad.query_start_loc.detach().cpu(),
                 "input_cad_seq_lens": cad.seq_lens.detach().cpu(),
@@ -765,7 +768,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
 
         batch_size = common_attn_metadata.batch_size()
         _diag = (
-            self._dflash_debug_artifacts_enabled
+            self._debug_artifacts_enabled()
             and self._tree_propose_step < 3
         )
         if _diag:
@@ -956,7 +959,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
                     )
                 with record_function_or_nullcontext("dflash_tree_root_token_sync"):
                     root_token = next_token_ids[req_idx].item()
-                if self._dflash_debug_artifacts_enabled:
+                if self._debug_artifacts_enabled():
                     topk_tok_0 = topk_tok[0].tolist()
                     topk_lp_0 = topk_lp[0].tolist()
                     self._pending_topk_log_indices.append(len(self._topk_log))
@@ -1089,7 +1092,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
                         "dflash_tree_cg_log_detail"
                     ):
                         log_detail = (
-                            self._dflash_debug_artifacts_enabled
+                            self._debug_artifacts_enabled()
                             and (
                                 self._tree_propose_step < 5
                                 or self._tree_propose_step % 50 == 0
@@ -1106,7 +1109,7 @@ class DFlashProposer(SpecDecodeBaseProposer):
 
         self._tree_propose_step += 1
         if (
-            self._dflash_debug_artifacts_enabled
+            self._debug_artifacts_enabled()
             and self._tree_propose_step % 100 == 0
             and (self._cg_hit_count + self._cg_miss_count) > 0
         ):

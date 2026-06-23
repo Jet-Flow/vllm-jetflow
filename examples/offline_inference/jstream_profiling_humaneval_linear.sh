@@ -22,7 +22,7 @@ DRAFT_TAG="$(basename "${DRAFT_MODEL}")"
 DATE_TAG="$(date +%m%d)"
 
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/data/vllm-ptd/vllm_profile_dflash_${DATE_TAG}_humaneval_causal_linear_${DRAFT_TAG}_qwen3_template"
+  PROFILER_DIR="/data/vllm-ptd/vllm_profile_jstream_${DATE_TAG}_humaneval_linear_${DRAFT_TAG}_qwen3_template"
 fi
 
 python examples/offline_inference/dflash_profiling.py \
