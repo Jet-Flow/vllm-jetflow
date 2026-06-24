@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 REPO_ROOT=$(cd -- "${SCRIPT_DIR}/../.." &>/dev/null && pwd)
 
-export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/root/data/cache}"
+export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/path/to/hf-datasets-cache}"
 export VLLM_ALLOW_INSECURE_SERIALIZATION=1
 export VLLM_ENABLE_V1_MULTIPROCESSING="${VLLM_ENABLE_V1_MULTIPROCESSING:-0}"
 export VLLM_WORKER_MULTIPROC_METHOD="${VLLM_WORKER_MULTIPROC_METHOD:-spawn}"
@@ -32,12 +32,12 @@ prepend_ld_path "/usr/local/cuda/compat/lib"
 prepend_ld_path "/usr/local/nvidia/lib64"
 prepend_ld_path "/usr/local/nvidia/lib"
 
-TARGET_MODEL="${TARGET_MODEL:-/root/models/Qwen3-8B}"
-DRAFT_MODEL="${DRAFT_MODEL:-/root/data/outputs/dflash-qwen3-8b-causal-bs16-anc1-forwardkl-lr3e-4-gNone/epoch_6_step_291744_forward_kl}"
+TARGET_MODEL="${TARGET_MODEL:-/path/to/target-model}"
+DRAFT_MODEL="${DRAFT_MODEL:-/path/to/jetspec-draft-head}"
 TREE_ATTN_KERNEL="${TREE_ATTN_KERNEL:-optimus}"
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-FLASH_ATTN}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.85}"
-OPTIMUS_SRC="${OPTIMUS_SRC:-/root/workspace/optimus_jit_local/src}"
+OPTIMUS_SRC="${OPTIMUS_SRC:-}"
 
 BATCH_SIZES="${BATCH_SIZES:-1 2 4 8 16}"
 TREE_BUDGETS="${TREE_BUDGETS:-16 32 64 128 256}"
@@ -76,7 +76,7 @@ Runs Math-500 full-set vLLM DFlash sweeps over batch sizes and tree budgets.
 Options:
   --model PATH                 Target model path (default: ${TARGET_MODEL})
   --draft-model PATH           DFlash draft model path (default: ${DRAFT_MODEL})
-  --profiler-dir DIR           Output root (default: /root/data/vllm-ptd/...)
+  --profiler-dir DIR           Output root (default: /path/to/output/...)
   --batch-sizes "1 2 ..."      Batch sizes to sweep (default: "${BATCH_SIZES}")
   --tree-budgets "16 32 ..."   Tree budgets to sweep (default: "${TREE_BUDGETS}")
   --tp-size N                  Tensor parallel size (default: ${TP_SIZE})
@@ -132,6 +132,25 @@ if [[ "${TREE_KV_LAYOUT}" != "physical" && "${TREE_KV_LAYOUT}" != "logical" ]]; 
   exit 1
 fi
 
+is_placeholder_path() {
+  local path="$1"
+  [[ -z "${path}" || "${path}" == /path/to/* ]]
+}
+
+require_configured_path() {
+  local label="$1"
+  local path="$2"
+  local hint="$3"
+  if is_placeholder_path "${path}"; then
+    echo "ERROR: please specify ${label} with ${hint}."
+    exit 1
+  fi
+}
+
+require_configured_path "target model path" "${TARGET_MODEL}" "--model or TARGET_MODEL"
+require_configured_path "JetSpec draft head path" "${DRAFT_MODEL}" "--draft-model or DRAFT_MODEL"
+require_configured_path "profiler output directory" "${PROFILER_DIR}" "--profiler-dir or PROFILER_DIR"
+
 if [[ ! -d "$TARGET_MODEL" ]]; then
   echo "ERROR: TARGET_MODEL path does not exist: $TARGET_MODEL"
   exit 1
@@ -145,7 +164,7 @@ fi
 DRAFT_TAG="$(basename "${DRAFT_MODEL}")"
 DATE_TAG="$(date +%m%d)"
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_math500_jetspec_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget_sweep_bsz_sweep_${TREE_KV_LAYOUT}_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/path/to/output/jetspec-math500-${DATE_TAG}-${TREE_KV_LAYOUT}-${TREE_ATTN_KERNEL}"
 fi
 
 mkdir -p "$PROFILER_DIR"

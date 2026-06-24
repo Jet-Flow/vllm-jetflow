@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 REPO_ROOT=$(cd -- "${SCRIPT_DIR}/../.." &>/dev/null && pwd)
 
-export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/root/data/cache}"
+export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/path/to/hf-datasets-cache}"
 export VLLM_ALLOW_INSECURE_SERIALIZATION=1
 export VLLM_ENABLE_V1_MULTIPROCESSING="${VLLM_ENABLE_V1_MULTIPROCESSING:-0}"
 export VLLM_WORKER_MULTIPROC_METHOD="${VLLM_WORKER_MULTIPROC_METHOD:-spawn}"
@@ -33,16 +33,18 @@ prepend_ld_path "/usr/local/nvidia/lib64"
 prepend_ld_path "/usr/local/nvidia/lib"
 
 # Defaults
-TARGET_MODEL="${TARGET_MODEL:-/root/models/Qwen3-8B}"
-DRAFT_MODEL="${DRAFT_MODEL:-/root/data/outputs/dflash-qwen3-8b-causal-bs16-anc1-forwardkl-lr3e-4-gNone/epoch_6_step_291744_forward_kl}"
+TARGET_MODEL="${TARGET_MODEL:-/path/to/target-model}"
+DRAFT_MODEL="${DRAFT_MODEL:-/path/to/jetspec-draft-head}"
 TREE_ATTN_KERNEL="${TREE_ATTN_KERNEL:-optimus}"
 
 # For JetSpec tree with width > 1, attention backend is automatically tree_attn.
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-FLASH_ATTN}"
 PROFILER_DIR="${PROFILER_DIR:-}"
 EXTRA_ARGS=()
+REPORT_BATCH_SIZE=1
 
-# Parse named arguments
+# Parse named arguments. This wrapper owns --tree-kv-layout so physical and
+# logical runs stay comparable and cannot be accidentally collapsed to one mode.
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --model)              TARGET_MODEL="$2";       shift 2 ;;
@@ -50,9 +52,30 @@ while [[ $# -gt 0 ]]; do
     --tree-attn-kernel)   TREE_ATTN_KERNEL="$2";   shift 2 ;;
     --attention-backend)  ATTENTION_BACKEND="$2";  shift 2 ;;
     --profiler-dir)       PROFILER_DIR="$2";       shift 2 ;;
+    --batch-sizes)        REPORT_BATCH_SIZE="$2";  EXTRA_ARGS+=("$1" "$2"); shift 2 ;;
+    --tree-kv-layout)     echo "ERROR: this comparison wrapper runs both physical and logical; do not pass --tree-kv-layout"; exit 1 ;;
     *)                    EXTRA_ARGS+=("$1");      shift   ;;
   esac
 done
+
+is_placeholder_path() {
+  local path="$1"
+  [[ -z "${path}" || "${path}" == /path/to/* ]]
+}
+
+require_configured_path() {
+  local label="$1"
+  local path="$2"
+  local hint="$3"
+  if is_placeholder_path "${path}"; then
+    echo "ERROR: please specify ${label} with ${hint}."
+    exit 1
+  fi
+}
+
+require_configured_path "target model path" "${TARGET_MODEL}" "--model or TARGET_MODEL"
+require_configured_path "JetSpec draft head path" "${DRAFT_MODEL}" "--draft-model or DRAFT_MODEL"
+require_configured_path "profiler output directory" "${PROFILER_DIR}" "--profiler-dir or PROFILER_DIR"
 
 if [[ ! -d "$TARGET_MODEL" ]]; then
   echo "ERROR: TARGET_MODEL path does not exist: $TARGET_MODEL"
@@ -79,14 +102,14 @@ TREE_PRUNE_RATIO=0.25
 TREE_CONSTRUCTION="breadth_first"
 
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jetspec_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/path/to/output/jetspec-humaneval-${DATE_TAG}-kvlayout-compare-${TREE_ATTN_KERNEL}"
 fi
 mkdir -p "$PROFILER_DIR"
 RUN_LOG="${PROFILER_DIR}/run_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$RUN_LOG") 2>&1
 echo "Run log:            $RUN_LOG"
 
-OPTIMUS_SRC="${OPTIMUS_SRC:-/root/workspace/optimus_jit_local/src}"
+OPTIMUS_SRC="${OPTIMUS_SRC:-}"
 
 if [[ "${TREE_ATTN_KERNEL}" == "optimus" && -n "${OPTIMUS_SRC}" && -d "${OPTIMUS_SRC}" ]]; then
   export PYTHONPATH="${OPTIMUS_SRC}${PYTHONPATH:+:$PYTHONPATH}"
@@ -139,11 +162,21 @@ PY
 
 cd "$REPO_ROOT"
 
-for PROFILE_MODE in ar dflash; do
-  echo "Running profiling mode: ${PROFILE_MODE}"
+run_profile() {
+  local label="$1"
+  local mode="$2"
+  local tree_kv_layout="${3:-}"
+  local run_dir="${PROFILER_DIR}/${label}"
+
+  echo "Running profiling label=${label} mode=${mode} tree_kv_layout=${tree_kv_layout:-n/a}"
+  local layout_args=()
+  if [[ -n "${tree_kv_layout}" ]]; then
+    layout_args=(--tree-kv-layout "${tree_kv_layout}")
+  fi
+
   python examples/offline_inference/dflash_profiling.py \
     --prompt-set humaneval \
-    --mode "${PROFILE_MODE}" \
+    --mode "${mode}" \
     --head-type causal \
     --model "${TARGET_MODEL}" \
     --draft-model "${DRAFT_MODEL}" \
@@ -156,6 +189,7 @@ for PROFILE_MODE in ar dflash; do
     --tree-prune-ratio ${TREE_PRUNE_RATIO} \
     --tree-construction "${TREE_CONSTRUCTION}" \
     --tree-attn-kernel "${TREE_ATTN_KERNEL}" \
+    "${layout_args[@]}" \
     --num-cudagraph-tree-captures ${NUM_CUDAGRAPH_TREE_CAPTURES} \
     --attention-backend "${ATTENTION_BACKEND}" \
     --tp-sizes 1 \
@@ -167,11 +201,20 @@ for PROFILE_MODE in ar dflash; do
     --num-runs 1 \
     --num-warmup-runs 1 \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" \
-    --torch-profiler-dir "${PROFILER_DIR}"
-done
+    --torch-profiler-dir "${run_dir}"
+}
+
+run_profile "ar" "ar"
+run_profile "tree_physical" "dflash" "physical"
+run_profile "tree_logical" "dflash" "logical"
 
 echo ""
+echo "Comparison outputs:"
+echo "  AR:            ${PROFILER_DIR}/ar/ar/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
+echo "  Tree physical: ${PROFILER_DIR}/tree_physical/dflash/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
+echo "  Tree logical:  ${PROFILER_DIR}/tree_logical/dflash/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
+echo ""
 echo "Note:"
-echo "  The requested /root/data/outputs/.../epoch_6_step_291744_forward_kl path is used as the DFlash draft model."
-echo "  The vLLM target model is /root/models/Qwen3-8B; override it with --model or TARGET_MODEL if needed."
-echo "  Hugging Face datasets cache is set to /root/data/cache."
+echo "  The JetSpec draft head is ${DRAFT_MODEL}."
+echo "  The vLLM target model is ${TARGET_MODEL}."
+echo "  Hugging Face datasets cache is ${HF_DATASETS_CACHE}."
