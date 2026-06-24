@@ -246,3 +246,6 @@ csrc/cpu/cpu_attn_dispatch_generated.h
 # venv
 specforge_venv_train
 vllm/vllm_flash_attn
+
+# logs
+vllm_logs_*

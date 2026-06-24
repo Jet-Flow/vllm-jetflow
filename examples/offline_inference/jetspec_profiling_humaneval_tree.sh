@@ -40,7 +40,7 @@ DRAFT_MODEL="/mnt/specdec-dev/checkpoints/specforge/outputs/nemotron-780k-and-co
 #TREE_ATTN_KERNEL="triton"
 TREE_ATTN_KERNEL="optimus"
 
-# For JStream tree with width > 1, attention backend is automatically tree_attn.
+# For JetSpec tree with width > 1, attention backend is automatically tree_attn.
 ATTENTION_BACKEND="FLASH_ATTN"
 PROFILER_DIR=""
 EXTRA_ARGS=()
@@ -77,7 +77,7 @@ TREE_PRUNE_RATIO=0.25
 TREE_CONSTRUCTION="breadth_first"
 
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/data/vllm-ptd/vllm_qwen3_template_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jstream_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/data/vllm-ptd/vllm_qwen3_template_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jetspec_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_tree_impl_${TREE_ATTN_KERNEL}"
 fi
 mkdir -p "$PROFILER_DIR"
 RUN_LOG="${PROFILER_DIR}/run_$(date +%Y%m%d_%H%M%S).log"

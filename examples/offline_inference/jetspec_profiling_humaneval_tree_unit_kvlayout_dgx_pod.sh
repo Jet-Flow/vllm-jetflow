@@ -37,7 +37,7 @@ TARGET_MODEL="${TARGET_MODEL:-/root/models/Qwen3-8B}"
 DRAFT_MODEL="${DRAFT_MODEL:-/root/data/outputs/dflash-qwen3-8b-causal-bs16-anc1-forwardkl-lr3e-4-gNone/epoch_6_step_291744_forward_kl}"
 TREE_ATTN_KERNEL="${TREE_ATTN_KERNEL:-optimus}"
 
-# For JStream tree with width > 1, attention backend is automatically tree_attn.
+# For JetSpec tree with width > 1, attention backend is automatically tree_attn.
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-FLASH_ATTN}"
 PROFILER_DIR="${PROFILER_DIR:-}"
 MAX_TREE_BUDGET="${MAX_TREE_BUDGET:-255}"
@@ -109,7 +109,7 @@ if [[ "${REPORT_TP_SIZE}" != "1" ]]; then
 fi
 
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jstream_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_kvlayout_compare_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jetspec_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_kvlayout_compare_tree_impl_${TREE_ATTN_KERNEL}"
 fi
 
 if [[ "${PROFILER_DIR}" =~ budget([0-9]+) ]] && [[ "${BASH_REMATCH[1]}" != "${MAX_TREE_BUDGET}" ]]; then

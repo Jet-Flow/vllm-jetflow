@@ -1,1 +1,0 @@
-tp=1 bs=1 throughput_gain=1.267427 throughput_gain_pct=+26.74 benchmark_gain=1.257158 ar_benchmark_tok_s=143.473854 dflash_benchmark_tok_s=180.369259 decode_cuda_speedup=2.748971 prefill_cuda_speedup=0.998093 ar_decode_cuda_s=10.688000 dflash_decode_cuda_s=3.888000 ar_prefill_cuda_s=0.159107 dflash_prefill_cuda_s=0.159411

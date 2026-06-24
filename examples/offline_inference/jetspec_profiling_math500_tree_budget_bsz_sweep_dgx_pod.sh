@@ -145,7 +145,7 @@ fi
 DRAFT_TAG="$(basename "${DRAFT_MODEL}")"
 DATE_TAG="$(date +%m%d)"
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_math500_jstream_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget_sweep_bsz_sweep_${TREE_KV_LAYOUT}_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_math500_jetspec_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget_sweep_bsz_sweep_${TREE_KV_LAYOUT}_tree_impl_${TREE_ATTN_KERNEL}"
 fi
 
 mkdir -p "$PROFILER_DIR"

@@ -19,11 +19,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-${BATCH_SIZE}}"
-PROFILER_DIR="${PROFILER_DIR:-/root/data/vllm-ptd/jstream_bsz${BATCH_SIZE}_no_cg_smoke_$(date +%m%d)}"
+PROFILER_DIR="${PROFILER_DIR:-/root/data/vllm-ptd/jetspec_bsz${BATCH_SIZE}_cg_smoke_$(date +%m%d)}"
 
-exec "${SCRIPT_DIR}/jstream_profiling_humaneval_tree_unit_kvlayout_dgx_pod.sh" \
+exec "${SCRIPT_DIR}/jetspec_profiling_humaneval_tree_unit_kvlayout_dgx_pod.sh" \
   --profiler-dir "${PROFILER_DIR}" \
-  --cudagraph-mode none \
   --tp-size "${TP_SIZE}" \
   --batch-size "${BATCH_SIZE}" \
   --max-num-seqs "${MAX_NUM_SEQS}" \

@@ -35,25 +35,18 @@ prepend_ld_path "/usr/local/nvidia/lib"
 # Defaults
 TARGET_MODEL="${TARGET_MODEL:-/root/models/Qwen3-8B}"
 DRAFT_MODEL="${DRAFT_MODEL:-/root/data/outputs/dflash-qwen3-8b-causal-bs16-anc1-forwardkl-lr3e-4-gNone/epoch_6_step_291744_forward_kl}"
-TREE_ATTN_KERNEL="${TREE_ATTN_KERNEL:-optimus}"
-
-# For JStream tree with width > 1, attention backend is automatically tree_attn.
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-FLASH_ATTN}"
 PROFILER_DIR="${PROFILER_DIR:-}"
+GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.85}"
 EXTRA_ARGS=()
-REPORT_BATCH_SIZE=1
 
-# Parse named arguments. This wrapper owns --tree-kv-layout so physical and
-# logical runs stay comparable and cannot be accidentally collapsed to one mode.
+# Parse named arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --model)              TARGET_MODEL="$2";       shift 2 ;;
     --draft-model)        DRAFT_MODEL="$2";        shift 2 ;;
-    --tree-attn-kernel)   TREE_ATTN_KERNEL="$2";   shift 2 ;;
     --attention-backend)  ATTENTION_BACKEND="$2";  shift 2 ;;
     --profiler-dir)       PROFILER_DIR="$2";       shift 2 ;;
-    --batch-sizes)        REPORT_BATCH_SIZE="$2";  EXTRA_ARGS+=("$1" "$2"); shift 2 ;;
-    --tree-kv-layout)     echo "ERROR: this comparison wrapper runs both physical and logical; do not pass --tree-kv-layout"; exit 1 ;;
     *)                    EXTRA_ARGS+=("$1");      shift   ;;
   esac
 done
@@ -71,41 +64,21 @@ fi
 DRAFT_TAG="$(basename "${DRAFT_MODEL}")"
 DATE_TAG="$(date +%m%d)"
 
-TREE_WIDTH=7
-TREE_DEPTH=16
-MAX_TREE_BUDGET=255
-NUM_CUDAGRAPH_TREE_CAPTURES=4
-GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.85}"
-
-TREE_DRAFT_MODE="accum_logp"
-ADDITIONAL_DRAFT_REFINEMENT_PASSES=0
-TREE_PRUNE_RATIO=0.25
-TREE_CONSTRUCTION="breadth_first"
-
 if [[ -z "${PROFILER_DIR}" ]]; then
-  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jstream_${TREE_DRAFT_MODE}_${TREE_CONSTRUCTION}_tree_d${TREE_DEPTH}_w${TREE_WIDTH}_budget${MAX_TREE_BUDGET}_refinecnt_${ADDITIONAL_DRAFT_REFINEMENT_PASSES}_pruneratio_${TREE_PRUNE_RATIO}_kvlayout_compare_tree_impl_${TREE_ATTN_KERNEL}"
+  PROFILER_DIR="/root/data/vllm-ptd/vllm_qwen3_8b_profile_${DRAFT_TAG}_${DATE_TAG}_humaneval_jetspec_linear"
 fi
 mkdir -p "$PROFILER_DIR"
 RUN_LOG="${PROFILER_DIR}/run_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$RUN_LOG") 2>&1
 echo "Run log:            $RUN_LOG"
 
-OPTIMUS_SRC="${OPTIMUS_SRC:-/root/workspace/optimus_jit_local/src}"
-
-if [[ "${TREE_ATTN_KERNEL}" == "optimus" && -n "${OPTIMUS_SRC}" && -d "${OPTIMUS_SRC}" ]]; then
-  export PYTHONPATH="${OPTIMUS_SRC}${PYTHONPATH:+:$PYTHONPATH}"
-fi
-
 echo "Repo root:          $REPO_ROOT"
 echo "HF datasets cache:  $HF_DATASETS_CACHE"
 echo "Target model:       $TARGET_MODEL"
 echo "Draft model:        $DRAFT_MODEL"
 echo "Profiler dir:       $PROFILER_DIR"
-echo "Tree attn kernel:   $TREE_ATTN_KERNEL"
+echo "Attention backend:  $ATTENTION_BACKEND"
 echo "GPU memory util:    $GPU_MEMORY_UTILIZATION"
-if [[ -n "${OPTIMUS_SRC}" ]]; then
-  echo "Optimus source:     $OPTIMUS_SRC"
-fi
 echo "CUDA home:          ${CUDA_HOME:-unset}"
 echo "CUDA path:          ${CUDA_PATH:-unset}"
 echo "CUDA compiler:      ${CUDACXX:-unset}"
@@ -143,35 +116,16 @@ PY
 
 cd "$REPO_ROOT"
 
-run_profile() {
-  local label="$1"
-  local mode="$2"
-  local tree_kv_layout="${3:-}"
-  local run_dir="${PROFILER_DIR}/${label}"
-
-  echo "Running profiling label=${label} mode=${mode} tree_kv_layout=${tree_kv_layout:-n/a}"
-  local layout_args=()
-  if [[ -n "${tree_kv_layout}" ]]; then
-    layout_args=(--tree-kv-layout "${tree_kv_layout}")
-  fi
-
+for PROFILE_MODE in ar dflash; do
+  echo "Running profiling mode: ${PROFILE_MODE}"
   python examples/offline_inference/dflash_profiling.py \
     --prompt-set humaneval \
-    --mode "${mode}" \
+    --mode "${PROFILE_MODE}" \
     --head-type causal \
     --model "${TARGET_MODEL}" \
     --draft-model "${DRAFT_MODEL}" \
     --max-tokens 2048 \
-    --block-size ${TREE_DEPTH} \
-    --tree-width ${TREE_WIDTH} \
-    --max-tree-budget ${MAX_TREE_BUDGET} \
-    --tree-draft ${TREE_DRAFT_MODE} \
-    --max-draft-passes ${ADDITIONAL_DRAFT_REFINEMENT_PASSES} \
-    --tree-prune-ratio ${TREE_PRUNE_RATIO} \
-    --tree-construction "${TREE_CONSTRUCTION}" \
-    --tree-attn-kernel "${TREE_ATTN_KERNEL}" \
-    "${layout_args[@]}" \
-    --num-cudagraph-tree-captures ${NUM_CUDAGRAPH_TREE_CAPTURES} \
+    --block-size 16 \
     --attention-backend "${ATTENTION_BACKEND}" \
     --tp-sizes 1 \
     --batch-sizes 1 \
@@ -182,18 +136,9 @@ run_profile() {
     --num-runs 1 \
     --num-warmup-runs 1 \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" \
-    --torch-profiler-dir "${run_dir}"
-}
+    --torch-profiler-dir "${PROFILER_DIR}"
+done
 
-run_profile "ar" "ar"
-run_profile "tree_physical" "dflash" "physical"
-run_profile "tree_logical" "dflash" "logical"
-
-echo ""
-echo "Comparison outputs:"
-echo "  AR:            ${PROFILER_DIR}/ar/ar/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
-echo "  Tree physical: ${PROFILER_DIR}/tree_physical/dflash/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
-echo "  Tree logical:  ${PROFILER_DIR}/tree_logical/dflash/tp1/bs${REPORT_BATCH_SIZE}/metrics_report.txt"
 echo ""
 echo "Note:"
 echo "  The requested /root/data/outputs/.../epoch_6_step_291744_forward_kl path is used as the DFlash draft model."
